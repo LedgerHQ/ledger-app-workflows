@@ -1,4 +1,4 @@
-name: Check icons
+name: Check Makefile
 
 on:
   workflow_call:
@@ -8,8 +8,8 @@ on:
         type: string
 
 jobs:
-  check_icons:
-    name: Check icons
+  check_makefile:
+    name: Check Makefile
     runs-on: ubuntu-latest
 
     steps:
@@ -26,4 +26,4 @@ jobs:
           path: app-repository
 
       - name: Run script
-        run: bash ./ledger-app-workflows/scripts/check_icons.sh app-repository
+        run: bash ./ledger-app-workflows/scripts/check_makefile.sh app-repository

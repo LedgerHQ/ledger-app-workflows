@@ -45,7 +45,10 @@ check_icon() {
 }
 
 get_icon_from_makefile () {
-	cat "$1/Makefile" | grep "ICONNAME" | grep "$2" | cut -f2 -d'=' | sed 's/^[ \t]*//;s/[ \t]*$//'
+	repo="$1"
+	device_name="$2"
+	iconname_makefile=$(grep -Rl --include="*Makefile*" "^[[:blank:]]*ICONNAME" "$repo")
+	cat "$iconname_makefile" | grep "ICONNAME" | grep "$device_name" | cut -f2 -d'=' | sed 's/^[ \t]*//;s/[ \t]*$//'
 }
 
 repo="$1"
