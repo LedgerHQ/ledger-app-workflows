@@ -1,0 +1,15 @@
+name: Check icons
+
+on:
+  workflow_calls:
+
+jobs:
+  check_icons:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Clone
+        uses: actions/checkout@v3
+
+      - name: Run script
+        run: bash ./scripts/check_icons.sh
