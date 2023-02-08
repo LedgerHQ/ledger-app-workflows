@@ -1,0 +1,14 @@
+name: Ensure app compliance with Ledger guidelines
+
+on:
+  workflow_call:
+    inputs:
+      app-repository:
+        required: true
+        type: string
+
+jobs:
+  call_check_icons:
+    uses: LedgerHQ/ledger-app-workflows/.github/workflows/check_icons.yml@master
+    with:
+      app-repository: ${{ inputs.app-repository }}

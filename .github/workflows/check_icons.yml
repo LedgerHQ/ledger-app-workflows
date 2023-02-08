@@ -1,0 +1,28 @@
+name: Check icons
+
+on:
+  workflow_call:
+    inputs:
+      app-repository:
+        required: true
+        type: string
+
+jobs:
+  check_icons:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Clone workflows repository
+        uses: actions/checkout@v3
+        with:
+          repository: LedgerHQ/ledger-app-workflows
+          path: ./ledger-app-workflows
+
+      - name: Clone app repository
+        uses: actions/checkout@v3
+        with:
+          repository: ${{ inputs.app-repository }}
+          path: app-repository
+
+      - name: Run script
+        run: bash ./ledger-app-workflows/scripts/check_icons.sh app-repository
