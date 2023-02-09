@@ -1,0 +1,47 @@
+name: Functional tests using Ragger
+
+on:
+  workflow_call:
+    inputs:
+      uploaded_artifact_name:
+        required: true
+        type: string
+
+jobs:
+  build:
+    name: Build application for NanoS, X and S+
+    strategy:
+      matrix:
+        include:
+          - SDK: "$NANOS_SDK"
+            model: nanos
+          - SDK: "$NANOX_SDK"
+            model: nanox
+          - SDK: "$NANOSP_SDK"
+            model: nanosp
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/ledgerhq/ledger-app-builder/ledger-app-builder-lite:latest
+
+    steps:
+      - name: Clone
+        uses: actions/checkout@v3
+
+      - name: Build
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          make BOLOS_SDK=${{ matrix.SDK }}
+
+      - name: Get APPNAME value from Makefile
+        run: |
+          touch makefile_dumper.mk
+          echo "include Makefile" >> makefile_dumper.mk
+          echo "dump_appname:" >> makefile_dumper.mk
+          echo -e "\t@echo \$(APPNAME)" >> makefile_dumper.mk
+          mv bin/app.elf "bin/$(make -f makefile_dumper.mk dump_appname | tail -n1)_${{ matrix.model }}.elf"
+
+      - name: Upload app binary
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ inputs.uploaded_artifact_name }}
+          path: bin/${{ inputs.app_name }}_${{ matrix.model }}.elf

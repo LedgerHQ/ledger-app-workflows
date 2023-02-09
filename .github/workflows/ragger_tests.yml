@@ -1,0 +1,42 @@
+name: Functionnal tests using Ragger
+
+on:
+  workflow_call:
+    inputs:
+      test_dir:
+        required: true
+        type: string
+      uploaded_artifact_name:
+        required: true
+        type: string
+
+jobs:
+  ragger_tests:
+    name: Functional tests with Ragger
+    strategy:
+      matrix:
+        include:
+          - model: nanos
+          - model: nanox
+          - model: nanosp
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Clone
+        uses: actions/checkout@v3
+
+      - name: Download app binaries
+        uses: actions/download-artifact@v3
+        with:
+          name: ${{ inputs.uploaded_artifact_name }}
+          path: ${{ inputs.test_dir }}/elfs
+
+      - name: Install tests dependencies
+        run: |
+          sudo apt-get update && sudo apt-get install -y qemu-user-static
+          pip install --extra-index-url https://test.pypi.org/simple/ -r ${{ inputs.test_dir }}/requirements.txt
+
+      - name: Run test
+        env:
+          CTEST_OUTPUT_ON_FAILURE: 1
+        run: pytest ${{ inputs.test_dir }}/ --tb=short -v --device ${{ matrix.model }}
