@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 
+set -e
+
 repo="$1"
+repo_name="$2"
 success=1
 
 if [[ ! -f "$repo/README.md" ]]; then
@@ -13,7 +16,7 @@ if [[ ! -s "$repo/README.md" ]]; then
 	success=0
 fi
 
-if echo "$repo" | grep -q "app-boilerplate"; then
+if echo "$repo_name" | grep -q "app-boilerplate"; then
 	echo "Readme check skipped for Boilerplate"
 else
 	if grep -q -i "^#.*boilerplate" "$repo/README.md"; then
@@ -28,5 +31,5 @@ else
 	echo "FAILURE =>"
 	echo "cat \"$repo/README.md\""
 	cat "$repo/README.md"
-	return 1
+	exit 1
 fi

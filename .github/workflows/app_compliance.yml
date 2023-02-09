@@ -2,26 +2,25 @@ name: Ensure app compliance with Ledger guidelines
 
 on:
   workflow_call:
-    inputs:
-      app-repository:
-        required: true
-        type: string
 
 jobs:
   call_check_icons:
     name: Dispatch
     uses: LedgerHQ/ledger-app-workflows/.github/workflows/check_icons.yml@master
     with:
-      app-repository: ${{ inputs.app-repository }}
+      app-repository: ${{ github.repository }}
+      repo-name: ${{ github.event.repository.name }}
 
   call_check_makefile:
     name: Dispatch
     uses: LedgerHQ/ledger-app-workflows/.github/workflows/check_makefile.yml@master
     with:
-      app-repository: ${{ inputs.app-repository }}
+      app-repository: ${{ github.repository }}
+      repo-name: ${{ github.event.repository.name }}
 
   call_check_readme:
     name: Dispatch
     uses: LedgerHQ/ledger-app-workflows/.github/workflows/check_readme.yml@master
     with:
-      app-repository: ${{ inputs.app-repository }}
+      app-repository: ${{ github.repository }}
+      repo-name: ${{ github.event.repository.name }}

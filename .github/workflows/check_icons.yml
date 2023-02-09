@@ -6,6 +6,9 @@ on:
       app-repository:
         required: true
         type: string
+      repo-name:
+        required: true
+        type: string
 
 jobs:
   check_icons:
@@ -26,4 +29,4 @@ jobs:
           path: app-repository
 
       - name: Run script
-        run: bash ./ledger-app-workflows/scripts/check_icons.sh app-repository
+        run: bash ./ledger-app-workflows/scripts/check_icons.sh app-repository ${{ inputs.repo-name }}

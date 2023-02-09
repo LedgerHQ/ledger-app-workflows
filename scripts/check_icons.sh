@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+set -e
+
 check_icon() {
 	success=1
 	file="$1"
@@ -44,6 +46,21 @@ check_icon() {
 
 }
 
+check_is_not_boilerplate_icon() {
+	file="$1"
+	if echo "$file" | grep -q "boilerplate"; then
+		echo "ERROR => A custom menu icon must be provided, not boilerplate icon '$file'"
+		return 1
+	else
+		md5sum=$(md5sum "$file" | cut -f1 -d' ')
+		if [[ "$md5sum" == "1603e6b90d3ae4afa9e3667008363705" || "$md5sum" == "d14ded9f690020fd878074393fa5bf2d" ]]; then
+			echo "ERROR => A custom menu icon must be provided, not renamed boilerplate icon '$file'"
+			return 1
+		fi
+	fi
+	return 0
+}
+
 get_icon_from_makefile () {
 	repo="$1"
 	device_name="$2"
@@ -52,11 +69,22 @@ get_icon_from_makefile () {
 }
 
 repo="$1"
+repo_name="$2"
 
 nanos_icon_file="$repo/$(get_icon_from_makefile "$repo" "nanos")"
 nanox_icon_file="$repo/$(get_icon_from_makefile "$repo" "nanox")"
 
+if echo "$repo_name" | grep -q "app-boilerplate"; then
+	echo "Icon uniqueness check skipped for Boilerplate"
+else
+	check_is_not_boilerplate_icon "$nanos_icon_file"
+	check_is_not_boilerplate_icon "$nanox_icon_file"
+fi
+
 check_icon "$nanos_icon_file" "16x16"
 check_icon "$nanox_icon_file" "14x14"
 
-find "$repo/glyphs/" -type f -print0 | while IFS= read -r -d '' file; do check_icon "$file" "no-check"; done
+find "$repo/glyphs/" -type f -print0 |
+	while IFS= read -r -d '' file; do
+		check_icon "$file" "no-check"
+	done
