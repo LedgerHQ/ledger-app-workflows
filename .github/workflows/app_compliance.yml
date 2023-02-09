@@ -19,3 +19,9 @@ jobs:
     uses: LedgerHQ/ledger-app-workflows/.github/workflows/check_makefile.yml@master
     with:
       app-repository: ${{ inputs.app-repository }}
+
+  call_check_readme:
+    name: Dispatch
+    uses: LedgerHQ/ledger-app-workflows/.github/workflows/check_readme.yml@master
+    with:
+      app-repository: ${{ inputs.app-repository }}
