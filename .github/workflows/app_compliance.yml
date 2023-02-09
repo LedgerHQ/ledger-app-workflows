@@ -24,3 +24,7 @@ jobs:
     with:
       app-repository: ${{ github.repository }}
       repo-name: ${{ github.event.repository.name }}
+
+  call_clang_static_analyzer:
+    name: Dispatch
+    uses: LedgerHQ/ledger-app-workflows/.github/workflows/clang_static_analyzer.yml@master
