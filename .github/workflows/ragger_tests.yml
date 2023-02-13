@@ -19,6 +19,7 @@ jobs:
           - model: nanos
           - model: nanox
           - model: nanosp
+          - model: stax
     runs-on: ubuntu-latest
 
     steps:

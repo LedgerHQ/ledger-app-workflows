@@ -19,6 +19,9 @@ jobs:
             model: nanox
           - SDK: "$NANOSP_SDK"
             model: nanosp
+          - SDK: "$STAX_SDK"
+            model: stax
+
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/ledgerhq/ledger-app-builder/ledger-app-builder-lite:latest

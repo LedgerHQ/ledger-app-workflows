@@ -9,7 +9,6 @@ on:
       version:
         required: false
         default: 11
-        type: string
       extensions:
         required: false
         default: 'h,c,proto'
@@ -28,7 +27,7 @@ jobs:
         run: [[ -f .clang-format ]]
 
       - name: Lint
-        uses: DoozyX/clang-format-lint-action@v0.${{ inputs.version }}
+        uses: DoozyX/clang-format-lint-action@v0.15
         with:
           source: ${{ inputs.source }}
           extensions: ${{ inputs.extensions }}
