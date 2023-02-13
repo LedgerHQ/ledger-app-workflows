@@ -6,25 +6,25 @@ on:
 jobs:
   call_check_icons:
     name: Dispatch
-    uses: LedgerHQ/ledger-app-workflows/.github/workflows/check_icons.yml@master
+    uses: LedgerHQ/ledger-app-workflows/.github/workflows/_check_icons.yml@master
     with:
       app-repository: ${{ github.repository }}
       repo-name: ${{ github.event.repository.name }}
 
   call_check_makefile:
     name: Dispatch
-    uses: LedgerHQ/ledger-app-workflows/.github/workflows/check_makefile.yml@master
+    uses: LedgerHQ/ledger-app-workflows/.github/workflows/_check_makefile.yml@master
     with:
       app-repository: ${{ github.repository }}
       repo-name: ${{ github.event.repository.name }}
 
   call_check_readme:
     name: Dispatch
-    uses: LedgerHQ/ledger-app-workflows/.github/workflows/check_readme.yml@master
+    uses: LedgerHQ/ledger-app-workflows/.github/workflows/_check_readme.yml@master
     with:
       app-repository: ${{ github.repository }}
       repo-name: ${{ github.event.repository.name }}
 
   call_clang_static_analyzer:
     name: Dispatch
-    uses: LedgerHQ/ledger-app-workflows/.github/workflows/clang_static_analyzer.yml@master
+    uses: LedgerHQ/ledger-app-workflows/.github/workflows/_check_clang_static_analyzer.yml@master
