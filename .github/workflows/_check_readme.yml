@@ -4,10 +4,12 @@ on:
   workflow_call:
     inputs:
       app-repository:
-        required: true
+        required: false
+        default: ${{ github.repository }}
         type: string
       repo-name:
-        required: true
+        required: false
+        default: ${{ github.event.repository_name }}
         type: string
 
 jobs:

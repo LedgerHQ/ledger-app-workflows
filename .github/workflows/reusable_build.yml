@@ -40,11 +40,11 @@ jobs:
           touch makefile_dumper.mk
           echo "include Makefile" >> makefile_dumper.mk
           echo "dump_appname:" >> makefile_dumper.mk
-          echo -e "\t@echo \$(APPNAME)" >> makefile_dumper.mk
-          mv bin/app.elf "bin/$(make -f makefile_dumper.mk dump_appname | tail -n1)_${{ matrix.model }}.elf"
+          echo -e "\t@echo \$(APPNAME) | tr '[:upper:]' '[:lower:]'" >> makefile_dumper.mk
+          mv bin/app.elf "bin/$(make BOLOS_SDK=${{ matrix.SDK }} -f makefile_dumper.mk dump_appname | tail -n1)_${{ matrix.model }}.elf"
 
       - name: Upload app binary
         uses: actions/upload-artifact@v3
         with:
           name: ${{ inputs.uploaded_artifact_name }}
-          path: bin/${{ inputs.app_name }}_${{ matrix.model }}.elf
+          path: bin/*_${{ matrix.model }}.elf
