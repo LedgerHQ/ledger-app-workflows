@@ -1,0 +1,35 @@
+name: Code style check
+
+on:
+  workflow_call:
+    inputs:
+      source:
+        required: true
+        type: string
+      version:
+        required: false
+        default: 11
+        type: string
+      extensions:
+        required: false
+        default: 'h,c,proto'
+        type: string
+
+jobs:
+  job_lint:
+    name: Lint
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Clone
+        uses: actions/checkout@v3
+
+      - name: Ensure clang-format is customized
+        run: [[ -f .clang-format ]]
+
+      - name: Lint
+        uses: DoozyX/clang-format-lint-action@v0.${{ inputs.version }}
+        with:
+          source: ${{ inputs.source }}
+          extensions: ${{ inputs.extensions }}
+          clangFormatVersion: ${{ inputs.version }}

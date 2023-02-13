@@ -28,6 +28,10 @@ This workflow is optional and is meant to help developers have their own CI.
 This workflow will download the compiled application and run the tests using the ragger testing framework.
 This workflow is optional and is meant to help developers have their own tests.
 
+- `linter.yml` \
+This workflow will perform linting checks on the application using DoozyX/clang-format-lint-action. 
+This workflow is mandatory, however the content of the `.clang-format` file is not.
+
 ## Usage
 
 Please see an exemple on how to use the reusable workflows in the `app-boilerplate` repository.
