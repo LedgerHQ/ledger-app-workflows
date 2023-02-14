@@ -1,4 +1,4 @@
-name: Functionnal tests using Ragger
+name: Functional tests using Ragger
 
 on:
   workflow_call:

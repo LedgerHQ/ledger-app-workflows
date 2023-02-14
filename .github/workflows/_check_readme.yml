@@ -9,7 +9,7 @@ on:
         type: string
       repo-name:
         required: false
-        default: ${{ github.event.repository_name }}
+        default: ${{ github.event.repository.name }}
         type: string
 
 jobs:

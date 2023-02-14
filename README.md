@@ -34,6 +34,6 @@ This workflow is mandatory, however the content of the `.clang-format` file is n
 
 ## Usage
 
-Please see an exemple on how to use the reusable workflows in the `app-boilerplate` repository.
+Please see an example on how to use the reusable workflows in the `app-boilerplate` repository.
 We will always keep the `app-boilerplate` repository complete and up-to-date in terms of workflows.
 https://github.com/LedgerHQ/app-boilerplate
