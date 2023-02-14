@@ -1,23 +1,31 @@
-name: Functional tests using Ragger
+name: Build the application for all devices and upload the artifact
 
 on:
   workflow_call:
     inputs:
-      uploaded_artifact_name:
+      upload_artifact:
         required: true
+        type: boolean
+      uploaded_artifact_name:
+        required: false
+        default: "application_binaries"
+        type: string
+      relative_app_directory:
+        required: false
+        default: "."
         type: string
 
 jobs:
   build:
     name: Build application for NanoS, X, S+, and Stax
     strategy:
+      fail-fast: false
       matrix:
         include:
           - SDK: "$NANOS_SDK"
           - SDK: "$NANOX_SDK"
           - SDK: "$NANOSP_SDK"
           - SDK: "$STAX_SDK"
-
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/ledgerhq/ledger-app-builder/ledger-app-builder-lite:latest
@@ -29,14 +37,15 @@ jobs:
       - name: Build application
         run: |
           git config --global --add safe.directory "$GITHUB_WORKSPACE"
-          make BOLOS_SDK=${{ matrix.SDK }}
+          make -C ${{ inputs.relative_app_directory }} BOLOS_SDK=${{ matrix.SDK }}
 
       - name: Remove build artifacts before upload
         run: |
-          find ./build/*/ -mindepth 1 -type d ! -name 'bin' -exec rm -r {} +
+          find ${{ inputs.relative_app_directory }}/build/*/ -mindepth 1 -type d ! -name 'bin' -exec rm -r {} +
 
       - name: Upload app binary
+        if: ${{ inputs.upload_artifact }}
         uses: actions/upload-artifact@v3
         with:
           name: ${{ inputs.uploaded_artifact_name }}
-          path: build/*
+          path: ${{ inputs.relative_app_directory }}/build/*

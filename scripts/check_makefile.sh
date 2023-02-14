@@ -11,6 +11,11 @@ main() (
     # Find the main Makefile of the app
     makefile=$(grep -Rl --include="*Makefile*" "^[[:blank:]]*APPNAME" "$repo")
 
+    if ! grep -q "^listvariants:" "$makefile"; then
+        echo "ERROR => The Makefile does not contain the 'listvariants' rule"
+        error=1
+    fi
+
     if echo "$repo_name" | grep -q "app-boilerplate"; then
         echo "APPNAME and VARIANT checks skipped for Boilerplate"
     else
@@ -29,11 +34,6 @@ main() (
 
     if grep -q "HAVE_BOLOS_UX" "$makefile"; then
         echo "ERROR => The Makefile contains an outdated flag 'HAVE_BOLOS_UX'"
-        error=1
-    fi
-
-    if ! grep -q "^listvariants:" "$makefile"; then
-        echo "ERROR => The Makefile does not contain the 'listvariants' rule"
         error=1
     fi
 
