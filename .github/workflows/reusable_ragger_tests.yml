@@ -30,7 +30,7 @@ jobs:
         uses: actions/download-artifact@v3
         with:
           name: ${{ inputs.uploaded_artifact_name }}
-          path: ${{ inputs.test_dir }}/elfs
+          path: ./build/
 
       - name: Install tests dependencies
         run: |

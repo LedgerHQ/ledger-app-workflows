@@ -9,18 +9,14 @@ on:
 
 jobs:
   build:
-    name: Build application for NanoS, X and S+
+    name: Build application for NanoS, X, S+, and Stax
     strategy:
       matrix:
         include:
           - SDK: "$NANOS_SDK"
-            model: nanos
           - SDK: "$NANOX_SDK"
-            model: nanox
           - SDK: "$NANOSP_SDK"
-            model: nanosp
           - SDK: "$STAX_SDK"
-            model: stax
 
     runs-on: ubuntu-latest
     container:
@@ -30,21 +26,17 @@ jobs:
       - name: Clone
         uses: actions/checkout@v3
 
-      - name: Build
+      - name: Build application
         run: |
           git config --global --add safe.directory "$GITHUB_WORKSPACE"
           make BOLOS_SDK=${{ matrix.SDK }}
 
-      - name: Get APPNAME value from Makefile
+      - name: Remove build artifacts before upload
         run: |
-          touch makefile_dumper.mk
-          echo "include Makefile" >> makefile_dumper.mk
-          echo "dump_appname:" >> makefile_dumper.mk
-          echo -e "\t@echo \$(APPNAME) | tr '[:upper:]' '[:lower:]'" >> makefile_dumper.mk
-          mv bin/app.elf "bin/$(make BOLOS_SDK=${{ matrix.SDK }} -f makefile_dumper.mk dump_appname | tail -n1)_${{ matrix.model }}.elf"
+          find ./build/*/ -mindepth 1 -type d ! -name 'bin' -exec rm -r {} +
 
       - name: Upload app binary
         uses: actions/upload-artifact@v3
         with:
           name: ${{ inputs.uploaded_artifact_name }}
-          path: bin/*_${{ matrix.model }}.elf
+          path: build/*
