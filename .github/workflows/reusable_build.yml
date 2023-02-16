@@ -19,7 +19,7 @@ on:
         required: false
         default: ''
         type: string
-      app_binaries_artifact:
+      upload_app_binaries_artifact:
         required: false
         default: ''
         type: string
@@ -78,9 +78,9 @@ jobs:
           mv ${{ inputs.upload_as_lib_artifact }}_${{ matrix.target.name }}.elf ${{ inputs.relative_app_directory }}/build/
 
       - name: Upload app binary
-        if: ${{ inputs.app_binaries_artifact != '' && !( inputs.skip_stax && matrix.target.name == 'stax' ) }}
+        if: ${{ inputs.upload_app_binaries_artifact != '' && !( inputs.skip_stax && matrix.target.name == 'stax' ) }}
         uses: actions/upload-artifact@v3
         with:
-          name: ${{ inputs.app_binaries_artifact }}
+          name: ${{ inputs.upload_app_binaries_artifact }}
           path: ${{ inputs.relative_app_directory }}/build/*
           if-no-files-found: error

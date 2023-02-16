@@ -18,7 +18,7 @@ on:
       test_dir:
         required: true
         type: string
-      app_binaries_artifact:
+      download_app_binaries_artifact:
         required: true
         type: string
       lib_binaries_artifact:
@@ -56,7 +56,7 @@ jobs:
         if: ${{ !( inputs.skip_stax && matrix.device == 'stax' ) }}
         uses: actions/download-artifact@v3
         with:
-          name: ${{ inputs.app_binaries_artifact }}
+          name: ${{ inputs.download_app_binaries_artifact }}
           path: ${{ inputs.relative_app_directory }}/build/
 
       - name: Download additional lib binaries if required
