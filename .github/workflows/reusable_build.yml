@@ -3,17 +3,34 @@ name: Build the application for all devices and upload the artifact
 on:
   workflow_call:
     inputs:
-      upload_artifact:
-        required: true
-        type: boolean
-      uploaded_artifact_name:
+      app_repository:
         required: false
-        default: "application_binaries"
+        default: ${{ github.repository }}
+        type: string
+      app_branch_name:
+        required: false
+        default: ${{ github.ref }}
         type: string
       relative_app_directory:
         required: false
-        default: "."
+        default: .
         type: string
+      flags:
+        required: false
+        default: ''
+        type: string
+      upload_app_binaries_artifact:
+        required: false
+        default: ''
+        type: string
+      upload_as_lib_artifact:
+        required: false
+        default: ''
+        type: string
+      skip_stax:
+        required: false
+        default: false
+        type: boolean
 
 jobs:
   build:
@@ -21,31 +38,49 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include:
+        target:
           - SDK: "$NANOS_SDK"
+            name: nanos
           - SDK: "$NANOX_SDK"
+            name: nanox
           - SDK: "$NANOSP_SDK"
+            name: nanos2
           - SDK: "$STAX_SDK"
+            name: stax
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/ledgerhq/ledger-app-builder/ledger-app-builder-lite:latest
 
     steps:
       - name: Clone
+        if: ${{ !( inputs.skip_stax && matrix.target.name == 'stax' ) }}
         uses: actions/checkout@v3
+        with:
+          repository: ${{ inputs.app_repository }}
+          ref: ${{ inputs.app_branch_name }}
+          submodules: recursive
 
       - name: Build application
+        if: ${{ !( inputs.skip_stax && matrix.target.name == 'stax' ) }}
         run: |
-          git config --global --add safe.directory "$GITHUB_WORKSPACE"
-          make -C ${{ inputs.relative_app_directory }} BOLOS_SDK=${{ matrix.SDK }}
+          make -C ${{ inputs.relative_app_directory }} -j ${{ inputs.flags }} BOLOS_SDK=${{ matrix.target.SDK }}
 
       - name: Remove build artifacts before upload
+        if: ${{ !( inputs.skip_stax && matrix.target.name == 'stax' ) }}
         run: |
-          find ${{ inputs.relative_app_directory }}/build/*/ -mindepth 1 -type d ! -name 'bin' -exec rm -r {} +
+          find ${{ inputs.relative_app_directory }}/build/${{ matrix.target.name }}/ -mindepth 1 -type d ! -name 'bin' -exec rm -r {} +
+
+      - name: Prepare to upload as lib
+        if: ${{ inputs.upload_as_lib_artifact != '' && !( inputs.skip_stax && matrix.target.name == 'stax' ) }}
+        run: |
+          find ${{ inputs.relative_app_directory }}/build/${{ matrix.target.name }}/ -type f -name 'app.elf' -exec mv {} ${{ inputs.upload_as_lib_artifact }}_${{ matrix.target.name }}.elf \;
+          rm -r ${{ inputs.relative_app_directory }}/build/*
+          mv ${{ inputs.upload_as_lib_artifact }}_${{ matrix.target.name }}.elf ${{ inputs.relative_app_directory }}/build/
 
       - name: Upload app binary
-        if: ${{ inputs.upload_artifact }}
+        if: ${{ inputs.upload_app_binaries_artifact != '' && !( inputs.skip_stax && matrix.target.name == 'stax' ) }}
         uses: actions/upload-artifact@v3
         with:
-          name: ${{ inputs.uploaded_artifact_name }}
+          name: ${{ inputs.upload_app_binaries_artifact }}
           path: ${{ inputs.relative_app_directory }}/build/*
+          if-no-files-found: error

@@ -3,12 +3,32 @@ name: Functional tests using Ragger
 on:
   workflow_call:
     inputs:
+      app_repository:
+        required: false
+        default: ${{ github.repository }}
+        type: string
+      app_branch_name:
+        required: false
+        default: ${{ github.ref }}
+        type: string
+      relative_app_directory:
+        required: false
+        default: .
+        type: string
       test_dir:
         required: true
         type: string
-      uploaded_artifact_name:
+      download_app_binaries_artifact:
         required: true
         type: string
+      lib_binaries_artifact:
+        required: false
+        default: ''
+        type: string
+      skip_stax:
+        required: false
+        default: false
+        type: boolean
 
 jobs:
   ragger_tests:
@@ -17,28 +37,43 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - model: nanos
-          - model: nanox
-          - model: nanosp
-          - model: stax
+          - device: nanos
+          - device: nanox
+          - device: nanosp
+          - device: stax
     runs-on: ubuntu-latest
 
     steps:
       - name: Clone
+        if: ${{ !( inputs.skip_stax && matrix.device == 'stax' ) }}
         uses: actions/checkout@v3
+        with:
+          repository: ${{ inputs.app_repository }}
+          ref: ${{ inputs.app_branch_name }}
+          submodules: recursive
 
       - name: Download app binaries
+        if: ${{ !( inputs.skip_stax && matrix.device == 'stax' ) }}
         uses: actions/download-artifact@v3
         with:
-          name: ${{ inputs.uploaded_artifact_name }}
-          path: ./build/
+          name: ${{ inputs.download_app_binaries_artifact }}
+          path: ${{ inputs.relative_app_directory }}/build/
+
+      - name: Download additional lib binaries if required
+        if: ${{ inputs.lib_binaries_artifact != '' && !( inputs.skip_stax && matrix.device == 'stax' ) }}
+        uses: actions/download-artifact@v3
+        with:
+          name: ${{ inputs.lib_binaries_artifact }}
+          path: ${{ inputs.test_dir }}/lib_binaries/
 
       - name: Install tests dependencies
+        if: ${{ !( inputs.skip_stax && matrix.device == 'stax' ) }}
         run: |
           sudo apt-get update && sudo apt-get install -y qemu-user-static tesseract-ocr libtesseract-dev
           pip install --extra-index-url https://test.pypi.org/simple/ -r ${{ inputs.test_dir }}/requirements.txt
 
       - name: Run test
+        if: ${{ !( inputs.skip_stax && matrix.device == 'stax' ) }}
         env:
           CTEST_OUTPUT_ON_FAILURE: 1
-        run: pytest ${{ inputs.test_dir }}/ --tb=short -v --device ${{ matrix.model }}
+        run: pytest ${{ inputs.test_dir }}/ --tb=short -v --device ${{ matrix.device }}
