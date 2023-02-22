@@ -31,6 +31,10 @@ on:
         required: false
         default: false
         type: boolean
+      builder:
+        required: false
+        default: 'ledger-app-builder-lite'
+        type: string
 
 jobs:
   build:
@@ -49,7 +53,7 @@ jobs:
             name: stax
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/ledgerhq/ledger-app-builder/ledger-app-builder-lite:latest
+      image: ghcr.io/ledgerhq/ledger-app-builder/${{ inputs.builder }}:latest
 
     steps:
       - name: Clone
