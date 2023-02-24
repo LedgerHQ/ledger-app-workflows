@@ -155,6 +155,8 @@ check_icon() (
     check_geometry "$file" "$device" || error=1
 
     check_glyph "$file" || error=1
+
+    return "$error"
 )
 
 main() (
