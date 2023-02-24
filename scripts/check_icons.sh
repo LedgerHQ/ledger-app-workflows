@@ -39,6 +39,9 @@ check_geometry() (
 check_glyph() (
     error=0
     file="$1"
+
+    echo "INFO => Checking glyph file '$file'"
+
     extension=$(basename "$file" | cut -d'.' -f2)
     if [[ "$extension" != "gif" && "$extension" != "bmp" ]]; then
         echo "ERROR => Glyph extension should be .gif or .bmp, not '.$extension'";
@@ -77,9 +80,7 @@ check_glyph() (
     if [[ error -eq 0 ]]; then
         echo "SUCCESS => Glyph '$file' is compliant"
     else
-        echo "FAILURE =>"
-        echo "identify -verbose '$file'"
-        echo "$content"
+        echo "FAILURE => run \"identify -verbose '$file'\""
     fi
 
     return "$error"
@@ -93,7 +94,7 @@ check_is_not_boilerplate_icon() (
         return 1
     else
         md5sum=$(md5sum "$file" | cut -f1 -d' ')
-        if [[ "$md5sum" == "1603e6b90d3ae4afa9e3667008363705" || "$md5sum" == "d14ded9f690020fd878074393fa5bf2d" ]]; then
+        if [[ "$md5sum" == "c818a2ac5d4e36bb333c3f8f07a42f03" || "$md5sum" == "a905db408ef828bd200a0603a5a7c64a" || "$md5sum" == "fbe4d9f0512224bb3e139189e21e4541" ]]; then
             echo "ERROR => A custom menu icon must be provided, not renamed boilerplate icon '$file'"
             return 1
         else
@@ -146,7 +147,7 @@ check_icon() (
     fi
 
     if echo "$repo_name" | grep -q "app-boilerplate"; then
-        echo "SKIP => Icon uniqueness check for Boilerplate"
+        echo "INFO => Skipping icon uniqueness check for Boilerplate"
     else
         check_is_not_boilerplate_icon "$file" || error=1
     fi
