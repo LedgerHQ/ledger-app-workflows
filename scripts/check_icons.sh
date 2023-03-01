@@ -2,6 +2,9 @@
 
 set -e
 
+# shellcheck source=scripts/logger.sh
+source "$(dirname "$0")/logger.sh"
+
 check_geometry() (
     error=0
     file="$1"
@@ -21,16 +24,16 @@ check_geometry() (
             geometry="32x32"
             ;;
         *)
-            echo "ERROR => Device '$device' not recognized"
+            log_error "Device '$device' not recognized"
             return 1
             ;;
     esac
 
     if ! identify -verbose "$file" | grep -q "Geometry: $geometry"; then
-        echo "ERROR => Icon '$file' for '$device' should have a '$geometry' geometry"
+        log_error "Icon '$file' for '$device' should have a '$geometry' geometry"
         error=1
     else
-        echo "SUCCESS => Icon '$file' for '$device' has a '$geometry' geometry"
+        log_success "Icon '$file' for '$device' has a '$geometry' geometry"
     fi
 
     return "$error"
@@ -40,47 +43,47 @@ check_glyph() (
     error=0
     file="$1"
 
-    echo "INFO => Checking glyph file '$file'"
+    log_info "Checking glyph file '$file'"
 
     extension=$(basename "$file" | cut -d'.' -f2)
     if [[ "$extension" != "gif" && "$extension" != "bmp" ]]; then
-        echo "ERROR => Glyph extension should be .gif or .bmp, not '.$extension'";
+        log_error "Glyph extension should be .gif or .bmp, not '.$extension'";
         return 1
     fi
 
     content=$(identify -verbose "$file")
 
     if echo "$content" | grep -q "Alpha"; then
-        echo "ERROR => Glyph should have no alpha channel"
+        log_error "Glyph should have no alpha channel"
         error=1
     fi
 
     if [[ "$extension" == "gif" ]]; then
         if ! echo "$content" | grep -q "Colors: 2"; then
-            echo "ERROR => Glyph should have only 2 colors"
+            log_error "Glyph should have only 2 colors"
             error=1
         fi
 
         if ! echo "$content" | grep -q "0.*0.*0.*black"; then
-            echo "ERROR => Glyph should have the black color defined"
+            log_error "Glyph should have the black color defined"
             error=1
         fi
 
         if ! echo "$content" | grep -q "255.*255.*255.*white"; then
-            echo "ERROR => Glyph should have the white color defined"
+            log_error "Glyph should have the white color defined"
             error=1
         fi
     else
         if ! echo "$content" | grep -q "Depth: 1 bits-per-pixel component"; then
-            echo "ERROR => Glyph should 1 bit depth"
+            log_error "Glyph should 1 bit depth"
             error=1
         fi
     fi
 
     if [[ error -eq 0 ]]; then
-        echo "SUCCESS => Glyph '$file' is compliant"
+        log_success "Glyph '$file' is compliant"
     else
-        echo "FAILURE => run \"identify -verbose '$file'\""
+        log_error_no_header "To check the glyph content, run \"identify -verbose '$file'\""
     fi
 
     return "$error"
@@ -90,12 +93,12 @@ check_is_not_boilerplate_icon() (
     file="$1"
 
     if echo "$file" | grep -q "boilerplate"; then
-        echo "ERROR => A custom menu icon must be provided, not boilerplate icon '$file'"
+        log_error "A custom menu icon must be provided, not boilerplate icon '$file'"
         return 1
     else
         md5sum=$(md5sum "$file" | cut -f1 -d' ')
         if [[ "$md5sum" == "c818a2ac5d4e36bb333c3f8f07a42f03" || "$md5sum" == "a905db408ef828bd200a0603a5a7c64a" || "$md5sum" == "fbe4d9f0512224bb3e139189e21e4541" ]]; then
-            echo "ERROR => A custom menu icon must be provided, not renamed boilerplate icon '$file'"
+            log_error "A custom menu icon must be provided, not renamed boilerplate icon '$file'"
             return 1
         else
             return 0
@@ -110,7 +113,7 @@ get_icon_from_makefile() (
     # Get the Makefile that contains the ICONNAME definitions, copy it and remove its includes and logs
     iconname_makefile=$(grep -Rl --include="*Makefile*" "^[[:blank:]]*ICONNAME" "$repo")
     if [[ -z "$iconname_makefile" ]]; then
-        >&2 echo "ERROR => No Makefile with ICONNAME definition found"
+        >&2 log_error "No Makefile with ICONNAME definition found"
         return 1
     fi
     tmp_makefile="/tmp/iconname_makefile.mk"
@@ -126,7 +129,7 @@ get_icon_from_makefile() (
     target_name="TARGET_${device_name^^}"
     icon=$(make BOLOS_SDK="none" TARGET_NAME="$target_name" --no-print-directory -C "$repo" -f "Makefile_dumper.mk" dump_ICONNAME)
     if [[ -z "$icon" ]]; then
-        >&2 echo "ERROR => No icon found for '$device_name'"
+        >&2 log_error "No icon found for '$device_name'"
         return 1
     fi
 
@@ -142,12 +145,12 @@ check_icon() (
 
     file="$(get_icon_from_makefile "$repo" "$device")"
     if [[ ! -f "$file" ]]; then
-        echo "ERROR => Icon file '$file' not found for '$device'"
+        log_error "Icon file '$file' not found for '$device'"
         return 1
     fi
 
     if echo "$repo_name" | grep -q "app-boilerplate"; then
-        echo "INFO => Skipping icon uniqueness check for Boilerplate"
+        log_warning "Skipping icon uniqueness check for Boilerplate"
     else
         check_is_not_boilerplate_icon "$file" || error=1
     fi
@@ -176,7 +179,7 @@ main() (
     fi
     glyph_src_dir="$(find "$repo" -name "$glyph_src_dir_name" -type d)"
     if [[ ! -d "$glyph_src_dir" ]]; then
-        echo "ERROR => Glyph source directory '$glyph_src_dir' not found"
+        log_error "Glyph source directory '$glyph_src_dir' not found"
     fi
 
     while IFS= read -r -d '' file; do
@@ -184,8 +187,8 @@ main() (
     done < <(find "$glyph_src_dir/" -type f -print0)
 
     if [[ "$error" -eq 1 ]]; then
-        echo "At least one error has been found. Please refer to the documentation for how to design graphical elements"
-        echo "https://developers.ledger.com/docs/embedded-app/design-requirements/"
+        log_error_no_header "At least one error has been found. Please refer to the documentation for how to design graphical elements"
+        log_error_no_header "https://developers.ledger.com/docs/embedded-app/design-requirements/"
     fi
     return "$error"
 )
