@@ -52,12 +52,12 @@ jobs:
           - SDK: "$STAX_SDK"
             name: stax
     runs-on: ubuntu-latest
+    if: ${{ !( inputs.skip_stax && matrix.target.name == 'stax' ) }}
     container:
       image: ghcr.io/ledgerhq/ledger-app-builder/${{ inputs.builder }}:latest
 
     steps:
       - name: Clone
-        if: ${{ !( inputs.skip_stax && matrix.target.name == 'stax' ) }}
         uses: actions/checkout@v3
         with:
           repository: ${{ inputs.app_repository }}
@@ -65,24 +65,22 @@ jobs:
           submodules: recursive
 
       - name: Build application
-        if: ${{ !( inputs.skip_stax && matrix.target.name == 'stax' ) }}
         run: |
           make -C ${{ inputs.relative_app_directory }} -j ${{ inputs.flags }} BOLOS_SDK=${{ matrix.target.SDK }}
 
       - name: Remove build artifacts before upload
-        if: ${{ !( inputs.skip_stax && matrix.target.name == 'stax' ) }}
         run: |
           find ${{ inputs.relative_app_directory }}/build/${{ matrix.target.name }}/ -mindepth 1 -type d ! -name 'bin' -exec rm -r {} +
 
       - name: Prepare to upload as lib
-        if: ${{ inputs.upload_as_lib_artifact != '' && !( inputs.skip_stax && matrix.target.name == 'stax' ) }}
+        if: ${{ inputs.upload_as_lib_artifact != '' }}
         run: |
           find ${{ inputs.relative_app_directory }}/build/${{ matrix.target.name }}/ -type f -name 'app.elf' -exec mv {} ${{ inputs.upload_as_lib_artifact }}_${{ matrix.target.name }}.elf \;
           rm -r ${{ inputs.relative_app_directory }}/build/*
           mv ${{ inputs.upload_as_lib_artifact }}_${{ matrix.target.name }}.elf ${{ inputs.relative_app_directory }}/build/
 
       - name: Upload app binary
-        if: ${{ inputs.upload_app_binaries_artifact != '' && !( inputs.skip_stax && matrix.target.name == 'stax' ) }}
+        if: ${{ inputs.upload_app_binaries_artifact != '' }}
         uses: actions/upload-artifact@v3
         with:
           name: ${{ inputs.upload_app_binaries_artifact }}
