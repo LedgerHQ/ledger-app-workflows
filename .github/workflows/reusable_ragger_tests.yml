@@ -14,7 +14,7 @@ on:
         default: ${{ github.ref }}
         type: string
       relative_app_directory:
-        description: "The directory where the application is built (defaults to current directory)"
+        description: "The relative path in the repository where the application is built from (defaults to '.')"
         required: false
         default: .
         type: string
