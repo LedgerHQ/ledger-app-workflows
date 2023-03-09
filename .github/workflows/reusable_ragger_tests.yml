@@ -4,28 +4,40 @@ on:
   workflow_call:
     inputs:
       app_repository:
+        description: 'The GIT repository to test (defaults to `github.repository`)'
         required: false
         default: ${{ github.repository }}
         type: string
       app_branch_name:
+        description: 'The GIT branch to test (defaults to `github.ref`)'
         required: false
         default: ${{ github.ref }}
         type: string
       relative_app_directory:
+        description: "The directory where the application is built (defaults to current directory)"
         required: false
         default: .
         type: string
       test_dir:
+        description: "The directory where the Python tests are stored (a `conftest.py` file is expected there). Required"
         required: true
         type: string
       download_app_binaries_artifact:
+        description: "The name of the artifact containing the application binary file(s) to be tested. Required"
         required: true
         type: string
       lib_binaries_artifact:
+        description: "The name of the artifact containing the library binary file(s), if needed by the application to be tested (defaults to empty string)"
         required: false
         default: ''
         type: string
+      run_for_devices:
+        description: 'The list of device(s) on which the test will run (defaults to ["nanos", "nanox", "nanosp", "stax"])'
+        required: false
+        default: '["nanos", "nanox", "nanosp", "stax"]'
+        type: string
       skip_stax:
+        description: "If the tests are not to be run on Stax device (defaults to false)"
         required: false
         default: false
         type: boolean
@@ -36,11 +48,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - device: nanos
-          - device: nanox
-          - device: nanosp
-          - device: stax
+        device: ${{ fromJSON(inputs.run_for_devices) }}
     runs-on: ubuntu-latest
 
     steps:
