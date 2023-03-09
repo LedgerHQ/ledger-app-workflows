@@ -36,11 +36,6 @@ on:
         required: false
         default: '["nanos", "nanox", "nanosp", "stax"]'
         type: string
-      skip_stax:
-        description: "If the tests are not to be run on Stax device (defaults to false)"
-        required: false
-        default: false
-        type: boolean
 
 jobs:
   ragger_tests:
@@ -53,7 +48,6 @@ jobs:
 
     steps:
       - name: Clone
-        if: ${{ !( inputs.skip_stax && matrix.device == 'stax' ) }}
         uses: actions/checkout@v3
         with:
           repository: ${{ inputs.app_repository }}
@@ -61,27 +55,24 @@ jobs:
           submodules: recursive
 
       - name: Download app binaries
-        if: ${{ !( inputs.skip_stax && matrix.device == 'stax' ) }}
         uses: actions/download-artifact@v3
         with:
           name: ${{ inputs.download_app_binaries_artifact }}
           path: ${{ inputs.relative_app_directory }}/build/
 
       - name: Download additional lib binaries if required
-        if: ${{ inputs.lib_binaries_artifact != '' && !( inputs.skip_stax && matrix.device == 'stax' ) }}
+        if: ${{ inputs.lib_binaries_artifact != '' }}
         uses: actions/download-artifact@v3
         with:
           name: ${{ inputs.lib_binaries_artifact }}
           path: ${{ inputs.test_dir }}/lib_binaries/
 
       - name: Install tests dependencies
-        if: ${{ !( inputs.skip_stax && matrix.device == 'stax' ) }}
         run: |
           sudo apt-get update && sudo apt-get install -y qemu-user-static tesseract-ocr libtesseract-dev
           pip install --extra-index-url https://test.pypi.org/simple/ -r ${{ inputs.test_dir }}/requirements.txt
 
       - name: Run test
-        if: ${{ !( inputs.skip_stax && matrix.device == 'stax' ) }}
         env:
           CTEST_OUTPUT_ON_FAILURE: 1
         run: pytest ${{ inputs.test_dir }}/ --tb=short -v --device ${{ matrix.device }}
