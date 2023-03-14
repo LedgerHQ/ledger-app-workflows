@@ -11,6 +11,9 @@ on:
         required: false
         default: ${{ github.event.repository.name }}
         type: string
+      run_for_devices:
+        required: true
+        type: string
 
 jobs:
   check_icons:
@@ -31,4 +34,4 @@ jobs:
           path: app-repository
 
       - name: Run script
-        run: bash ./ledger-app-workflows/scripts/check_icons.sh app-repository ${{ inputs.repo-name }}
+        run: bash ./ledger-app-workflows/scripts/check_icons.sh app-repository ${{ inputs.repo-name }} '${{ inputs.run_for_devices }}'
