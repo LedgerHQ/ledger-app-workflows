@@ -17,7 +17,7 @@ check_geometry() (
         "nanox")
             geometry="14x14"
             ;;
-        "nanos2")
+        "nanosp")
             geometry="14x14"
             ;;
         "stax")
@@ -126,7 +126,7 @@ get_icon_from_makefile() (
     echo "dump_ICONNAME:" >> "$repo/Makefile_dumper.mk"
     echo -e "\t@echo \$(ICONNAME)" >> "$repo/Makefile_dumper.mk"
 
-    target_name="TARGET_${device_name^^}"
+    target_name="TARGET_$(echo "$device_name" | sed 's,nanosp,nanos2,g' | tr "[:lower:]" "[:upper:]")"
     icon=$(make BOLOS_SDK="none" TARGET_NAME="$target_name" --no-print-directory -C "$repo" -f "Makefile_dumper.mk" dump_ICONNAME)
     if [[ -z "$icon" ]]; then
         >&2 log_error "No icon found for '$device_name'"
@@ -165,12 +165,16 @@ check_icon() (
 main() (
     repo="$1"
     repo_name="$2"
+    target_devices="$3"
+
     error=0
 
-    check_icon "$repo" "$repo_name" "nanos" || error=1
-    check_icon "$repo" "$repo_name" "nanox" || error=1
-    check_icon "$repo" "$repo_name" "nanos2" || error=1
-    check_icon "$repo" "$repo_name" "stax" || error=1
+    # Read in two times to strip delimiters first and spaces and empty elements second
+    IFS=',[]"' read -r -a devices_array <<< "$target_devices"
+    IFS=' ' read -r -a devices_array <<< "${devices_array[@]}"
+    for device in "${devices_array[@]}"; do
+        check_icon "$repo" "$repo_name" "$device" || error=1
+    done
 
     glyph_src_dir_name="glyphs"
     custom_glyph_src_dir_name=$(grep -R --include="*Makefile*" "^[[:blank:]]*GLYPH_SRC_DIR" "$repo" | cut -d'=' -f2 | sed 's/^[ \t]*//;s/[ \t]*$//')
