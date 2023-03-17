@@ -2,11 +2,19 @@ name: Ensure app compliance with Ledger guidelines
 
 on:
   workflow_call:
+    inputs:
+      run_for_devices:
+        description: 'The list of device(s) on which the checking will run (defaults to ["nanos", "nanox", "nanosp", "stax"])'
+        required: false
+        default: '["nanos", "nanox", "nanosp", "stax"]'
+        type: string
 
 jobs:
   call_check_icons:
     name: Dispatch
     uses: ./.github/workflows/_check_icons.yml
+    with:
+        run_for_devices: ${{ inputs.run_for_devices }}
 
   call_check_makefile:
     name: Dispatch
