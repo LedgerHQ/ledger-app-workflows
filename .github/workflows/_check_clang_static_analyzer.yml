@@ -2,10 +2,18 @@ name: Run Clang Static Analyzer
 
 on:
   workflow_call:
+    inputs:
+      run_for_devices:
+        required: true
+        type: string
 
 jobs:
   scan_build:
     name: Clang Static Analyzer
+    strategy:
+      fail-fast: false
+      matrix:
+        device: ${{ fromJSON(inputs.run_for_devices) }}
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/ledgerhq/ledger-app-builder/ledger-app-builder-lite:latest
@@ -16,7 +24,9 @@ jobs:
 
       - name: Build with Clang Static Analyzer
         run: |
-          scan-build --use-cc=clang -analyze-headers -enable-checker security -enable-checker unix -enable-checker valist -o scan-build --status-bugs make default
+          eval "BOLOS_SDK=\$$(echo ${{ matrix.device }} | tr [:lower:] [:upper:])_SDK" && \
+          echo "BOLOS_SDK value will be: ${BOLOS_SDK}" && \
+          scan-build --use-cc=clang -analyze-headers -enable-checker security -enable-checker unix -enable-checker valist -o scan-build --status-bugs make BOLOS_SDK=${BOLOS_SDK} default
 
       - name: Upload scan result
         uses: actions/upload-artifact@v3
