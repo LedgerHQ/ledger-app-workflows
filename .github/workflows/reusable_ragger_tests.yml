@@ -14,20 +14,20 @@ on:
         default: ${{ github.ref }}
         type: string
       relative_app_directory:
-        description: "The relative path in the repository where the application is built from (defaults to '.')"
+        description: 'The relative path in the repository where the application is built from (defaults to ".")'
         required: false
         default: .
         type: string
       test_dir:
-        description: "The directory where the Python tests are stored (a `conftest.py` file is expected there). Required"
+        description: 'The directory where the Python tests are stored (a `conftest.py` file is expected there). Required'
         required: true
         type: string
       download_app_binaries_artifact:
-        description: "The name of the artifact containing the application binary file(s) to be tested. Required"
+        description: 'The name of the artifact containing the application binary file(s) to be tested. Required'
         required: true
         type: string
       lib_binaries_artifact:
-        description: "The name of the artifact containing the library binary file(s), if needed by the application to be tested (defaults to empty string)"
+        description: 'The name of the artifact containing the library binary file(s), if needed by the application to be tested (defaults to empty string)'
         required: false
         default: ''
         type: string
@@ -36,6 +36,11 @@ on:
         required: false
         default: '["nanos", "nanox", "nanosp", "stax"]'
         type: string
+      upload_snapshots_on_failure:
+        description: 'Enable or disable upload of tests snapshots if the job fails (defaults to true).'
+        required: false
+        default: true
+        type: boolean
 
 jobs:
   ragger_tests:
@@ -76,3 +81,10 @@ jobs:
         env:
           CTEST_OUTPUT_ON_FAILURE: 1
         run: pytest ${{ inputs.test_dir }}/ --tb=short -v --device ${{ matrix.device }}
+
+      - name: Upload snapshots
+        if: ${{ failure() && inputs.upload_snapshots_on_failure == true }}
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ matrix.device }}-tests-snapshots
+          path: ${{ inputs.test_dir }}/snapshots-tmp/${{ matrix.device }}
