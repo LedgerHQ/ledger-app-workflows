@@ -21,6 +21,8 @@ jobs:
     steps:
       - name: Clone
         uses: actions/checkout@v3
+        with:
+          submodules: recursive
 
       - name: Build with Clang Static Analyzer
         run: |

@@ -58,26 +58,25 @@ check_glyph() (
         error=1
     fi
 
-    if [[ "$extension" == "gif" ]]; then
-        if ! echo "$content" | grep -q "Colors: 2"; then
-            log_error "Glyph should have only 2 colors"
-            error=1
-        fi
+    if ! echo "$content" | grep -q "Colors: 2"; then
+        log_error "Glyph should have only 2 colors"
+        error=1
+    fi
 
-        if ! echo "$content" | grep -q "0.*0.*0.*black"; then
-            log_error "Glyph should have the black color defined"
-            error=1
-        fi
+    if ! echo "$content" | grep -q "0.*0.*0.*black"; then
+        log_error "Glyph should have the black color defined"
+        error=1
+    fi
 
-        if ! echo "$content" | grep -q "255.*255.*255.*white"; then
-            log_error "Glyph should have the white color defined"
-            error=1
-        fi
-    else
-        if ! echo "$content" | grep -q "Depth: 1 bits-per-pixel component"; then
-            log_error "Glyph should 1 bit depth"
-            error=1
-        fi
+    if ! echo "$content" | grep -q "255.*255.*255.*white"; then
+        log_error "Glyph should have the white color defined"
+        error=1
+    fi
+
+    # Be somewhat tolerant to different possible wordings for depth "1 bit" "1-bit" "8/1 bit" etc
+    if ! echo "$content" | grep -q "Depth: \(8/\)\?1.bit"; then
+        log_error "Glyph should have 1 bit depth"
+        error=1
     fi
 
     if [[ error -eq 0 ]]; then
@@ -176,19 +175,10 @@ main() (
         check_icon "$repo" "$repo_name" "$device" || error=1
     done
 
-    glyph_src_dir_name="glyphs"
-    custom_glyph_src_dir_name=$(grep -R --include="*Makefile*" "^[[:blank:]]*GLYPH_SRC_DIR" "$repo" | cut -d'=' -f2 | sed 's/^[ \t]*//;s/[ \t]*$//')
-    if [[ -n "$custom_glyph_src_dir_name" ]]; then
-        glyph_src_dir_name="$custom_glyph_src_dir_name"
-    fi
-    glyph_src_dir="$(find "$repo" -name "$glyph_src_dir_name" -type d)"
-    if [[ ! -d "$glyph_src_dir" ]]; then
-        log_error "Glyph source directory '$glyph_src_dir' not found"
-    fi
-
+    # Scan all .gif or .bmp files in sub directories containing the word "glyph"
     while IFS= read -r -d '' file; do
         check_glyph "$file" || error=1
-    done < <(find "$glyph_src_dir/" -type f -print0)
+    done < <(find "$repo" -path '*glyph*' \( -name '*.bmp' -o -name '*.gif' \) -type f -print0)
 
     if [[ "$error" -eq 1 ]]; then
         log_error_no_header "At least one error has been found. Please refer to the documentation for how to design graphical elements"

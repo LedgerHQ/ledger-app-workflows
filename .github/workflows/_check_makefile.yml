@@ -29,6 +29,7 @@ jobs:
         with:
           repository: ${{ inputs.app-repository }}
           path: app-repository
+          submodules: recursive
 
       - name: Run script
         run: bash ./ledger-app-workflows/scripts/check_makefile.sh app-repository ${{ inputs.repo-name }}
