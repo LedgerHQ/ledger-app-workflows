@@ -32,6 +32,7 @@ jobs:
         with:
           repository: ${{ inputs.app-repository }}
           path: app-repository
+          submodules: recursive
 
       - name: Run script
         run: bash ./ledger-app-workflows/scripts/check_icons.sh app-repository ${{ inputs.repo-name }} '${{ inputs.run_for_devices }}'
