@@ -4,6 +4,7 @@ on:
   workflow_call:
     inputs:
       run_for_devices:
+        description: 'The list of device(s) on which the checking will run'
         required: true
         type: string
 
