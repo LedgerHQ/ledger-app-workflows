@@ -10,22 +10,41 @@ on:
         type: string
 
 jobs:
+  # We can't simply know the current ledger-app-workflow ref from inside the reusable workflow
+  # We use the workaround linked in the following Github issue until a proper API is available at Github API level
+  # https://github.com/actions/toolkit/issues/1264
+  get_workflow_version:
+    name: Get workflow version
+    uses: ./.github/workflows/_get_workflow_version.yaml
+    with:
+      repository-name: LedgerHQ/ledger-app-workflows
+      file-name: reusable_guidelines_enforcer.yml
+
   call_check_icons:
     name: Dispatch
+    needs: get_workflow_version
     uses: ./.github/workflows/_check_icons.yml
     with:
-        run_for_devices: ${{ inputs.run_for_devices }}
+      ledger-app-workflows_ref: ${{ needs.get_workflow_version.outputs.version }}
+      run_for_devices: ${{ inputs.run_for_devices }}
 
   call_check_makefile:
     name: Dispatch
+    needs: get_workflow_version
     uses: ./.github/workflows/_check_makefile.yml
+    with:
+      ledger-app-workflows_ref: ${{ needs.get_workflow_version.outputs.version }}
 
   call_check_readme:
     name: Dispatch
+    needs: get_workflow_version
     uses: ./.github/workflows/_check_readme.yml
+    with:
+      ledger-app-workflows_ref: ${{ needs.get_workflow_version.outputs.version }}
 
   call_clang_static_analyzer:
     name: Dispatch
     uses: ./.github/workflows/_check_clang_static_analyzer.yml
     with:
-        run_for_devices: ${{ inputs.run_for_devices }}
+      run_for_devices: ${{ inputs.run_for_devices }}
+

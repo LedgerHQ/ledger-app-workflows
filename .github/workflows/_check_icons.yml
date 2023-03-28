@@ -3,15 +3,22 @@ name: Check icons
 on:
   workflow_call:
     inputs:
+      ledger-app-workflows_ref:
+        description: 'The current reference in use for the ledger-app-workflow repository'
+        required: true
+        type: string
       app-repository:
+        description: 'The URL of the app repository to check. Defaults to the workflow caller repository URL'
         required: false
         default: ${{ github.repository }}
         type: string
       repo-name:
+        description: 'The name of the app repository to check. Defaults to the workflow caller repository name'
         required: false
         default: ${{ github.event.repository.name }}
         type: string
       run_for_devices:
+        description: 'The list of device(s) on which the checking will run'
         required: true
         type: string
 
@@ -26,6 +33,7 @@ jobs:
         with:
           repository: LedgerHQ/ledger-app-workflows
           path: ./ledger-app-workflows
+          ref: ${{ inputs.ledger-app-workflows_ref }}
 
       - name: Clone app repository
         uses: actions/checkout@v3
