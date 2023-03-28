@@ -110,7 +110,7 @@ get_icon_from_makefile() (
     device_name="$2"
 
     # Get the Makefile that contains the ICONNAME definitions, copy it and remove its includes and logs
-    iconname_makefile=$(grep -Rl --include="*Makefile*" "^[[:blank:]]*ICONNAME" "$repo")
+    iconname_makefile=$(grep -Rl --exclude-dir="deps" --include="*Makefile*" "^[[:blank:]]*ICONNAME" "$repo" | head -n 1)
     if [[ -z "$iconname_makefile" ]]; then
         >&2 log_error "No Makefile with ICONNAME definition found"
         return 1
