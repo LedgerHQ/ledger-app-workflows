@@ -1,4 +1,4 @@
-name: Dump app information
+name: Get app manifest
 
 on:
   workflow_call:
@@ -22,8 +22,8 @@ on:
         type: string
 
 jobs:
-  dump_app_info:
-    name: Dump application information for supported devices
+  get_app_manifest:
+    name: Get application manifest for supported devices
     strategy:
       fail-fast: false
       matrix:
@@ -46,14 +46,14 @@ jobs:
           path: app-repository
           submodules: recursive
 
-      - name: Dump app info
+      - name: Call Makefile dumper script
         run: |
           cd app-repository && \
           eval "BOLOS_SDK=\$$(echo ${{ matrix.device }} | tr [:lower:] [:upper:])_SDK" && \
           echo "BOLOS_SDK value will be: ${BOLOS_SDK}" && \
           BOLOS_SDK=${BOLOS_SDK} python ../ledger-app-workflows/scripts/makefile_dump.py --app_build_path ${{ inputs.relative_app_directory }} --json_path ../manifest_${{ matrix.device }}.json
 
-      - name: Upload app binary
+      - name: Upload app manifest
         uses: actions/upload-artifact@v3
         with:
           name: ${{ inputs.upload_manifest_artifact_name }}

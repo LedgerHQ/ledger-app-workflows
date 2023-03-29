@@ -159,8 +159,8 @@ main() (
 
     # Check each icon
     for icon_and_device in "${!icons_and_devices[@]}"; do
-        icon=$(echo $icon_and_device | cut -d';' -f1)
-        device=$(echo $icon_and_device | cut -d';' -f2)
+        icon="$(echo "$icon_and_device" | cut -d';' -f1)"
+        device="$(echo "$icon_and_device" | cut -d';' -f2)"
         check_icon "$repo_name" "$device" "$icon" || error=1
     done
 

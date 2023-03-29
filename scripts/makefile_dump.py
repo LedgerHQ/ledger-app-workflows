@@ -59,9 +59,11 @@ def get_app_listvariants(app_build_path: Path) -> Tuple[str, List[str]]:
 
     # Drop Makefile logs previous to listvariants output
     listvariants = listvariants.split("VARIANTS ")[1]
+    listvariants = listvariants.split("\n")[0]
 
     variants = listvariants.split(" ")
     variant_param_name = variants.pop(0)
+    assert variants, "At least one variant should be defined in the app Makefile"
     return variant_param_name, variants
 
 

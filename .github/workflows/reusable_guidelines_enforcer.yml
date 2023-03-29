@@ -18,44 +18,44 @@ jobs:
   # We can't simply know the current ledger-app-workflow ref from inside the reusable workflow
   # We use the workaround linked in the following Github issue until a proper API is available at Github API level
   # https://github.com/actions/toolkit/issues/1264
-  get_workflow_version:
+  call_get_workflow_version:
     name: Get workflow version
     uses: ./.github/workflows/_get_workflow_version.yaml
     with:
       repository-name: LedgerHQ/ledger-app-workflows
       file-name: reusable_guidelines_enforcer.yml
 
-  dump_app_info:
-    name: Dump app informations
-    needs: get_workflow_version
-    uses: ./.github/workflows/_dump_app_info.yml
+  call_get_app_manifest:
+    name: Dump app information
+    needs: call_get_workflow_version
+    uses: ./.github/workflows/_get_app_manifest.yml
     with:
-      ledger-app-workflows_ref: ${{ needs.get_workflow_version.outputs.version }}
+      ledger-app-workflows_ref: ${{ needs.call_get_workflow_version.outputs.version }}
       run_for_devices: ${{ inputs.run_for_devices }}
       relative_app_directory: ${{ inputs.relative_app_directory }}
       upload_manifest_artifact_name: manifests
 
   call_check_icons:
     name: Dispatch check
-    needs: [get_workflow_version, dump_app_info]
+    needs: [call_get_workflow_version, call_get_app_manifest]
     uses: ./.github/workflows/_check_icons.yml
     with:
       download_manifest_artifact_name: manifests
-      ledger-app-workflows_ref: ${{ needs.get_workflow_version.outputs.version }}
+      ledger-app-workflows_ref: ${{ needs.call_get_workflow_version.outputs.version }}
 
   call_check_makefile:
     name: Dispatch check
-    needs: get_workflow_version
+    needs: call_get_workflow_version
     uses: ./.github/workflows/_check_makefile.yml
     with:
-      ledger-app-workflows_ref: ${{ needs.get_workflow_version.outputs.version }}
+      ledger-app-workflows_ref: ${{ needs.call_get_workflow_version.outputs.version }}
 
   call_check_readme:
     name: Dispatch check
-    needs: get_workflow_version
+    needs: call_get_workflow_version
     uses: ./.github/workflows/_check_readme.yml
     with:
-      ledger-app-workflows_ref: ${{ needs.get_workflow_version.outputs.version }}
+      ledger-app-workflows_ref: ${{ needs.call_get_workflow_version.outputs.version }}
 
   call_clang_static_analyzer:
     name: Dispatch check
