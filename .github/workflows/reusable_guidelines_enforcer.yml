@@ -8,6 +8,11 @@ on:
         required: false
         default: '["nanos", "nanox", "nanosp", "stax"]'
         type: string
+      relative_app_directory:
+        description: 'The relative path in the repository where the application is built from (defaults to ".")'
+        required: false
+        default: '.'
+        type: string
 
 jobs:
   # We can't simply know the current ledger-app-workflow ref from inside the reusable workflow
@@ -20,30 +25,40 @@ jobs:
       repository-name: LedgerHQ/ledger-app-workflows
       file-name: reusable_guidelines_enforcer.yml
 
-  call_check_icons:
-    name: Dispatch
+  dump_app_info:
+    name: Dump app informations
     needs: get_workflow_version
-    uses: ./.github/workflows/_check_icons.yml
+    uses: ./.github/workflows/_dump_app_info.yml
     with:
       ledger-app-workflows_ref: ${{ needs.get_workflow_version.outputs.version }}
       run_for_devices: ${{ inputs.run_for_devices }}
+      relative_app_directory: ${{ inputs.relative_app_directory }}
+      upload_manifest_artifact_name: manifests
+
+  call_check_icons:
+    name: Dispatch check
+    needs: [get_workflow_version, dump_app_info]
+    uses: ./.github/workflows/_check_icons.yml
+    with:
+      download_manifest_artifact_name: manifests
+      ledger-app-workflows_ref: ${{ needs.get_workflow_version.outputs.version }}
 
   call_check_makefile:
-    name: Dispatch
+    name: Dispatch check
     needs: get_workflow_version
     uses: ./.github/workflows/_check_makefile.yml
     with:
       ledger-app-workflows_ref: ${{ needs.get_workflow_version.outputs.version }}
 
   call_check_readme:
-    name: Dispatch
+    name: Dispatch check
     needs: get_workflow_version
     uses: ./.github/workflows/_check_readme.yml
     with:
       ledger-app-workflows_ref: ${{ needs.get_workflow_version.outputs.version }}
 
   call_clang_static_analyzer:
-    name: Dispatch
+    name: Dispatch check
     uses: ./.github/workflows/_check_clang_static_analyzer.yml
     with:
       run_for_devices: ${{ inputs.run_for_devices }}
