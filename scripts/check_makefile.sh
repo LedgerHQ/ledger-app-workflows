@@ -18,7 +18,7 @@ main() (
         error=1
     fi
 
-    if echo "$repo_name" | grep -q "app-boilerplate"; then
+    if echo "$repo_name" | grep -q "app.*boilerplate"; then
         log_warning "APPNAME and VARIANT checks skipped for Boilerplate"
     else
         while IFS= read -r line; do
