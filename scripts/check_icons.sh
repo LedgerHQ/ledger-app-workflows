@@ -17,7 +17,7 @@ check_geometry() (
         "nanox")
             geometry="14x14"
             ;;
-        "nanosp")
+        "nanos2")
             geometry="14x14"
             ;;
         "stax")
@@ -30,10 +30,10 @@ check_geometry() (
     esac
 
     if ! identify -verbose "$file" | grep -q "Geometry: $geometry"; then
-        log_error "Icon '$file' for '$device' should have a '$geometry' geometry"
+        log_error "Icon '$file' used for '$device' should have a '$geometry' geometry"
         error=1
     else
-        log_success "Icon '$file' for '$device' has a '$geometry' geometry"
+        log_success "Icon '$file' used for '$device' has a correct '$geometry' geometry"
     fi
 
     return "$error"
@@ -105,48 +105,11 @@ check_is_not_boilerplate_icon() (
     fi
 )
 
-get_icon_from_makefile() (
-    repo="$1"
-    device_name="$2"
-
-    # Get the Makefile that contains the ICONNAME definitions, copy it and remove its includes and logs
-    iconname_makefile=$(grep -Rl --include="*Makefile*" "^[[:blank:]]*ICONNAME" "$repo")
-    if [[ -z "$iconname_makefile" ]]; then
-        >&2 log_error "No Makefile with ICONNAME definition found"
-        return 1
-    fi
-    tmp_makefile="/tmp/iconname_makefile.mk"
-    cp "$iconname_makefile" "$tmp_makefile"
-    sed -i "/^include/d" "$tmp_makefile"
-    sed -i "/^\$(info/d" "$tmp_makefile"
-    sed -i "/^\$(error/d" "$tmp_makefile"
-
-    echo "include $tmp_makefile" > "$repo/Makefile_dumper.mk"
-    echo "dump_ICONNAME:" >> "$repo/Makefile_dumper.mk"
-    echo -e "\t@echo \$(ICONNAME)" >> "$repo/Makefile_dumper.mk"
-
-    target_name="TARGET_$(echo "$device_name" | sed 's,nanosp,nanos2,g' | tr "[:lower:]" "[:upper:]")"
-    icon=$(make BOLOS_SDK="none" TARGET_NAME="$target_name" --no-print-directory -C "$repo" -f "Makefile_dumper.mk" dump_ICONNAME)
-    if [[ -z "$icon" ]]; then
-        >&2 log_error "No icon found for '$device_name'"
-        return 1
-    fi
-
-    icon_name="$(basename "$icon")"
-    find "$repo" -type f -name "$icon_name" | head -n1
-)
-
 check_icon() (
     error=0
-    repo="$1"
-    repo_name="$2"
-    device="$3"
-
-    file="$(get_icon_from_makefile "$repo" "$device")"
-    if [[ ! -f "$file" ]]; then
-        log_error "Icon file '$file' not found for '$device'"
-        return 1
-    fi
+    repo_name="$1"
+    device="$2"
+    file="$3"
 
     if echo "$repo_name" | grep -q "app-boilerplate"; then
         log_warning "Skipping icon uniqueness check for Boilerplate"
@@ -162,23 +125,53 @@ check_icon() (
 )
 
 main() (
+    error=0
     repo="$1"
     repo_name="$2"
-    target_devices="$3"
+    manifests_dir="$3"
 
-    error=0
+    all_glyph_files=""
+    declare -A icons_and_devices
 
-    # Read in two times to strip delimiters first and spaces and empty elements second
-    IFS=',[]"' read -r -a devices_array <<< "$target_devices"
-    IFS=' ' read -r -a devices_array <<< "${devices_array[@]}"
-    for device in "${devices_array[@]}"; do
-        check_icon "$repo" "$repo_name" "$device" || error=1
+    # Parse all manifest files
+    manifests_list=$(find "$manifests_dir" -type f)
+    while IFS= read -r manifest; do
+        log_info "Checking manifest $manifest"
+
+        # Parse all variants of each manifest to grab all icons and glyphs
+        variants_list=$(< "$manifest" jq ".VARIANTS | keys[]")
+        while IFS= read -r variant; do
+            log_info "Checking variant $variant"
+
+            # Get the icon and the device used for this variant, we'll check later
+            device="$(< "$manifest" jq ".VARIANTS.$variant.TARGET" | sed 's/"//g')"
+            icon="$repo/$(< "$manifest" jq ".VARIANTS.$variant.ICONNAME" | sed 's/"//g')"
+            # Store the couple icon/device as key of an associative array to auto remove duplicates from variants
+            icons_and_devices["$icon;$device"]=1
+
+            # Get the glyphs used for this variant, we'll check later otherwise we would check many times each file
+            all_glyph_files+=$(< "$manifest" jq ".VARIANTS.$variant.GLYPH_FILES" | sed 's/"//g')
+        done < <(echo "$variants_list")
+
+    done < <(echo "$manifests_list")
+
+    log_info "All manifests checked"
+
+    # Check each icon
+    for icon_and_device in "${!icons_and_devices[@]}"; do
+        icon="$(echo "$icon_and_device" | cut -d';' -f1)"
+        device="$(echo "$icon_and_device" | cut -d';' -f2)"
+        check_icon "$repo_name" "$device" "$icon" || error=1
     done
 
-    # Scan all .gif or .bmp files in sub directories containing the word "glyph"
-    while IFS= read -r -d '' file; do
-        check_glyph "$file" || error=1
-    done < <(find "$repo" -path '*glyph*' \( -name '*.bmp' -o -name '*.gif' \) -type f -print0)
+    # As we scanned for all devices and all variants, we can have a lot of duplicates for glyphs. Filter out duplicates and empty lines
+    all_glyph_files_no_duplicates="$(echo "$all_glyph_files" | tr ' ' '\n' | sort -u | grep .)"
+    while IFS= read -r file; do
+        # Skip SDK glyphs
+        if [[ "$file" != "/opt/"*"-secure-sdk/"* ]]; then
+            check_glyph "$repo/$file" || error=1
+        fi
+    done < <(echo "$all_glyph_files_no_duplicates")
 
     if [[ "$error" -eq 1 ]]; then
         log_error_no_header "At least one error has been found. Please refer to the documentation for how to design graphical elements"
