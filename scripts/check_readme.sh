@@ -20,7 +20,7 @@ main() (
         error=1
     fi
 
-    if echo "$repo_name" | grep -q "app-boilerplate"; then
+    if echo "$repo_name" | grep -q "app.*boilerplate"; then
         log_warning "Readme check skipped for Boilerplate"
     else
         if grep -q -i "^#.*boilerplate" "$repo/README.md"; then

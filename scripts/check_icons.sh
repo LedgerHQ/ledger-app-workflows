@@ -111,7 +111,7 @@ check_icon() (
     device="$2"
     file="$3"
 
-    if echo "$repo_name" | grep -q "app-boilerplate"; then
+    if echo "$repo_name" | grep -q "app.*boilerplate"; then
         log_warning "Skipping icon uniqueness check for Boilerplate"
     else
         check_is_not_boilerplate_icon "$file" || error=1
