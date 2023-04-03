@@ -19,6 +19,8 @@ Others are optional and are provided here to help developers create their own ap
 		will ensure that your README is up to date.
 	- `_check_clang_static_analyzer.yml`\
 		will ensure that your application can compile and will perform quality checks.
+	- `_check_app_load_params.yml`\
+		will perform some security and quality checks.
 
 - `build.yml` \
 This workflow will perform a build and upload the artifact containing the compiled application.

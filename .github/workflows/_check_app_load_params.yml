@@ -1,0 +1,45 @@
+name: Check APP_LOAD_PARAMS
+
+on:
+  workflow_call:
+    inputs:
+      ledger-app-workflows_ref:
+        description: 'The current reference in use for the ledger-app-workflow repository'
+        required: true
+        type: string
+      download_manifest_artifact_name:
+        description: 'The name of the artifact containing the built manifest'
+        required: true
+        type: string
+
+jobs:
+  check_app_load_params:
+    name: Check APP_LOAD_PARAMS
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Clone workflows repository
+        uses: actions/checkout@v3
+        with:
+          repository: LedgerHQ/ledger-app-workflows
+          path: ./ledger-app-workflows
+          ref: ${{ inputs.ledger-app-workflows_ref }}
+
+      - name: Clone ledger-app-database repository
+        uses: actions/checkout@v3
+        with:
+          repository: LedgerHQ/ledger-app-database
+          path: ./ledger-app-database
+          ref: main
+
+      - name: Download manifest
+        uses: actions/download-artifact@v3
+        with:
+          name: ${{ inputs.download_manifest_artifact_name }}
+          path: ${{ inputs.download_manifest_artifact_name }}
+
+      - name: Run script
+        run: |
+          python3 ./ledger-app-database/scripts/app_load_params_check.py \
+          --database_path ./ledger-app-database/app-load-params-db.json \
+          --app_manifests_path ${{ inputs.download_manifest_artifact_name }}
