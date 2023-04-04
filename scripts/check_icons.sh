@@ -157,7 +157,7 @@ main() (
             icons_and_devices["$icon;$device"]=1
 
             # Get the glyphs used for this variant, we'll check later otherwise we would check many times each file
-            all_glyph_files+=$(cat "$manifest" | jq ".VARIANTS.$variant.GLYPH_FILES" | sed 's/"//g')
+            all_glyph_files+="$(cat "$manifest" | jq ".VARIANTS.$variant.GLYPH_FILES" | sed 's/"//g') "
         done < <(echo "$variants_list")
 
     done < <(echo "$manifests_list")
