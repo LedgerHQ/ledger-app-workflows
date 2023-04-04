@@ -134,23 +134,30 @@ main() (
     declare -A icons_and_devices
 
     # Parse all manifest files
-    manifests_list=$(find "$manifests_dir" -type f)
+    manifests_list=$(find "$manifests_dir" -type f -name "*.json")
     while IFS= read -r manifest; do
         log_info "Checking manifest $manifest"
 
+        build_directory="$(cat "$manifest" | jq ".BUILD_DIRECTORY" | sed 's/"//g')"
+        # Remove leading './' if present
+        build_directory=$(echo "$build_directory" | sed 's,^./,,g')
+        log_info "Build directory is $build_directory"
+
         # Parse all variants of each manifest to grab all icons and glyphs
-        variants_list=$(< "$manifest" jq ".VARIANTS | keys[]")
+        variants_list=$(cat "$manifest" | jq ".VARIANTS | keys[]")
         while IFS= read -r variant; do
             log_info "Checking variant $variant"
 
             # Get the icon and the device used for this variant, we'll check later
-            device="$(< "$manifest" jq ".VARIANTS.$variant.TARGET" | sed 's/"//g')"
-            icon="$repo/$(< "$manifest" jq ".VARIANTS.$variant.ICONNAME" | sed 's/"//g')"
+            device="$(cat "$manifest" | jq ".VARIANTS.$variant.TARGET" | sed 's/"//g')"
+            icon="$(cat "$manifest" | jq ".VARIANTS.$variant.ICONNAME" | sed 's/"//g')"
+            # If the icon path is absolute, resolve it locally
+            icon=$(echo "$icon" | sed "s,^/.*/$build_directory/,./$build_directory/,g")
             # Store the couple icon/device as key of an associative array to auto remove duplicates from variants
             icons_and_devices["$icon;$device"]=1
 
             # Get the glyphs used for this variant, we'll check later otherwise we would check many times each file
-            all_glyph_files+=$(< "$manifest" jq ".VARIANTS.$variant.GLYPH_FILES" | sed 's/"//g')
+            all_glyph_files+=$(cat "$manifest" | jq ".VARIANTS.$variant.GLYPH_FILES" | sed 's/"//g')
         done < <(echo "$variants_list")
 
     done < <(echo "$manifests_list")
@@ -161,7 +168,7 @@ main() (
     for icon_and_device in "${!icons_and_devices[@]}"; do
         icon="$(echo "$icon_and_device" | cut -d';' -f1)"
         device="$(echo "$icon_and_device" | cut -d';' -f2)"
-        check_icon "$repo_name" "$device" "$icon" || error=1
+        check_icon "$repo_name" "$device" "$repo/$icon" || error=1
     done
 
     # As we scanned for all devices and all variants, we can have a lot of duplicates for glyphs. Filter out duplicates and empty lines
@@ -169,7 +176,7 @@ main() (
     while IFS= read -r file; do
         # Skip SDK glyphs
         if [[ "$file" != "/opt/"*"-secure-sdk/"* ]]; then
-            check_glyph "$repo/$file" || error=1
+            check_glyph "$repo/$build_directory/$file" || error=1
         fi
     done < <(echo "$all_glyph_files_no_duplicates")
 

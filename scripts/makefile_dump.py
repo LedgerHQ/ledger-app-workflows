@@ -102,6 +102,7 @@ def save_app_params(app_build_path: Path, json_path: Path) -> None:
     variant_param_name, variants = get_app_listvariants(app_build_path)
 
     ret = {
+        "BUILD_DIRECTORY": app_build_path,
         "VARIANT_PARAM": variant_param_name,
         "VARIANTS": {}
     }
