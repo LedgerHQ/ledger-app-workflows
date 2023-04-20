@@ -17,6 +17,10 @@ on:
         required: false
         default: ${{ github.event.repository.name }}
         type: string
+      download_manifest_artifact_name:
+        description: 'The name of the artifact containing the built manifest'
+        required: true
+        type: string
 
 jobs:
   check_makefile:
@@ -38,5 +42,11 @@ jobs:
           path: app-repository
           submodules: recursive
 
+      - name: Download manifest
+        uses: actions/download-artifact@v3
+        with:
+          name: ${{ inputs.download_manifest_artifact_name }}
+          path: ${{ inputs.download_manifest_artifact_name }}
+
       - name: Run script
-        run: bash ./ledger-app-workflows/scripts/check_makefile.sh app-repository ${{ inputs.repo-name }}
+        run: bash ./ledger-app-workflows/scripts/check_makefile.sh app-repository ${{ inputs.repo-name }} ${{ inputs.download_manifest_artifact_name }}

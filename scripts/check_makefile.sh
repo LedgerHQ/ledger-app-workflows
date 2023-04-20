@@ -9,43 +9,75 @@ main() (
     error=0
     repo="$1"
     repo_name="$2"
+    manifests_dir="$3"
 
-    # Find the main Makefile of the app
-    makefile=$(grep -Rl --include="*Makefile*" "^[[:blank:]]*APPNAME" "$repo")
+    declare -A variants_array
+    declare -A appnames_array
 
-    if ! grep -q "^listvariants:" "$makefile"; then
-        log_error "The Makefile does not contain the 'listvariants' rule"
-        error=1
-    fi
-
-    if echo "$repo_name" | grep -q "app.*boilerplate"; then
-        log_warning "APPNAME and VARIANT checks skipped for Boilerplate"
+    if [[ "$repo_name" == "app-boilerplate" || "$repo_name" == "app-plugin-boilerplate" ]]; then
+        is_boilerplate=true
     else
-        while IFS= read -r line; do
-            if echo "$line" | grep -q -i "boilerplate"; then
-                log_error "APPNAME should refer to your application's name, not boilerplate"
-                error=1
-            fi
-        done < <(grep "^[[:blank:]]*APPNAME" "$makefile")
-
-        if grep "echo VARIANTS" "$makefile" | grep -q "BOL"; then
-            log_error "VARIANT name should refer to your coin ticker, not boilerplate's BOL"
-            error=1
-        fi
+        is_boilerplate=false
     fi
 
-    if grep -q "HAVE_BOLOS_UX" "$makefile"; then
+    # Parse all manifest files
+    manifests_list=$(find "$manifests_dir" -type f -name "*.json")
+    while IFS= read -r manifest; do
+        log_info "Checking manifest $manifest"
+
+        # Parse all variants of each manifest to grab all appnames and variants
+        variants_list=$(cat "$manifest" | jq ".VARIANTS | keys[]" | sed 's/"//g')
+        while IFS= read -r variant; do
+            log_info "Checking variant $variant"
+            appname="$(cat "$manifest" | jq ".VARIANTS.$variant.APPNAME" | sed 's/"//g')"
+
+            # Store the variant as key of an associative array to auto remove duplicates from variants
+            variants_array["$variant"]=1
+            appnames_array["$appname"]=1
+        done < <(echo "$variants_list")
+    done < <(echo "$manifests_list")
+
+    log_info "All manifests checked"
+
+    # Check each appname
+    for appname in "${!appnames_array[@]}"; do
+        if "$is_boilerplate"; then
+            log_success "APPNAME '$appname' is valid for Boilerplate"
+        else
+            if [[ "$appname" == "boilerplate" || "$appname" == "Boilerplate" ]]; then
+                log_error "APPNAME should refer to your application's name, not '$appname'"
+                error=1
+            else
+                log_success "APPNAME name '$appname' is valid"
+            fi
+        fi
+    done
+
+    # Check each variant
+    for variant in "${!variants_array[@]}"; do
+        if "$is_boilerplate"; then
+            log_success "VARIANT name '$variant' is valid for Boilerplate"
+        else
+            if [[ "$variant" == "BOL" || "$variant" == "boilerplate" || "$variant" == "Boilerplate" ]]; then
+                log_error "VARIANT name should refer to your coin ticker, not boilerplate's '$variant'"
+                error=1
+            else
+                log_success "VARIANT name '$variant' is valid"
+            fi
+        fi
+    done
+
+    if grep -qRl --include="*Makefile*" "HAVE_BOLOS_UX" "$repo"; then
         log_error "The Makefile contains an outdated flag 'HAVE_BOLOS_UX'"
         error=1
     fi
 
     if [[ error -eq 0 ]]; then
-        log_success "Makefile \"$makefile\" is compliant"
+        log_success "The Makefile is compliant"
     else
         log_error_no_header "At least one error has been found"
-        log_error_no_header "To check the Makefile content, run \"cat '$makefile'\""
+        log_error_no_header "Please check the Makefile content"
     fi
-
     return "$error"
 )
 
