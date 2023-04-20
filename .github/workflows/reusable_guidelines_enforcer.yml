@@ -45,9 +45,10 @@ jobs:
 
   call_check_makefile:
     name: Dispatch check
-    needs: call_get_workflow_version
+    needs: [call_get_workflow_version, call_get_app_manifest]
     uses: ./.github/workflows/_check_makefile.yml
     with:
+      download_manifest_artifact_name: manifests
       ledger-app-workflows_ref: ${{ needs.call_get_workflow_version.outputs.version }}
 
   call_check_readme:
