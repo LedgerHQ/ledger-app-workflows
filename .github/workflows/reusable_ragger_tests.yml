@@ -41,6 +41,11 @@ on:
         required: false
         default: true
         type: boolean
+      test_filter:
+        description: 'Specify an expression which implements a substring match on the test names'
+        required: false
+        default: '""'
+        type: string
 
 jobs:
   ragger_tests:
@@ -80,7 +85,7 @@ jobs:
       - name: Run test
         env:
           CTEST_OUTPUT_ON_FAILURE: 1
-        run: pytest ${{ inputs.test_dir }}/ --tb=short -v --device ${{ matrix.device }}
+        run: pytest ${{ inputs.test_dir }}/ --tb=short -v --device ${{ matrix.device }} -k ${{ inputs.test_filter }}
 
       - name: Upload snapshots
         if: ${{ failure() && inputs.upload_snapshots_on_failure == true }}
