@@ -58,26 +58,51 @@ check_glyph() (
         error=1
     fi
 
-    if ! echo "$content" | grep -q "Colors: 2"; then
-        log_error "Glyph should have only 2 colors"
+    # Monochrome picture
+    if echo "$content" | grep -q "Type: Bilevel"; then
+        log_info "Monochrome image type"
+        if ! echo "$content" | grep -q "Colors: 2"; then
+            log_error "Glyph should have only 2 colors"
+            error=1
+        fi
+
+        if ! echo "$content" | grep -q "0.*0.*0.*black"; then
+            log_error "Glyph should have the black color defined"
+            error=1
+        fi
+
+        if ! echo "$content" | grep -q "255.*255.*255.*white"; then
+            log_error "Glyph should have the white color defined"
+            error=1
+        fi
+
+        # Be somewhat tolerant to different possible wordings for depth "1 bit" "1-bit" "8/1 bit" etc
+        if ! echo "$content" | grep -q "Depth: \(8/\)\?1.bit"; then
+            log_error "Glyph should have 1 bit depth"
+            error=1
+        fi
+
+    # Grayscale picture
+    elif echo "$content" | grep -q "Type: Grayscale"; then
+        log_info "Grayscale image type"
+
+        # Use rev + cut f1 trick  to grab last word ie the value of field 'Colors'
+        colors_nb=$(echo "$content" | grep "Colors: " | rev | cut -d' ' -f1 | rev)
+        if [[ "$colors_nb" -gt 16 ]]; then
+            log_error "4bpp glyphs can't have more than 16 colors, $colors_nb found"
+        fi
+
+        # Be somewhat tolerant to different possible wordings for depth "8 bit" "8-bit" "8/8 bit" etc
+        if ! echo "$content" | grep -q "Depth: \(8/\)\?8.bit"; then
+            log_error "Glyph should have 8 bits depth"
+            error=1
+        fi
+
+    else
+        log_error "Glyph should be Monochrome or Grayscale"
         error=1
     fi
 
-    if ! echo "$content" | grep -q "0.*0.*0.*black"; then
-        log_error "Glyph should have the black color defined"
-        error=1
-    fi
-
-    if ! echo "$content" | grep -q "255.*255.*255.*white"; then
-        log_error "Glyph should have the white color defined"
-        error=1
-    fi
-
-    # Be somewhat tolerant to different possible wordings for depth "1 bit" "1-bit" "8/1 bit" etc
-    if ! echo "$content" | grep -q "Depth: \(8/\)\?1.bit"; then
-        log_error "Glyph should have 1 bit depth"
-        error=1
-    fi
 
     if [[ error -eq 0 ]]; then
         log_success "Glyph '$file' is compliant"
