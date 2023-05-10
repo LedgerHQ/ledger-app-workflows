@@ -29,7 +29,7 @@ jobs:
         run: |
           eval "BOLOS_SDK=\$$(echo ${{ matrix.device }} | tr [:lower:] [:upper:])_SDK" && \
           echo "BOLOS_SDK value will be: ${BOLOS_SDK}" && \
-          scan-build --use-cc=clang -analyze-headers -enable-checker security -enable-checker unix -enable-checker valist -o scan-build --status-bugs make -j ENABLE_SDK_WERROR=1 BOLOS_SDK=${BOLOS_SDK}
+          make -j ENABLE_SDK_WERROR=1 BOLOS_SDK=${BOLOS_SDK} scan-build
 
       - name: Upload scan result
         uses: actions/upload-artifact@v3
