@@ -71,4 +71,4 @@ jobs:
     uses: ./.github/workflows/_check_clang_static_analyzer.yml
     with:
       run_for_devices: ${{ inputs.run_for_devices }}
-
+      relative_app_directory: ${{ inputs.relative_app_directory }}
