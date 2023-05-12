@@ -7,6 +7,11 @@ on:
         description: 'The list of device(s) on which the checking will run'
         required: true
         type: string
+      relative_app_directory:
+        description: 'The relative path in the repository where the application is built from (defaults to ".")'
+        required: false
+        default: '.'
+        type: string
 
 jobs:
   scan_build:
@@ -29,7 +34,7 @@ jobs:
         run: |
           eval "BOLOS_SDK=\$$(echo ${{ matrix.device }} | tr [:lower:] [:upper:])_SDK" && \
           echo "BOLOS_SDK value will be: ${BOLOS_SDK}" && \
-          make -j ENABLE_SDK_WERROR=1 BOLOS_SDK=${BOLOS_SDK} scan-build
+          make -C ${{ inputs.relative_app_directory }} -j ENABLE_SDK_WERROR=1 BOLOS_SDK=${BOLOS_SDK} scan-build
 
       - name: Upload scan result
         uses: actions/upload-artifact@v3
