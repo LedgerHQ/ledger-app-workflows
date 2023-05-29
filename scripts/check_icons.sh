@@ -46,8 +46,8 @@ check_glyph() (
     log_info "Checking glyph file '$file'"
 
     extension=$(basename "$file" | cut -d'.' -f2)
-    if [[ "$extension" != "gif" && "$extension" != "bmp" ]]; then
-        log_error "Glyph extension should be .gif or .bmp, not '.$extension'";
+    if [[ "$extension" != "gif" && "$extension" != "bmp" && "$extension" != "png" ]]; then
+        log_error "Glyph extension should be '.gif', '.bmp', or '.png', not '.$extension'";
         return 1
     fi
 
