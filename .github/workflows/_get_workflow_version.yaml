@@ -33,6 +33,10 @@ on:
         description: Name of reusable workflow file (e.g. "build_charms_with_cache.yaml")
         required: true
         type: string
+    secrets:
+      git_token:
+        description: 'A token used as authentication for GIT operations. Useful when including this workflow in a private repository.'
+        required: false
     outputs:
       version:
         description: Version of reusable workflow
@@ -95,7 +99,7 @@ jobs:
                   commands = [
                       "git init",
                       "git sparse-checkout set --sparse-index .github/workflows/",
-                      f"git remote add --fetch origin https://github.com/{repository_name}.git",
+                      f"git remote add --fetch origin https://${{ secrets.git_token }}@github.com/{repository_name}.git",
                       f"git fetch origin {ref}",
                       "git checkout FETCH_HEAD",
                   ]
