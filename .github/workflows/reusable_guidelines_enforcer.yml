@@ -13,6 +13,10 @@ on:
         required: false
         default: '.'
         type: string
+    secrets:
+      git_token:
+        description: 'A token used as authentication for GIT operations. Useful when including this workflow in a private repository.'
+        required: false
 
 jobs:
   # We can't simply know the current ledger-app-workflow ref from inside the reusable workflow
@@ -24,6 +28,8 @@ jobs:
     with:
       repository-name: LedgerHQ/ledger-app-workflows
       file-name: reusable_guidelines_enforcer.yml
+    secrets:
+      git_token: ${{ secrets.git_token }}
 
   call_get_app_manifest:
     name: Dump app information
