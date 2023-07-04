@@ -128,6 +128,7 @@ jobs:
           sudo apt-get update && sudo apt-get install -y qemu-user-static tesseract-ocr libtesseract-dev
           pip install -U pip setuptools
           pip install -r "${{ needs.call_get_app_metadata.outputs.pytest_directory }}/requirements.txt"
+          [[ -f ${{ needs.call_get_app_metadata.outputs.pytest_directory}}/setup_script.sh ]] && ./${{ needs.call_get_app_metadata.outputs.pytest_directory }}/setup_script.sh
 
       - name: Run test
         env:
