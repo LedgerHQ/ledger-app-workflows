@@ -1,0 +1,74 @@
+name: Build, check and deploy an package on pypi.org or test.pypi.org
+
+on:
+  workflow_call:
+    inputs:
+      stable_deployment:
+        description: If the package is to be deployed on pypiorg (true) or test.pypi.org (false)
+        required: true
+        type: boolean
+      package_directory:
+        description: The directory where the Python package lies (where the setup.py or setup.cfg or pyproject.toml can be found)
+        required: true
+        type: string
+      check_changelog_version:
+        description: If true, a CHANGELOG.md file is expected in the package_directory. The workflow will check that its latest
+                     version matches the Python package version.
+        required: true
+        type: boolean
+    secrets:
+      pypi_token:
+        description: A token enabling to push a package on pypi.org or test.pypi.org
+        required: true
+
+
+jobs:
+  package_and_deploy:
+    name: Build and deploy a Python Package
+    runs-on: ubuntu-latest
+    steps:
+
+    - name: Clone
+      uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+
+    - name: Configure target deploiement repository
+      run: |
+        if [[ "${{ inputs.stable_deployment }}" == "true" ]]; \
+        then \
+            echo "DEPLOYMENT_TARGET=https://pypi.org/simple/" >> "$GITHUB_ENV"; \
+        else \
+            echo "DEPLOYMENT_TARGET=https://test.pypi.org/simple/" >> "$GITHUB_ENV"; \
+        fi
+
+    # Fetching dependencies from test.pypi,org or pypi.org depending on the package destination:
+    # tag -> pypi.org, not tag -> test.pypi.org
+    - name: Build Python package
+      run: |
+        cd ${{ inputs.package_directory }}
+        pip install --upgrade pip build twine
+        PIP_EXTRA_INDEX_URL=${{ env.DEPLOYMENT_TARGET }} python -m build; \
+        pip install --extra-index-url ${{ env.DEPLOYMENT_TARGET }} .; \
+        python -m twine check dist/*
+
+    - name: Display current status
+      run: |
+        echo "Current status is:"
+        echo "- Stable deployment: ${{ inputs.stable_deployment }}"
+        echo "- Will be deployed on on ${{ env.DEPLOYENT_TARGET }}"
+
+    - name: Publish Python package on pypi.org or test.pypi.org
+      if: success() && github.event_name == 'push'
+      run: |
+        cd ${{ inputs.package_directory }}
+        if [[ "${{ inputs.stable_deployment }}" == "true" ]]; \
+        then \
+            python -m twine upload dist/* \
+        else \
+            python -m twine upload --repository testpypi dist/* \
+        fi
+      env:
+        TWINE_USERNAME: __token__
+        TWINE_PASSWORD: ${{ secrets.pypi_token }}
+        TWINE_NON_INTERACTIVE: 1
