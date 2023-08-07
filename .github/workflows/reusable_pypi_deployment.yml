@@ -12,8 +12,12 @@ on:
         required: true
         type: string
       check_changelog_version:
-        description: If true, a CHANGELOG.md file is expected in the package_directory. The workflow will check that its latest
+        description: If true, a CHANGELOG.md file is expected in the `package_directory`. The workflow will check that its latest
                      version matches the Python package version.
+        required: true
+        type: boolean
+      publish:
+        description: Whether the package should be published (on pypi.org or test.pypi.org depending on `stable_deployment`) or not
         required: true
         type: boolean
     secrets:
@@ -42,24 +46,41 @@ jobs:
             echo "DEPLOYMENT_TARGET=https://test.pypi.org/simple/" >> "$GITHUB_ENV"; \
         fi
 
+    - name: Check Python package dependencies and local install
+      run: |
+        cd ${{ inputs.package_directory }}
+        pip install -v --extra-index-url ${{ env.DEPLOYMENT_TARGET }} .; \
+
     # Fetching dependencies from test.pypi,org or pypi.org depending on the package destination:
     # tag -> pypi.org, not tag -> test.pypi.org
-    - name: Build Python package
+    - name: Build and check Python package
       run: |
         cd ${{ inputs.package_directory }}
         pip install --upgrade pip build twine
         PIP_EXTRA_INDEX_URL=${{ env.DEPLOYMENT_TARGET }} python -m build; \
-        pip install --extra-index-url ${{ env.DEPLOYMENT_TARGET }} .; \
         python -m twine check dist/*
+
+    - name: Check version against CHANGELOG
+      if: inputs.check_changelog_version
+      run: |
+        PACKAGE_VERSION=$(find "${{ inputs.package_directory }}/dist" -name *.tar.gz | grep -Eo '[0-9]+\.[0-9]+\.[0-9]+')
+        CHANGELOG_VERSION=$(grep -Po '(?<=## \[)(\d+\.)+[^\]]' "${{ inputs.package_directory }}/CHANGELOG.md" | head -n 1)
+        if [ "${PACKAGE_VERSION}" == "${CHANGELOG_VERSION}" ]; \
+        then \
+            exit 0; \
+        else \
+            echo "Tag '${PACKAGE_VERSION}' and CHANGELOG '${CHANGELOG_VERSION}' versions mismatch!"; \
+            exit 1; \
+        fi
 
     - name: Display current status
       run: |
         echo "Current status is:"
         echo "- Stable deployment: ${{ inputs.stable_deployment }}"
-        echo "- Will be deployed on on ${{ env.DEPLOYENT_TARGET }}"
+        echo "- Will be deployed on ${{ env.DEPLOYMENT_TARGET }}"
 
     - name: Publish Python package on pypi.org or test.pypi.org
-      if: success() && github.event_name == 'push'
+      if: inputs.publish
       run: |
         cd ${{ inputs.package_directory }}
         if [[ "${{ inputs.stable_deployment }}" == "true" ]]; \
