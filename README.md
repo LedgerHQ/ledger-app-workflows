@@ -3,13 +3,13 @@
 This project contains several reusable Github workflows meant to be included in Ledger embedded applications repositories.
 
 Several of them are mandatory in order to ensure a level of quality and standardisation among all applications.
-The mandatory workflows must pass for an application to be deployed on the Ledger store. 
+The mandatory workflows must pass for an application to be deployed on the Ledger store.
 
 Others are optional and are provided here to help developers create their own application for Ledger devices.
 
 ## Description of available workflows
 
-- `app_compliance.yml`\
+- `reusable_guidelines_enforcer.yml`\
 	This workflow is mandatory, itwill call several child reusable workflows.
 	- `_check_icons.yml`\
 		will ensure that the icons and glyphs used in your app will be displayable on the device.
@@ -22,17 +22,21 @@ Others are optional and are provided here to help developers create their own ap
 	- `_check_app_load_params.yml`\
 		will perform some security and quality checks.
 
-- `build.yml` \
+- `reusable_build.yml` \
 This workflow will perform a build and upload the artifact containing the compiled application.
 This workflow is optional and is meant to help developers have their own CI.
 
-- `ragger_tests.yml`\
+- `reusable_ragger_tests.yml`\
 This workflow will download the compiled application and run the tests using the ragger testing framework.
 This workflow is optional and is meant to help developers have their own tests.
 
-- `linter.yml` \
-This workflow will perform linting checks on the application using DoozyX/clang-format-lint-action. 
+- `reusable_linter.yml` \
+This workflow will perform linting checks on the application using DoozyX/clang-format-lint-action.
 This workflow is mandatory, however the content of the `.clang-format` file is not.
+
+- `reusable_pypi_deployment.yml` \
+This workflow will build, check and deploy a Python package. This workflow is optional and is meant
+to help developers to deploy application Python clients on `pypi.org` or `test.pypi.org`.
 
 ## Usage
 
