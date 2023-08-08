@@ -81,7 +81,7 @@ jobs:
         run: |
           sudo apt-get update && sudo apt-get install -y qemu-user-static tesseract-ocr libtesseract-dev
           pip install -U pip setuptools
-          pip install --extra-index-url https://test.pypi.org/simple/ -r ${{ inputs.test_dir }}/requirements.txt
+          pip install -r ${{ inputs.test_dir }}/requirements.txt
 
       - name: Run test
         env:
