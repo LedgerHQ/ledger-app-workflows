@@ -39,17 +39,24 @@ jobs:
 
     - name: Configure target deploiement repository
       run: |
-        if [[ "${{ inputs.stable_deployment }}" == "true" ]]; \
-        then \
-            echo "DEPLOYMENT_TARGET=https://pypi.org/simple/" >> "$GITHUB_ENV"; \
-        else \
-            echo "DEPLOYMENT_TARGET=https://test.pypi.org/simple/" >> "$GITHUB_ENV"; \
+        if [[ "${{ inputs.stable_deployment }}" == "true" ]];
+        then
+            echo "DEPLOYMENT_TARGET=https://pypi.org/simple/" >> "$GITHUB_ENV";
+        else
+            echo "DEPLOYMENT_TARGET=https://test.pypi.org/simple/" >> "$GITHUB_ENV";
         fi
+
+    - name: Display current parameters
+      run: |
+        echo "Parameters are:"
+        echo "- Stable deployment: ${{ inputs.stable_deployment }}"
+        echo "- Will be deployed: ${{ inputs.publish }}"
+        echo "- If deployed, will be on ${{ env.DEPLOYMENT_TARGET }}"
 
     - name: Check Python package dependencies and local install
       run: |
         cd ${{ inputs.package_directory }}
-        pip install -v --extra-index-url ${{ env.DEPLOYMENT_TARGET }} .; \
+        pip install -v --extra-index-url ${{ env.DEPLOYMENT_TARGET }} .
 
     # Fetching dependencies from test.pypi,org or pypi.org depending on the package destination:
     # tag -> pypi.org, not tag -> test.pypi.org
@@ -57,7 +64,7 @@ jobs:
       run: |
         cd ${{ inputs.package_directory }}
         pip install --upgrade pip build twine
-        PIP_EXTRA_INDEX_URL=${{ env.DEPLOYMENT_TARGET }} python -m build; \
+        PIP_EXTRA_INDEX_URL=${{ env.DEPLOYMENT_TARGET }} python -m build
         python -m twine check dist/*
 
     - name: Check version against CHANGELOG
@@ -65,29 +72,23 @@ jobs:
       run: |
         PACKAGE_VERSION=$(find "${{ inputs.package_directory }}/dist" -name *.tar.gz | grep -Eo '[0-9]+\.[0-9]+\.[0-9]+')
         CHANGELOG_VERSION=$(grep -Po '(?<=## \[)(\d+\.)+[^\]]' "${{ inputs.package_directory }}/CHANGELOG.md" | head -n 1)
-        if [ "${PACKAGE_VERSION}" == "${CHANGELOG_VERSION}" ]; \
-        then \
-            exit 0; \
-        else \
-            echo "Tag '${PACKAGE_VERSION}' and CHANGELOG '${CHANGELOG_VERSION}' versions mismatch!"; \
-            exit 1; \
+        if [[ "${PACKAGE_VERSION}" == "${CHANGELOG_VERSION}" ]];
+        then
+            exit 0;
+        else
+            echo "Tag '${PACKAGE_VERSION}' and CHANGELOG '${CHANGELOG_VERSION}' versions mismatch!";
+            exit 1;
         fi
-
-    - name: Display current status
-      run: |
-        echo "Current status is:"
-        echo "- Stable deployment: ${{ inputs.stable_deployment }}"
-        echo "- Will be deployed on ${{ env.DEPLOYMENT_TARGET }}"
 
     - name: Publish Python package on pypi.org or test.pypi.org
       if: inputs.publish
       run: |
         cd ${{ inputs.package_directory }}
-        if [[ "${{ inputs.stable_deployment }}" == "true" ]]; \
-        then \
-            python -m twine upload dist/* \
-        else \
-            python -m twine upload --repository testpypi dist/* \
+        if [[ "${{ inputs.stable_deployment }}" == "true" ]];
+        then
+            python -m twine upload dist/*;
+        else
+            python -m twine upload --repository testpypi dist/*;
         fi
       env:
         TWINE_USERNAME: __token__
