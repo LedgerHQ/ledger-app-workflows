@@ -29,7 +29,7 @@ main() (
         variants_list=$(cat "$manifest" | jq ".VARIANTS | keys[]" | sed 's/"//g')
         while IFS= read -r variant; do
             log_info "Checking variant $variant"
-            appname="$(cat "$manifest" | jq ".VARIANTS.$variant.APPNAME" | sed 's/"//g')"
+            appname="$(cat "$manifest" | jq ".VARIANTS.\"$variant\".APPNAME" | sed 's/"//g')"
 
             # Store the variant as key of an associative array to auto remove duplicates from variants
             variants_array["$variant"]=1
