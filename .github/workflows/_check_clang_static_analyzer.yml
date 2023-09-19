@@ -12,6 +12,10 @@ on:
         required: false
         default: '.'
         type: string
+      is_rust:
+        description: '"true" if the app is using Rust SDK, else "false"'
+        required: true
+        type: string
 
 jobs:
   scan_build:
@@ -30,15 +34,24 @@ jobs:
         with:
           submodules: recursive
 
+      - name: Run Clippy
+        if: ${{ inputs.is_rust == 'true'}}
+        run: |
+          cd ${{ inputs.relative_app_directory }} && \
+          DEVICE_NAME="$(echo ${{ matrix.device }} | sed 's/nanosp/nanosplus/')" && \
+          cargo ledger setup && \
+          cargo clippy --target ${DEVICE_NAME} -- -Dwarnings
+
       - name: Build with Clang Static Analyzer
+        if: ${{ inputs.is_rust == 'false'}}
         run: |
           eval "BOLOS_SDK=\$$(echo ${{ matrix.device }} | tr [:lower:] [:upper:])_SDK" && \
           echo "BOLOS_SDK value will be: ${BOLOS_SDK}" && \
           make -C ${{ inputs.relative_app_directory }} -j ENABLE_SDK_WERROR=1 BOLOS_SDK=${BOLOS_SDK} scan-build
 
       - name: Upload scan result
+        if: failure() && ${{ inputs.is_rust == 'false'}}
         uses: actions/upload-artifact@v3
-        if: failure()
         with:
           name: scan-build
           path: scan-build

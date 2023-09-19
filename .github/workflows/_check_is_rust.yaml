@@ -1,0 +1,64 @@
+name: Check if app is based on Rust
+
+on:
+  workflow_call:
+    inputs:
+      relative_app_directory:
+        description: 'The relative path in the repository where the application is built from (defaults to ".")'
+        required: false
+        default: .
+        type: string
+    outputs:
+      is_rust:
+        description: Returns "true" if the app is using Rust SDK, else returns "false"
+        value: ${{ jobs.get_is_rust.outputs.is_rust }}
+
+jobs:
+  get_is_rust:
+    name: Check if app is based on Rust
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Clone app repository
+        uses: actions/checkout@v3
+
+      - name: Check presence of Rust app file indicator
+        id: get_is_rust
+        run: |
+          if [[ -e ledger_app.toml ]];
+          then
+              echo "is_rust=true" >> $GITHUB_OUTPUT
+              echo "App detected as a Rust app"
+          else
+              echo "is_rust=false" >> $GITHUB_OUTPUT
+              echo "App detected as a C app"
+          fi
+
+      - name: Install python TOML module
+        if: ${{ steps.get_is_rust.outputs.is_rust == 'true'}}
+        run: |
+          pip install toml
+
+      - name: Check content of ledger_app.toml
+        if: ${{ steps.get_is_rust.outputs.is_rust == 'true'}}
+        shell: python
+        run: |
+          from toml import load
+          from pathlib import Path
+
+          relative_app_directory = "${{ inputs.relative_app_directory }}"
+          workflow_manifest_path = Path(relative_app_directory) / "Cargo.toml"
+
+          data=load("ledger_app.toml")
+
+          rust_app = data["rust-app"]
+          manifest_path = rust_app["manifest-path"]
+          manifest_path = Path(manifest_path)
+
+          print("Manifest path:", manifest_path)
+          print("Workflow input path:", workflow_manifest_path)
+
+          assert manifest_path == workflow_manifest_path
+
+    outputs:
+      is_rust: ${{ steps.get_is_rust.outputs.is_rust }}
