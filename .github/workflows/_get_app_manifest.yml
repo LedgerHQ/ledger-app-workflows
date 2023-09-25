@@ -16,6 +16,10 @@ on:
         required: false
         default: .
         type: string
+      is_rust:
+        description: '"true" if the app is using Rust SDK, else "false"'
+        required: true
+        type: string
       upload_manifest_artifact_name:
         description: 'The name of the artifact containing the built manifest'
         required: true
@@ -30,7 +34,7 @@ jobs:
         device: ${{ fromJSON(inputs.run_for_devices) }}
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/ledgerhq/ledger-app-builder/ledger-app-builder-lite:latest
+      image: ghcr.io/ledgerhq/ledger-app-builder/ledger-app-builder:latest
 
     steps:
       - name: Clone workflows repository
@@ -46,12 +50,24 @@ jobs:
           path: app-repository
           submodules: recursive
 
+      - name: Call Cargo metadata dumper script
+        if: ${{ inputs.is_rust == 'true'}}
+        run: |
+          cd app-repository && \
+          BOLOS_SDK=${BOLOS_SDK} python ../ledger-app-workflows/scripts/cargo_metadata_dump.py \
+              --device ${{ matrix.device }} \
+              --app_build_path ${{ inputs.relative_app_directory }} \
+              --json_path ../manifest_${{ matrix.device }}.json
+
       - name: Call Makefile dumper script
+        if: ${{ inputs.is_rust == 'false'}}
         run: |
           cd app-repository && \
           eval "BOLOS_SDK=\$$(echo ${{ matrix.device }} | tr [:lower:] [:upper:])_SDK" && \
           echo "BOLOS_SDK value will be: ${BOLOS_SDK}" && \
-          BOLOS_SDK=${BOLOS_SDK} python ../ledger-app-workflows/scripts/makefile_dump.py --app_build_path ${{ inputs.relative_app_directory }} --json_path ../manifest_${{ matrix.device }}.json
+          BOLOS_SDK=${BOLOS_SDK} python ../ledger-app-workflows/scripts/makefile_dump.py \
+              --app_build_path ${{ inputs.relative_app_directory }} \
+              --json_path ../manifest_${{ matrix.device }}.json
 
       - name: Upload app manifest
         uses: actions/upload-artifact@v3

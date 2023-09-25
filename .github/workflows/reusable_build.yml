@@ -45,8 +45,15 @@ on:
         type: string
 
 jobs:
+  call_check_is_rust:
+    name: Check if app is based on Rust
+    uses: ./.github/workflows/_check_is_rust.yaml
+    with:
+      relative_app_directory: ${{ inputs.relative_app_directory }}
+
   build:
     name: Build application for NanoS, X, S+, and Stax
+    needs: call_check_is_rust
     strategy:
       fail-fast: false
       matrix:
@@ -64,10 +71,19 @@ jobs:
           submodules: recursive
 
       - name: Build application
+        shell: bash
         run: |
-          eval "BOLOS_SDK=\$$(echo ${{ matrix.device }} | tr [:lower:] [:upper:])_SDK" && \
-          echo "BOLOS_SDK value will be: ${BOLOS_SDK}" && \
-          make -C ${{ inputs.relative_app_directory }} -j ${{ inputs.flags }} BOLOS_SDK=${BOLOS_SDK}
+          if [[ "${{ needs.call_check_is_rust.outputs.is_rust }}" == "true" ]];
+          then
+              DEVICE_NAME="$(echo ${{ matrix.device }} | sed 's/nanosp/nanosplus/')" && \
+              cd ${{ inputs.relative_app_directory }} && \
+              cargo ledger setup && \
+              cargo ledger build ${DEVICE_NAME} -- -Zunstable-options --out-dir=./build/${{ matrix.device }}/bin/
+          else
+              eval "BOLOS_SDK=\$$(echo ${{ matrix.device }} | tr [:lower:] [:upper:])_SDK" && \
+              echo "BOLOS_SDK value will be: ${BOLOS_SDK}" && \
+              make -C ${{ inputs.relative_app_directory }} -j ${{ inputs.flags }} BOLOS_SDK=${BOLOS_SDK}
+          fi
 
       - name: Remove build artifacts before upload
         run: |
@@ -75,6 +91,7 @@ jobs:
 
       - name: Prepare to upload as lib
         if: ${{ inputs.upload_as_lib_artifact != '' }}
+        shell: bash
         run: |
           DEVICE_NAME="$(echo ${{ matrix.device }} | tr nanosp nanos2)" && \
           find ${{ inputs.relative_app_directory }}/build/${DEVICE_NAME}/ -type f -name 'app.elf' -exec mv {} ${{ inputs.upload_as_lib_artifact }}_${DEVICE_NAME}.elf \; && \
