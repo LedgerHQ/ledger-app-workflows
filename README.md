@@ -1,4 +1,4 @@
-# Re-usable workflows for Ledger embedded applications
+# Reusable workflows for Ledger embedded applications
 
 This project contains several reusable Github workflows meant to be included in Ledger embedded applications repositories.
 

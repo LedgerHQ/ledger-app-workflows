@@ -77,7 +77,6 @@ jobs:
           then
               DEVICE_NAME="$(echo ${{ matrix.device }} | sed 's/nanosp/nanosplus/')" && \
               cd ${{ inputs.relative_app_directory }} && \
-              cargo ledger setup && \
               cargo ledger build ${DEVICE_NAME} -- -Zunstable-options --out-dir=./build/${{ matrix.device }}/bin/
           else
               eval "BOLOS_SDK=\$$(echo ${{ matrix.device }} | tr [:lower:] [:upper:])_SDK" && \
