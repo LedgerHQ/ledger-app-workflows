@@ -31,21 +31,21 @@ jobs:
     secrets:
       git_token: ${{ secrets.git_token }}
 
-  call_check_is_rust:
+  call_check_local_manifest:
     name: Check if app is based on Rust
-    uses: ./.github/workflows/_check_is_rust.yaml
+    uses: ./.github/workflows/_check_local_manifest.yaml
     with:
       relative_app_directory: ${{ inputs.relative_app_directory }}
 
   call_get_app_manifest:
     name: Dump app information
-    needs: [call_get_workflow_version, call_check_is_rust]
+    needs: [call_get_workflow_version, call_check_local_manifest]
     uses: ./.github/workflows/_get_app_manifest.yml
     with:
       ledger-app-workflows_ref: ${{ needs.call_get_workflow_version.outputs.version }}
       run_for_devices: ${{ inputs.run_for_devices }}
       relative_app_directory: ${{ inputs.relative_app_directory }}
-      is_rust:  ${{ needs.call_check_is_rust.outputs.is_rust }}
+      is_rust:  ${{ needs.call_check_local_manifest.outputs.is_rust }}
       upload_manifest_artifact_name: manifests
 
   call_check_icons:
@@ -81,9 +81,9 @@ jobs:
 
   call_clang_static_analyzer:
     name: Dispatch check
-    needs: call_check_is_rust
+    needs: call_check_local_manifest
     uses: ./.github/workflows/_check_clang_static_analyzer.yml
     with:
       run_for_devices: ${{ inputs.run_for_devices }}
       relative_app_directory: ${{ inputs.relative_app_directory }}
-      is_rust: ${{ needs.call_check_is_rust.outputs.is_rust }}
+      is_rust: ${{ needs.call_check_local_manifest.outputs.is_rust }}

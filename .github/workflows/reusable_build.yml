@@ -45,15 +45,15 @@ on:
         type: string
 
 jobs:
-  call_check_is_rust:
+  call_check_local_manifest:
     name: Check if app is based on Rust
-    uses: ./.github/workflows/_check_is_rust.yaml
+    uses: ./.github/workflows/_check_local_manifest.yaml
     with:
       relative_app_directory: ${{ inputs.relative_app_directory }}
 
   build:
     name: Build application for NanoS, X, S+, and Stax
-    needs: call_check_is_rust
+    needs: call_check_local_manifest
     strategy:
       fail-fast: false
       matrix:
@@ -73,7 +73,7 @@ jobs:
       - name: Build application
         shell: bash
         run: |
-          if [[ "${{ needs.call_check_is_rust.outputs.is_rust }}" == "true" ]];
+          if [[ "${{ needs.call_check_local_manifest.outputs.is_rust }}" == "true" ]];
           then
               DEVICE_NAME="$(echo ${{ matrix.device }} | sed 's/nanosp/nanosplus/')" && \
               cd ${{ inputs.relative_app_directory }} && \
