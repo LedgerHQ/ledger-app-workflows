@@ -9,7 +9,11 @@ on:
         default: '["nanos", "nanox", "nanosp", "stax"]'
         type: string
       relative_app_directory:
-        description: 'The relative path in the repository where the application is built from (defaults to ".")'
+        description: |
+          The relative path in the repository where the application is built from (defaults to ".")
+
+          If the application is configured with a 'ledger_app.toml' file at its root, this parameter
+          is ignored.
         required: false
         default: '.'
         type: string
@@ -44,7 +48,7 @@ jobs:
     with:
       ledger-app-workflows_ref: ${{ needs.call_get_workflow_version.outputs.version }}
       run_for_devices: ${{ inputs.run_for_devices }}
-      relative_app_directory: ${{ inputs.relative_app_directory }}
+      relative_app_directory: ${{ needs.call_check_local_manifest.outputs.build_directory }}
       is_rust:  ${{ needs.call_check_local_manifest.outputs.is_rust }}
       upload_manifest_artifact_name: manifests
 
@@ -85,5 +89,5 @@ jobs:
     uses: ./.github/workflows/_check_clang_static_analyzer.yml
     with:
       run_for_devices: ${{ inputs.run_for_devices }}
-      relative_app_directory: ${{ inputs.relative_app_directory }}
+      relative_app_directory: ${{ needs.call_check_local_manifest.outputs.build_directory }}
       is_rust: ${{ needs.call_check_local_manifest.outputs.is_rust }}

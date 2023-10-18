@@ -4,7 +4,11 @@ on:
   workflow_call:
     inputs:
       relative_app_directory:
-        description: 'The relative path in the repository where the application is built from (defaults to ".")'
+        description: |
+          The relative path in the repository where the application is built from (defaults to ".")
+
+          If the application is configured with a 'ledger_app.toml' file at its root, this parameter
+          is ignored.
         required: false
         default: .
         type: string
