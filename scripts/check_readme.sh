@@ -35,7 +35,19 @@ main() (
         log_error_no_header "At least one error has been found"
         log_error_no_header "To check the Readme content, run \"cat '$repo/README.md'\""
     fi
-
+	
+    
+    if echo "$repo_name" | grep -q "app.*boilerplate"; then
+        log_warning "App specification check skipped for Boilerplate"
+    else
+        if [[ -f "$repo/APP_SPECIFICATION.md" ]]; then
+            if grep -q -i "^#.*Boilerplate" "$repo/APP_SPECIFICATION.md"; then
+                log_error "Please update the 'APP_SPECIFICATION.md' file with your own app data. Boilerplate should not be mentioned."
+                error=1
+            fi
+        fi
+    fi
+	
     return "$error"
 )
 
