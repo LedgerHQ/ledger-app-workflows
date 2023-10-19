@@ -5,17 +5,25 @@ on:
     inputs:
       relative_app_directory:
         description: |
-          The relative path in the repository where the application is built from (defaults to ".")
+          The relative path in the repository where the application is built from (defaults to ".").
 
           If the application is configured with a 'ledger_app.toml' file at its root, this parameter
           is ignored.
         required: false
         default: .
         type: string
+      compatible_devices:
+        description: |
+          The list of device(s) supported by the application. Defaults to ["nanos", "nanox",
+          "nanosp", "stax"]), except if the application is configured with a 'ledger_app.toml' file
+          at its root.
+        required: false
+        default: 'None'
+        type: string
     outputs:
       is_rust:
         description: Returns "true" if the app is using Rust SDK, else returns "false"
-        value: ${{ jobs.check_manifest.outputs.is_rust }}
+        value: ${{ jobs.fetch_metadata.outputs.is_rust }}
       build_directory:
         description: |
           Returns the relative 'build_directory' path, i.e the repository directory where can be
@@ -23,14 +31,19 @@ on:
 
           This information is deduced from the 'ledger_app.toml' manifest if present, else is
           equivalent to the 'relative_app_directory'.
-        value: ${{ jobs.check_manifest.outputs.build_directory }}
+        value: ${{ jobs.fetch_metadata.outputs.build_directory }}
+      compatible_devices:
+        description:
+          The list of device(s) supported by the application.
+        value: ${{ jobs.fetch_metadata.outputs.compatible_devices }}
+
 
 env:
   APP_MANIFEST: "ledger_app.toml"
 
 jobs:
-  check_manifest:
-    name: Check if app is based on Rust
+  fetch_metadata:
+    name: Retrieve application metadata
     runs-on: ubuntu-latest
 
     steps:
@@ -40,8 +53,8 @@ jobs:
       - name: Install dependencies
         run: pip install ledgered
 
-      - name: Check presence of the $APP_MANIFEST manifest
-        id: check_manifest
+      - name: Gather application metadata, from inputs or 'ledger_app.toml'
+        id: fetch_metadata
         run: |
           if [[ -f "$APP_MANIFEST" ]];
           then
@@ -53,6 +66,7 @@ jobs:
                   # checking the manifest with the repo
                   ledger-manifest --legacy --check . "$APP_MANIFEST"
                   echo "build_directory=$(ledger-manifest --legacy --output-build-directory $APP_MANIFEST)" >> $GITHUB_OUTPUT;
+                  compatible_devices='${{ inputs.compatible_devices }}'
                   echo "is_rust=true" >> $GITHUB_OUTPUT;
               else
                   # classic manifest -> can be either C or Rust
@@ -60,6 +74,7 @@ jobs:
                   # checking the manifest with the repo
                   ledger-manifest --check . "$APP_MANIFEST"
                   echo "build_directory=$(ledger-manifest --output-build-directory $APP_MANIFEST)" >> $GITHUB_OUTPUT;
+                  compatible_devices="$(ledger-manifest --output-devices $APP_MANIFEST)"
                   if [[ "$(ledger-manifest --output-sdk $APP_MANIFEST)" == "rust" ]];
                   then
                       echo "is_rust=true" >> $GITHUB_OUTPUT;
@@ -71,9 +86,27 @@ jobs:
               # No 'ledger_app.toml' -> C application
               echo "No manifest detected.";
               echo "build_directory=${{ inputs.relative_app_directory }}" >> $GITHUB_OUTPUT;
+              compatible_devices='${{ inputs.compatible_devices }}'
               echo "is_rust=false" >> $GITHUB_OUTPUT;
           fi
 
+          if [[ "${compatible_devices}" == 'None' ]];
+          then
+              # no inputs and no classic manifest
+              compatible_devices='["nanos", "nanosp", "nanox", "stax"]'
+          else
+              if [[ '${{ inputs.compatible_devices }}' != 'None' ]];
+              then
+                  # in case classic manifest with devices, the input takes precedence on it
+                  compatible_devices='${{ inputs.compatible_devices }}'
+              fi
+          fi
+          echo "compatible_devices=${compatible_devices}" | sed 's/+/p/' >> $GITHUB_OUTPUT;
+
+          echo "Inferred metadata:"
+          cat $GITHUB_OUTPUT
+
     outputs:
-      is_rust: ${{ steps.check_manifest.outputs.is_rust }}
-      build_directory: ${{ steps.check_manifest.outputs.build_directory }}
+      is_rust: ${{ steps.fetch_metadata.outputs.is_rust }}
+      compatible_devices: ${{ steps.fetch_metadata.outputs.compatible_devices }}
+      build_directory: ${{ steps.fetch_metadata.outputs.build_directory }}

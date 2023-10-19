@@ -38,9 +38,11 @@ on:
         default: ''
         type: string
       run_for_devices:
-        description: 'The list of device(s) on which the test will run (defaults to ["nanos", "nanox", "nanosp", "stax"])'
+        description: |
+          The list of device(s) on which the test will run. Defaults to ["nanos", "nanox", "nanosp",
+          "stax"], except if the application is configured with a 'ledger_app.toml' file at its root.
         required: false
-        default: '["nanos", "nanox", "nanosp", "stax"]'
+        default: 'None'
         type: string
       builder:
         description: "The docker image to build the application in (defaults to ledger-app-builder-lite)"
@@ -49,19 +51,20 @@ on:
         type: string
 
 jobs:
-  call_check_local_manifest:
+  call_get_app_metadata:
     name: Retrieve application metadata
-    uses: ./.github/workflows/_check_local_manifest.yaml
+    uses: ./.github/workflows/_get_app_metadata.yml
     with:
       relative_app_directory: ${{ inputs.relative_app_directory }}
+      compatible_devices: ${{ inputs.run_for_devices }}
 
   build:
     name: Build application for NanoS, X, S+, and Stax
-    needs: call_check_local_manifest
+    needs: call_get_app_metadata
     strategy:
       fail-fast: false
       matrix:
-        device: ${{ fromJSON(inputs.run_for_devices) }}
+        device: ${{ fromJSON(needs.call_get_app_metadata.outputs.compatible_devices) }}
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/ledgerhq/ledger-app-builder/${{ inputs.builder }}:latest
@@ -77,34 +80,34 @@ jobs:
       - name: Build application
         shell: bash
         run: |
-          if [[ "${{ needs.call_check_local_manifest.outputs.is_rust }}" == "true" ]];
+          if [[ "${{ needs.call_get_app_metadata.outputs.is_rust }}" == "true" ]];
           then
               DEVICE_NAME="$(echo ${{ matrix.device }} | sed 's/nanosp/nanosplus/')" && \
-              cd ${{ needs.call_check_local_manifest.outputs.build_directory }} && \
+              cd ${{ needs.call_get_app_metadata.outputs.build_directory }} && \
               cargo ledger build ${DEVICE_NAME} -- -Zunstable-options --out-dir=./build/${{ matrix.device }}/bin/
           else
               eval "BOLOS_SDK=\$$(echo ${{ matrix.device }} | tr [:lower:] [:upper:])_SDK" && \
               echo "BOLOS_SDK value will be: ${BOLOS_SDK}" && \
-              make -C ${{ needs.call_check_local_manifest.outputs.build_directory }} -j ${{ inputs.flags }} BOLOS_SDK=${BOLOS_SDK}
+              make -C ${{ needs.call_get_app_metadata.outputs.build_directory }} -j ${{ inputs.flags }} BOLOS_SDK=${BOLOS_SDK}
           fi
 
       - name: Remove build artifacts before upload
         run: |
-          find ${{ needs.call_check_local_manifest.outputs.build_directory }}/build/ -mindepth 2 -type d ! -name 'bin' -exec rm -r {} +
+          find ${{ needs.call_get_app_metadata.outputs.build_directory }}/build/ -mindepth 2 -type d ! -name 'bin' -exec rm -r {} +
 
       - name: Prepare to upload as lib
         if: ${{ inputs.upload_as_lib_artifact != '' }}
         shell: bash
         run: |
           DEVICE_NAME="$(echo ${{ matrix.device }} | tr nanosp nanos2)" && \
-          find ${{ needs.call_check_local_manifest.outputs.build_directory }}/build/${DEVICE_NAME}/ -type f -name 'app.elf' -exec mv {} ${{ inputs.upload_as_lib_artifact }}_${DEVICE_NAME}.elf \; && \
-          rm -r ${{ needs.call_check_local_manifest.outputs.build_directory }}/build/* && \
-          mv ${{ inputs.upload_as_lib_artifact }}_${DEVICE_NAME}.elf ${{ needs.call_check_local_manifest.outputs.build_directory }}/build/
+          find ${{ needs.call_get_app_metadata.outputs.build_directory }}/build/${DEVICE_NAME}/ -type f -name 'app.elf' -exec mv {} ${{ inputs.upload_as_lib_artifact }}_${DEVICE_NAME}.elf \; && \
+          rm -r ${{ needs.call_get_app_metadata.outputs.build_directory }}/build/* && \
+          mv ${{ inputs.upload_as_lib_artifact }}_${DEVICE_NAME}.elf ${{ needs.call_get_app_metadata.outputs.build_directory }}/build/
 
       - name: Upload app binary
         if: ${{ inputs.upload_app_binaries_artifact != '' }}
         uses: actions/upload-artifact@v3
         with:
           name: ${{ inputs.upload_app_binaries_artifact }}
-          path: ${{ needs.call_check_local_manifest.outputs.build_directory }}/build/*
+          path: ${{ needs.call_get_app_metadata.outputs.build_directory }}/build/*
           if-no-files-found: error

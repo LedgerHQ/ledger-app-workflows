@@ -4,9 +4,11 @@ on:
   workflow_call:
     inputs:
       run_for_devices:
-        description: 'The list of device(s) on which the checking will run (defaults to ["nanos", "nanox", "nanosp", "stax"])'
+        description: |
+          The list of device(s) on which the test will run. Defaults to ["nanos", "nanox", "nanosp",
+          "stax"], except if the application is configured with a 'ledger_app.toml' file at its root.
         required: false
-        default: '["nanos", "nanox", "nanosp", "stax"]'
+        default: 'None'
         type: string
       relative_app_directory:
         description: |
@@ -35,21 +37,22 @@ jobs:
     secrets:
       git_token: ${{ secrets.git_token }}
 
-  call_check_local_manifest:
-    name: Check if app is based on Rust
-    uses: ./.github/workflows/_check_local_manifest.yaml
+  call_get_app_metadata:
+    name: Retrieve application metadata
+    uses: ./.github/workflows/_get_app_metadata.yml
     with:
       relative_app_directory: ${{ inputs.relative_app_directory }}
+      compatible_devices: ${{ inputs.run_for_devices }}
 
   call_get_app_manifest:
     name: Dump app information
-    needs: [call_get_workflow_version, call_check_local_manifest]
+    needs: [call_get_workflow_version, call_get_app_metadata]
     uses: ./.github/workflows/_get_app_manifest.yml
     with:
       ledger-app-workflows_ref: ${{ needs.call_get_workflow_version.outputs.version }}
-      run_for_devices: ${{ inputs.run_for_devices }}
-      relative_app_directory: ${{ needs.call_check_local_manifest.outputs.build_directory }}
-      is_rust:  ${{ needs.call_check_local_manifest.outputs.is_rust }}
+      run_for_devices: ${{ needs.call_get_app_metadata.outputs.compatible_devices }}
+      relative_app_directory: ${{ needs.call_get_app_metadata.outputs.build_directory }}
+      is_rust:  ${{ needs.call_get_app_metadata.outputs.is_rust }}
       upload_manifest_artifact_name: manifests
 
   call_check_icons:
@@ -85,9 +88,9 @@ jobs:
 
   call_clang_static_analyzer:
     name: Dispatch check
-    needs: call_check_local_manifest
+    needs: call_get_app_metadata
     uses: ./.github/workflows/_check_clang_static_analyzer.yml
     with:
-      run_for_devices: ${{ inputs.run_for_devices }}
-      relative_app_directory: ${{ needs.call_check_local_manifest.outputs.build_directory }}
-      is_rust: ${{ needs.call_check_local_manifest.outputs.is_rust }}
+      run_for_devices: ${{ needs.call_get_app_metadata.outputs.compatible_devices }}
+      relative_app_directory: ${{ needs.call_get_app_metadata.outputs.build_directory }}
+      is_rust: ${{ needs.call_get_app_metadata.outputs.is_rust }}
