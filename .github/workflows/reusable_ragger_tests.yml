@@ -20,8 +20,9 @@ on:
         default: .
         type: string
       test_dir:
-        description: 'The directory where the Python tests are stored (a `conftest.py` file is expected there). Required'
-        required: true
+        description: 'The directory where the Python tests are stored (a `conftest.py` file is expected there).'
+        required: false
+        default: 'None'
         type: string
       download_app_binaries_artifact:
         description: 'The name of the artifact containing the application binary file(s) to be tested. Required'
@@ -43,9 +44,11 @@ on:
         default: ''
         type: string
       run_for_devices:
-        description: 'The list of device(s) on which the test will run (defaults to ["nanos", "nanox", "nanosp", "stax"])'
+        description: |
+          The list of device(s) on which the test will run. Defaults to ["nanos", "nanox", "nanosp",
+          "stax"], except if the application is configured with a 'ledger_app.toml' file at its root.
         required: false
-        default: '["nanos", "nanox", "nanosp", "stax"]'
+        default: 'None'
         type: string
       upload_snapshots_on_failure:
         description: 'Enable or disable upload of tests snapshots if the job fails (defaults to true).'
@@ -59,15 +62,32 @@ on:
         type: string
 
 jobs:
+  call_get_app_metadata:
+    name: Retrieve application metadata
+    uses: ./.github/workflows/_get_app_metadata.yml
+    with:
+      relative_app_directory: ${{ inputs.relative_app_directory }}
+      compatible_devices: ${{ inputs.run_for_devices }}
+      pytest_directory: ${{ inputs.test_dir }}
+
   ragger_tests:
     name: Functional tests with Ragger
+    needs: call_get_app_metadata
     strategy:
       fail-fast: false
       matrix:
-        device: ${{ fromJSON(inputs.run_for_devices) }}
+        device: ${{ fromJSON(needs.call_get_app_metadata.outputs.compatible_devices) }}
     runs-on: ubuntu-latest
 
     steps:
+      - name: Check metadata
+        run: |
+          if [[ '${{ needs.call_get_app_metadata.outputs.pytest_directory }}' == 'None' ]];
+          then
+              >&2 echo "ERROR: This workflow either needs a 'ledger_app.toml' manifest with a 'tests.pytest_directory' section, or be configured with a valid 'test_dir' parameter";
+              exit 1;
+          fi
+
       - name: Clone
         uses: actions/checkout@v3
         with:
@@ -79,7 +99,7 @@ jobs:
         uses: actions/download-artifact@v3
         with:
           name: ${{ inputs.download_app_binaries_artifact }}
-          path: ${{ inputs.relative_app_directory }}/build/
+          path: ${{ needs.call_get_app_metadata.outputs.build_directory }}/build/
 
       - name: Download additional app binaries if required
         if: ${{ inputs.additional_app_binaries_artifact != '' }}
@@ -93,22 +113,22 @@ jobs:
         uses: actions/download-artifact@v3
         with:
           name: ${{ inputs.lib_binaries_artifact }}
-          path: ${{ inputs.test_dir }}/lib_binaries/
+          path: ${{ needs.call_get_app_metadata.outputs.pytest_directory }}/lib_binaries/
 
       - name: Install tests dependencies
         run: |
           sudo apt-get update && sudo apt-get install -y qemu-user-static tesseract-ocr libtesseract-dev
           pip install -U pip setuptools
-          pip install -r ${{ inputs.test_dir }}/requirements.txt
+          pip install -r "${{ needs.call_get_app_metadata.outputs.pytest_directory }}/requirements.txt"
 
       - name: Run test
         env:
           CTEST_OUTPUT_ON_FAILURE: 1
-        run: pytest ${{ inputs.test_dir }}/ --tb=short -v --device ${{ matrix.device }} -k ${{ inputs.test_filter }}
+        run: pytest ${{ needs.call_get_app_metadata.outputs.pytest_directory }}/ --tb=short -v --device ${{ matrix.device }} -k ${{ inputs.test_filter }}
 
       - name: Upload snapshots
         if: ${{ failure() && inputs.upload_snapshots_on_failure == true }}
         uses: actions/upload-artifact@v3
         with:
           name: ${{ matrix.device }}-tests-snapshots
-          path: ${{ inputs.test_dir }}/snapshots-tmp/${{ matrix.device }}
+          path: ${{ needs.call_get_app_metadata.outputs.pytest_directory }}/snapshots-tmp/${{ matrix.device }}

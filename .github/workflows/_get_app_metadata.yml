@@ -7,16 +7,26 @@ on:
         description: |
           The relative path in the repository where the application is built from (defaults to ".").
 
-          If the application is configured with a 'ledger_app.toml' file at its root, this parameter
-          is ignored.
+          If the application is configured with a 'ledger_app.toml' manifest at its root, this
+          parameter is ignored.
         required: false
         default: .
         type: string
       compatible_devices:
         description: |
-          The list of device(s) supported by the application. Defaults to ["nanos", "nanox",
-          "nanosp", "stax"]), except if the application is configured with a 'ledger_app.toml' file
-          at its root.
+          The list of device(s) supported by the application.
+
+          Defaults to ["nanos", "nanox", "nanosp", "stax"]), except if the application is configured
+          with a 'ledger_app.toml' manifest at its root.
+        required: false
+        default: 'None'
+        type: string
+      pytest_directory:
+        description: |
+          The directory where the Python tests are stored (a `conftest.py` file is expected there).
+
+          If the application is configured with a 'ledger_app.toml' manifest at its root with a
+          'tests.pytest_directory' field, this parameter is ignored.
         required: false
         default: 'None'
         type: string
@@ -28,15 +38,15 @@ on:
         description: |
           Returns the relative 'build_directory' path, i.e the repository directory where can be
           found either the root 'Makefile' of a C app, or the Cargo.toml of a Rust app.
-
-          This information is deduced from the 'ledger_app.toml' manifest if present, else is
-          equivalent to the 'relative_app_directory'.
         value: ${{ jobs.fetch_metadata.outputs.build_directory }}
       compatible_devices:
         description:
           The list of device(s) supported by the application.
         value: ${{ jobs.fetch_metadata.outputs.compatible_devices }}
-
+      pytest_directory:
+        description: |
+          The directory where the Python tests are stored (a `conftest.py` file is expected there).
+        value: ${{ jobs.fetch_metadata.outputs.pytest_directory }}
 
 env:
   APP_MANIFEST: "ledger_app.toml"
@@ -56,6 +66,7 @@ jobs:
       - name: Gather application metadata, from inputs or 'ledger_app.toml'
         id: fetch_metadata
         run: |
+          pytest_directory='${{ inputs.pytest_directory }}';
           if [[ -f "$APP_MANIFEST" ]];
           then
               # 'ledger_app.toml' exists
@@ -64,17 +75,26 @@ jobs:
                   # legacy manifest -> Rust application
                   echo "Legacy manifest detected. Please update your manifest to the newest version";
                   # checking the manifest with the repo
-                  ledger-manifest --legacy --check . "$APP_MANIFEST"
+                  ledger-manifest --legacy --check . "$APP_MANIFEST";
                   echo "build_directory=$(ledger-manifest --legacy --output-build-directory $APP_MANIFEST)" >> $GITHUB_OUTPUT;
-                  compatible_devices='${{ inputs.compatible_devices }}'
+                  compatible_devices='${{ inputs.compatible_devices }}';
                   echo "is_rust=true" >> $GITHUB_OUTPUT;
               else
                   # classic manifest -> can be either C or Rust
                   echo "Classic manifest detected.";
                   # checking the manifest with the repo
-                  ledger-manifest --check . "$APP_MANIFEST"
+                  ledger-manifest --check . "$APP_MANIFEST";
                   echo "build_directory=$(ledger-manifest --output-build-directory $APP_MANIFEST)" >> $GITHUB_OUTPUT;
-                  compatible_devices="$(ledger-manifest --output-devices $APP_MANIFEST)"
+                  compatible_devices="$(ledger-manifest --output-devices $APP_MANIFEST)";
+
+                  set +e  # when [tests.pytest_directory] is not set, ledger-manifest fails
+                  temp="$(ledger-manifest --output-pytest-directory $APP_MANIFEST)";
+                  if [ $? -eq 0 ];
+                  then
+                      pytest_directory="${temp}";
+                  fi
+                  set -e
+
                   if [[ "$(ledger-manifest --output-sdk $APP_MANIFEST)" == "rust" ]];
                   then
                       echo "is_rust=true" >> $GITHUB_OUTPUT;
@@ -86,22 +106,24 @@ jobs:
               # No 'ledger_app.toml' -> C application
               echo "No manifest detected.";
               echo "build_directory=${{ inputs.relative_app_directory }}" >> $GITHUB_OUTPUT;
-              compatible_devices='${{ inputs.compatible_devices }}'
+              compatible_devices='${{ inputs.compatible_devices }}';
               echo "is_rust=false" >> $GITHUB_OUTPUT;
           fi
 
           if [[ "${compatible_devices}" == 'None' ]];
           then
               # no inputs and no classic manifest
-              compatible_devices='["nanos", "nanosp", "nanox", "stax"]'
+              compatible_devices='["nanos", "nanosp", "nanox", "stax"]';
           else
               if [[ '${{ inputs.compatible_devices }}' != 'None' ]];
               then
                   # in case classic manifest with devices, the input takes precedence on it
-                  compatible_devices='${{ inputs.compatible_devices }}'
+                  compatible_devices='${{ inputs.compatible_devices }}';
               fi
           fi
+
           echo "compatible_devices=${compatible_devices}" | sed 's/+/p/' >> $GITHUB_OUTPUT;
+          echo "pytest_directory=${pytest_directory}" >> $GITHUB_OUTPUT;
 
           echo "Inferred metadata:"
           cat $GITHUB_OUTPUT
@@ -110,3 +132,4 @@ jobs:
       is_rust: ${{ steps.fetch_metadata.outputs.is_rust }}
       compatible_devices: ${{ steps.fetch_metadata.outputs.compatible_devices }}
       build_directory: ${{ steps.fetch_metadata.outputs.build_directory }}
+      pytest_directory: ${{ steps.fetch_metadata.outputs.pytest_directory }}
