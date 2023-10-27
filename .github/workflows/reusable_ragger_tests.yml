@@ -1,3 +1,4 @@
+---
 name: Functional tests using Ragger
 
 on:
@@ -25,6 +26,16 @@ on:
       download_app_binaries_artifact:
         description: 'The name of the artifact containing the application binary file(s) to be tested. Required'
         required: true
+        type: string
+      additional_app_binaries_artifact:
+        description: 'The name of the artifact containing the additional app binary file(s), if needed by the application to be tested (defaults to empty string)'
+        required: false
+        default: ''
+        type: string
+      additional_app_binaries_artifact_dir:
+        description: 'The directory where the additional app binaries will be downloaded (defaults to ".")'
+        required: false
+        default: '.'
         type: string
       lib_binaries_artifact:
         description: 'The name of the artifact containing the library binary file(s), if needed by the application to be tested (defaults to empty string)'
@@ -69,6 +80,13 @@ jobs:
         with:
           name: ${{ inputs.download_app_binaries_artifact }}
           path: ${{ inputs.relative_app_directory }}/build/
+
+      - name: Download additional app binaries if required
+        if: ${{ inputs.additional_app_binaries_artifact != '' }}
+        uses: actions/download-artifact@v3
+        with:
+          name: ${{ inputs.additional_app_binaries_artifact }}
+          path: ${{ inputs.additional_app_binaries_artifact_dir }}
 
       - name: Download additional lib binaries if required
         if: ${{ inputs.lib_binaries_artifact != '' }}
