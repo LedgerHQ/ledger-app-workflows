@@ -14,10 +14,11 @@ on:
         type: string
       compatible_devices:
         description: |
-          The list of device(s) supported by the application.
+          The list of device(s) the CI will run on.
 
-          Defaults to ["nanos", "nanox", "nanosp", "stax"]), except if the application is configured
-          with a 'ledger_app.toml' manifest at its root.
+          Defaults to the full list of device(s) supported by the application as configured in the
+          'ledger_app.toml' manifest.
+          If the manifest is missing, defaults to ALL (["nanos", "nanox", "nanosp", "stax"]).
         required: false
         default: 'None'
         type: string
@@ -81,7 +82,7 @@ jobs:
                   echo "is_rust=true" >> "$GITHUB_OUTPUT";
               else
                   # classic manifest -> can be either C or Rust
-                  echo "Classic manifest detected.";
+                  echo "Manifest detected.";
                   # checking the manifest with the repo
                   ledger-manifest --check . "$APP_MANIFEST";
                   echo "build_directory=$(ledger-manifest --output-build-directory "$APP_MANIFEST")" >> "$GITHUB_OUTPUT";
