@@ -10,7 +10,7 @@ Others are optional and are provided here to help developers create their own ap
 ## Description of available workflows
 
 - `reusable_guidelines_enforcer.yml`\
-	This workflow is mandatory, itwill call several child reusable workflows.
+	This workflow is mandatory, it will call several child reusable workflows.
 	- `_check_icons.yml`\
 		will ensure that the icons and glyphs used in your app will be displayable on the device.
 	- `_check_makefile.yml`\
