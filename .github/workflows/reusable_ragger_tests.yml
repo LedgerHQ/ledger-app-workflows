@@ -78,6 +78,8 @@ jobs:
     name: Retrieve application metadata
     uses: ./.github/workflows/_get_app_metadata.yml
     with:
+      app_repository: ${{ inputs.app_repository }}
+      app_branch_name: ${{ inputs.app_branch_name }}
       relative_app_directory: ${{ inputs.relative_app_directory }}
       compatible_devices: ${{ inputs.run_for_devices }}
       pytest_directory: ${{ inputs.test_dir }}
