@@ -1,0 +1,56 @@
+name: Run Clang Static Analyzer (master SDK)
+
+on:
+  workflow_call:
+    inputs:
+      run_for_devices:
+        description: 'The list of device(s) on which the checking will run'
+        required: true
+        type: string
+      relative_app_directory:
+        description: 'The relative path in the repository where the application is built from (defaults to ".")'
+        required: false
+        default: '.'
+        type: string
+      is_rust:
+        description: '"true" if the app is using Rust SDK, else "false"'
+        required: true
+        type: string
+
+jobs:
+  scan_build:
+    name: Clang Static Analyzer on master
+    strategy:
+      fail-fast: false
+      matrix:
+        device: ${{ fromJSON(inputs.run_for_devices) }}
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/ledgerhq/ledger-app-builder/ledger-app-builder:latest
+
+    steps:
+      - name: Clone
+        uses: actions/checkout@v3
+        with:
+          submodules: recursive
+
+      - name: Clone SDK
+        uses: actions/checkout@v3
+        with:
+          repository: LedgerHQ/ledger-secure-sdk
+          path: sdk
+          ref: master
+
+      - name: Build with Clang Static Analyzer
+        if: ${{ inputs.is_rust == 'false'}}
+        run: |
+          DEVICE_NAME=$(echo ${{ matrix.device }} | sed 's/nanosp/nanos2/') && \
+          echo "TARGET value will be: ${DEVICE_NAME}" && \
+          make -C ${{ inputs.relative_app_directory }} -j ENABLE_SDK_WERROR=1 BOLOS_SDK=${GITHUB_WORKSPACE}/sdk TARGET=${DEVICE_NAME} scan-build
+
+      - name: Upload scan result
+        if: failure() && ${{ inputs.is_rust == 'false'}}
+        uses: actions/upload-artifact@v3
+        with:
+          name: scan-build
+          path: scan-build

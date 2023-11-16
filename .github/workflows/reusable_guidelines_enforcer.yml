@@ -100,3 +100,13 @@ jobs:
       run_for_devices: ${{ needs.call_get_app_metadata.outputs.compatible_devices }}
       relative_app_directory: ${{ needs.call_get_app_metadata.outputs.build_directory }}
       is_rust: ${{ needs.call_get_app_metadata.outputs.is_rust }}
+
+  call_clang_static_analyzer_latest_sdk:
+    name: Dispatch check
+    needs: call_get_app_metadata
+    uses: ./.github/workflows/_check_clang_static_analyzer_latest_sdk.yml
+    if: github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'scan_on_latest_sdk')      
+    with:
+      run_for_devices: ${{ needs.call_get_app_metadata.outputs.compatible_devices }}
+      relative_app_directory: ${{ needs.call_get_app_metadata.outputs.build_directory }}
+      is_rust: ${{ needs.call_get_app_metadata.outputs.is_rust }}
