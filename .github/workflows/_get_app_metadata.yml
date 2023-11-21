@@ -82,58 +82,51 @@ jobs:
         id: fetch_metadata
         run: |
           pytest_directory='${{ inputs.pytest_directory }}';
-          if [[ -f "$APP_MANIFEST" ]];
+          if [[ ! -f "$APP_MANIFEST" ]];
           then
-              # 'ledger_app.toml' exists
-              if grep -q 'rust-app' "$APP_MANIFEST";
-              then
-                  # legacy manifest -> Rust application
-                  echo "Legacy manifest detected. Please update your manifest to the newest version";
-                  # checking the manifest with the repo
-                  ledger-manifest --legacy --check . "$APP_MANIFEST";
-                  echo "build_directory=$(ledger-manifest --legacy --output-build-directory "$APP_MANIFEST")" >> "$GITHUB_OUTPUT";
-                  compatible_devices='${{ inputs.compatible_devices }}';
-                  echo "is_rust=true" >> "$GITHUB_OUTPUT";
-              else
-                  # classic manifest -> can be either C or Rust
-                  echo "Manifest detected.";
-                  # checking the manifest with the repo
-                  ledger-manifest --check . "$APP_MANIFEST";
-                  echo "build_directory=$(ledger-manifest --output-build-directory "$APP_MANIFEST")" >> "$GITHUB_OUTPUT";
-                  compatible_devices="$(ledger-manifest --output-devices "$APP_MANIFEST")";
-
-                  set +e  # when [tests.pytest_directory] is not set, ledger-manifest fails
-                  if temp="$(ledger-manifest --output-pytest-directory "$APP_MANIFEST")";
-                  then
-                      pytest_directory="${temp}";
-                  fi
-                  set -e
-
-                  if [[ "$(ledger-manifest --output-sdk "$APP_MANIFEST")" == "rust" ]];
-                  then
-                      echo "is_rust=true" >> "$GITHUB_OUTPUT";
-                  else
-                      echo "is_rust=false" >> "$GITHUB_OUTPUT";
-                  fi
-              fi
-          else
-              # No 'ledger_app.toml' -> C application
-              echo "No manifest detected.";
-              echo "build_directory=${{ inputs.relative_app_directory }}" >> "$GITHUB_OUTPUT";
-              compatible_devices='${{ inputs.compatible_devices }}';
-              echo "is_rust=false" >> "$GITHUB_OUTPUT";
+              >&2 echo "/!\ No $APP_MANIFEST manifest detected!";
+              >&2 echo "This file is mandatory, please add it on your repository";
+              >&2 echo "Documentation here: https://github.com/LedgerHQ/ledgered/blob/master/doc/utils/manifest.md";
+              exit 1;
           fi
 
-          if [[ "${compatible_devices}" == 'None' ]];
+          # 'ledger_app.toml' exists
+          if grep -q 'rust-app' "$APP_MANIFEST";
           then
-              # no inputs and no classic manifest
-              compatible_devices='["nanos", "nanosp", "nanox", "stax"]';
+              # legacy manifest -> Rust application
+              echo "Legacy manifest detected. Please update your manifest to the newest version";
+              # checking the manifest with the repo
+              ledger-manifest --legacy --check . "$APP_MANIFEST";
+              echo "build_directory=$(ledger-manifest --legacy --output-build-directory "$APP_MANIFEST")" >> "$GITHUB_OUTPUT";
+              compatible_devices='${{ inputs.compatible_devices }}';
+              echo "is_rust=true" >> "$GITHUB_OUTPUT";
           else
-              if [[ '${{ inputs.compatible_devices }}' != 'None' ]];
+              # classic manifest -> can be either C or Rust
+              echo "Manifest detected.";
+              # checking the manifest with the repo
+              ledger-manifest --check . "$APP_MANIFEST";
+              echo "build_directory=$(ledger-manifest --output-build-directory "$APP_MANIFEST")" >> "$GITHUB_OUTPUT";
+              compatible_devices="$(ledger-manifest --output-devices "$APP_MANIFEST")";
+
+              set +e  # when [tests.pytest_directory] is not set, ledger-manifest fails
+              if temp="$(ledger-manifest --output-pytest-directory "$APP_MANIFEST")";
               then
-                  # in case classic manifest with devices, the input takes precedence on it
-                  compatible_devices='${{ inputs.compatible_devices }}';
+                  pytest_directory="${temp}";
               fi
+              set -e
+
+              if [[ "$(ledger-manifest --output-sdk "$APP_MANIFEST")" == "rust" ]];
+              then
+                  echo "is_rust=true" >> "$GITHUB_OUTPUT";
+              else
+                  echo "is_rust=false" >> "$GITHUB_OUTPUT";
+              fi
+          fi
+
+          if [[ '${{ inputs.compatible_devices }}' != 'None' ]];
+          then
+              # in case classic manifest with devices, the input takes precedence on it
+              compatible_devices='${{ inputs.compatible_devices }}';
           fi
 
           echo "compatible_devices=${compatible_devices}" | sed 's/+/p/' >> "$GITHUB_OUTPUT";
