@@ -14,11 +14,6 @@ on:
         required: false
         default: ${{ github.ref }}
         type: string
-      relative_app_directory:
-        description: 'The relative path in the repository where the application is built from (defaults to ".")'
-        required: false
-        default: .
-        type: string
       test_dir:
         description: |
           The directory where the Python tests are stored (a `conftest.py` file is expected there).
@@ -80,7 +75,6 @@ jobs:
     with:
       app_repository: ${{ inputs.app_repository }}
       app_branch_name: ${{ inputs.app_branch_name }}
-      relative_app_directory: ${{ inputs.relative_app_directory }}
       compatible_devices: ${{ inputs.run_for_devices }}
       pytest_directory: ${{ inputs.test_dir }}
 

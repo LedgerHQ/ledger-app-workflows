@@ -13,15 +13,6 @@ on:
         required: false
         default: ${{ github.ref }}
         type: string
-      relative_app_directory:
-        description: |
-          The relative path in the repository where the application is built from (defaults to ".").
-
-          If the application is configured with a 'ledger_app.toml' manifest at its root, this
-          parameter is ignored.
-        required: false
-        default: .
-        type: string
       compatible_devices:
         description: |
           The list of device(s) the CI will run on.

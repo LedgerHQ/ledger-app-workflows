@@ -13,15 +13,6 @@ on:
         required: false
         default: ${{ github.ref }}
         type: string
-      relative_app_directory:
-        description: |
-          The relative path in the repository where the application is built from (defaults to ".")
-
-          If the application is configured with a 'ledger_app.toml' file at its root, this parameter
-          is ignored.
-        required: false
-        default: '.'
-        type: string
       flags:
         description: "Additional compilation flags (default to none)"
         required: false
@@ -63,7 +54,6 @@ jobs:
     with:
       app_repository: ${{ inputs.app_repository }}
       app_branch_name: ${{ inputs.app_branch_name }}
-      relative_app_directory: ${{ inputs.relative_app_directory }}
       compatible_devices: ${{ inputs.run_for_devices }}
 
   build:
