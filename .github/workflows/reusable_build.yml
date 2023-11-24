@@ -93,6 +93,8 @@ jobs:
               DEVICE_NAME="$(echo ${{ matrix.device }} | sed 's/nanosp/nanosplus/')" && \
               cd ${{ needs.call_get_app_metadata.outputs.build_directory }} && \
               cargo ledger build ${DEVICE_NAME} -- -Zunstable-options --out-dir=./build/${{ matrix.device }}/bin/
+              APP_NAME=$(grep -E '^\s*name\s*=\s*' Cargo.toml | awk -F'["]' '{print $2}')
+              mv ./build/${{ matrix.device }}/bin/${APP_NAME} ./build/${{ matrix.device }}/bin/app.elf
           else
               eval "BOLOS_SDK=\$$(echo ${{ matrix.device }} | tr [:lower:] [:upper:])_SDK" && \
               echo "BOLOS_SDK value will be: ${BOLOS_SDK}" && \
