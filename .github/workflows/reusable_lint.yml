@@ -7,30 +7,48 @@ on:
         required: true
         type: string
       version:
-        required: true
+        required: false
         type: number
+        default: 11
       extensions:
         required: false
         default: 'h,c,proto'
         type: string
 
 jobs:
-  job_lint:
-    name: Lint
-    runs-on: ubuntu-latest
+  call_get_app_metadata:
+    # Call this job to infer the application language (C or Rust)
+    name: Retrieve application metadata
+    uses: ./.github/workflows/_get_app_metadata.yml
 
+  job_lint:
+    name: Lint check
+    needs: call_get_app_metadata
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/ledgerhq/ledger-app-builder/ledger-app-builder:latest
+    
     steps:
       - name: Clone
         uses: actions/checkout@v3
 
       - name: Ensure clang-format is customized
+        if: ${{ needs.call_get_app_metadata.outputs.is_rust == 'false'}}
         uses: andstor/file-existence-action@v2
         with:
           files: ".clang-format"
 
-      - name: Lint
+      - name: Lint check for C app
+        if: ${{ needs.call_get_app_metadata.outputs.is_rust == 'false'}}
         uses: DoozyX/clang-format-lint-action@v0.15
         with:
           source: ${{ inputs.source }}
           extensions: ${{ inputs.extensions }}
-          clangFormatVersion: ${{ inputs.version }}
+          clangFormatVersion: ${{ inputs.version }}    
+
+      - name: Lint check for Rust app
+        if: ${{ needs.call_get_app_metadata.outputs.is_rust == 'true'}}
+        uses: actions-rs/cargo@v1
+        with:
+          command: fmt
+          args: --all -- --check
