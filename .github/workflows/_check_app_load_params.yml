@@ -30,7 +30,7 @@ jobs:
         with:
           repository: LedgerHQ/ledger-app-database
           path: ./ledger-app-database
-          ref: update-rust-boilerplate-data
+          ref: main
 
       - name: Download manifest
         uses: actions/download-artifact@v3
