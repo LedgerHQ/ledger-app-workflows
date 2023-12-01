@@ -13,15 +13,6 @@ on:
         required: false
         default: 'None'
         type: string
-      relative_app_directory:
-        description: |
-          The relative path in the repository where the application is built from (defaults to ".")
-
-          If the application is configured with a 'ledger_app.toml' file at its root, this parameter
-          is ignored.
-        required: false
-        default: '.'
-        type: string
     secrets:
       git_token:
         description: 'A token used as authentication for GIT operations. Useful when including this workflow in a private repository.'
@@ -47,7 +38,6 @@ jobs:
     name: Retrieve application metadata
     uses: ./.github/workflows/_get_app_metadata.yml
     with:
-      relative_app_directory: ${{ inputs.relative_app_directory }}
       compatible_devices: ${{ inputs.run_for_devices }}
 
   call_get_app_manifest:
