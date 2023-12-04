@@ -132,6 +132,7 @@ jobs:
       - name: Run test
         env:
           CTEST_OUTPUT_ON_FAILURE: 1
+          PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION: python
         run: pytest ${{ needs.call_get_app_metadata.outputs.pytest_directory }}/ --tb=short -v --device ${{ matrix.device }} -k ${{ inputs.test_filter }}
 
       - name: Upload snapshots
