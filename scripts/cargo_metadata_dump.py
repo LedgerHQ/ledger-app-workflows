@@ -23,31 +23,27 @@ def save_app_params(device: str, app_build_path: Path, json_path: Path) -> None:
     iconname = metadata["packages"][0]["metadata"]["ledger"][rust_target]["icon"]
     glyph_files = "/opt/nanos-secure-sdk/fake_glyph"  # To please check_icons.sh
 
-    # Generate partial app_load_flags for ledger-app-database comparison only
-    app_load_flags = f"--appName {appname}"
-
-    appFlags = metadata["packages"][0]["metadata"]["ledger"]["flags"]
-    if appFlags.startswith("0x"):
-        appFlags = int(appFlags, 16)
+    app_flags = metadata["packages"][0]["metadata"]["ledger"]["flags"]
+    if app_flags.startswith("0x"):
+        app_flags = int(app_flags, 16)
     else:
-        appFlags = int(appFlags)
+        app_flags = int(app_flags)
     if device in ["nanox", "stax"]:
-        appFlags = appFlags | 0x200
-    appFlags = "0x{:03x}".format(appFlags)
-    app_load_flags += f" --appFlags {appFlags}"
+        app_flags = app_flags | 0x200
+    app_flags = "0x{:03x}".format(app_flags)
 
-    for curve in metadata["packages"][0]["metadata"]["ledger"]["curve"]:
-        app_load_flags += f" --curve {curve}"
+    app_curve = metadata["packages"][0]["metadata"]["ledger"]["curve"]
 
-    for path in metadata["packages"][0]["metadata"]["ledger"]["path"]:
-        app_load_flags += f" --path {path}"
+    app_path = metadata["packages"][0]["metadata"]["ledger"]["path"]
 
     ret = {
         "BUILD_DIRECTORY": app_build_path,
         "VARIANT_PARAM": "NONE",
         "VARIANTS": {
             variant: {
-                "APP_LOAD_PARAMS": app_load_flags,
+                "appFlags": app_flags,
+                "curve": app_curve,
+                "path": app_path,
                 "GLYPH_FILES": glyph_files,
                 "ICONNAME": iconname,
                 "TARGET": c_target,
