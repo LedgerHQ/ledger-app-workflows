@@ -26,7 +26,11 @@ def save_app_params(device: str, app_build_path: Path, json_path: Path) -> None:
     # Generate partial app_load_flags for ledger-app-database comparison only
     app_load_flags = f"--appName {appname}"
 
-    appFlags = int(metadata["packages"][0]["metadata"]["ledger"]["flags"])
+    appFlags = metadata["packages"][0]["metadata"]["ledger"]["flags"]
+    if appFlags.startswith("0x"):
+        appFlags = int(appFlags, 16)
+    else:
+        appFlags = int(appFlags)
     if device in ["nanox", "stax"]:
         appFlags = appFlags | 0x200
     appFlags = "0x{:03x}".format(appFlags)
