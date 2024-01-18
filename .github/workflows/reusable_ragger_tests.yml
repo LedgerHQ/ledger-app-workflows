@@ -64,6 +64,11 @@ on:
         required: false
         default: '""'
         type: string
+      test_timeout:
+        description: 'Set a timeout (in minutes) for test before Github automatically cancels it'
+        required: false
+        default: 360
+        type: number
 
 jobs:
   call_get_app_metadata:
@@ -86,6 +91,8 @@ jobs:
       matrix:
         device: ${{ fromJSON(needs.call_get_app_metadata.outputs.compatible_devices) }}
     runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/ledgerhq/ledger-app-builder/ledger-app-dev-tools:latest
 
     steps:
       - name: Check metadata
@@ -133,6 +140,7 @@ jobs:
         env:
           CTEST_OUTPUT_ON_FAILURE: 1
           PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION: python
+        timeout-minutes: ${{ inputs.test_timeout }}
         run: pytest ${{ needs.call_get_app_metadata.outputs.pytest_directory }}/ --tb=short -v --device ${{ matrix.device }} -k ${{ inputs.test_filter }}
 
       - name: Upload snapshots
