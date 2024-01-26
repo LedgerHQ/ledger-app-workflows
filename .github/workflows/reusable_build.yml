@@ -94,7 +94,7 @@ jobs:
 
       - name: Remove build artifacts before upload
         run: |
-          find ${{ needs.call_get_app_metadata.outputs.build_directory }}/build/ -mindepth 2 -type d ! -name 'bin' -exec rm -r {} +
+          find ${{ needs.call_get_app_metadata.outputs.build_directory }}/build/ -mindepth 2 -maxdepth 2 -type d ! -name 'bin' -exec rm -r {} +
 
       - name: Prepare to upload as lib
         if: ${{ inputs.upload_as_lib_artifact != '' }}
