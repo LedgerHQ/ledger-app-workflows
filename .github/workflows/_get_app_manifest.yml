@@ -38,14 +38,14 @@ jobs:
 
     steps:
       - name: Clone workflows repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: LedgerHQ/ledger-app-workflows
           path: ./ledger-app-workflows
           ref: ${{ inputs.ledger-app-workflows_ref }}
 
       - name: Clone app repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           path: app-repository
           submodules: recursive
@@ -70,7 +70,7 @@ jobs:
               --json_path ../manifest_${{ matrix.device }}.json
 
       - name: Upload app manifest
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: ${{ inputs.upload_manifest_artifact_name }}
           path: ./manifest_*.json

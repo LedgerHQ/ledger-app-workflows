@@ -25,14 +25,14 @@ jobs:
 
     steps:
       - name: Clone workflows repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: LedgerHQ/ledger-app-workflows
           path: ./ledger-app-workflows
           ref: ${{ inputs.ledger-app-workflows_ref }}
 
       - name: Clone app repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: ${{ inputs.app-repository }}
           path: app-repository

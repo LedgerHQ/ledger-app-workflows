@@ -30,11 +30,11 @@ jobs:
     
     steps:
       - name: Clone
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Ensure clang-format is customized
         if: ${{ needs.call_get_app_metadata.outputs.is_rust == 'false'}}
-        uses: andstor/file-existence-action@v2
+        uses: andstor/file-existence-action@v3
         with:
           files: ".clang-format"
 
