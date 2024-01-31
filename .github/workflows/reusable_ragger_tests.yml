@@ -97,28 +97,28 @@ jobs:
           fi
 
       - name: Clone
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: ${{ inputs.app_repository }}
           ref: ${{ inputs.app_branch_name }}
           submodules: recursive
 
       - name: Download app binaries
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: ${{ inputs.download_app_binaries_artifact }}
           path: ${{ needs.call_get_app_metadata.outputs.build_directory }}/build/
 
       - name: Download additional app binaries if required
         if: ${{ inputs.additional_app_binaries_artifact != '' }}
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: ${{ inputs.additional_app_binaries_artifact }}
           path: ${{ inputs.additional_app_binaries_artifact_dir }}
 
       - name: Download additional lib binaries if required
         if: ${{ inputs.lib_binaries_artifact != '' }}
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: ${{ inputs.lib_binaries_artifact }}
           path: ${{ needs.call_get_app_metadata.outputs.pytest_directory }}/lib_binaries/
@@ -137,7 +137,7 @@ jobs:
 
       - name: Upload snapshots
         if: ${{ failure() && inputs.upload_snapshots_on_failure == true }}
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.device }}-tests-snapshots
           path: ${{ needs.call_get_app_metadata.outputs.pytest_directory }}/snapshots-tmp/${{ matrix.device }}

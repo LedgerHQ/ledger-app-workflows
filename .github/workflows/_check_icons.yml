@@ -29,21 +29,21 @@ jobs:
 
     steps:
       - name: Clone workflows repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: LedgerHQ/ledger-app-workflows
           path: ./ledger-app-workflows
           ref: ${{ inputs.ledger-app-workflows_ref }}
 
       - name: Clone app repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: ${{ inputs.app-repository }}
           path: app-repository
           submodules: recursive
 
       - name: Download manifest
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: ${{ inputs.download_manifest_artifact_name }}
           path: ${{ inputs.download_manifest_artifact_name }}

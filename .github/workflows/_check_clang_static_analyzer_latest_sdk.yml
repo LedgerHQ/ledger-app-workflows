@@ -30,12 +30,12 @@ jobs:
 
     steps:
       - name: Clone
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           submodules: recursive
 
       - name: Clone SDK
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: LedgerHQ/ledger-secure-sdk
           path: sdk
@@ -50,7 +50,7 @@ jobs:
 
       - name: Upload scan result
         if: failure() && ${{ inputs.is_rust == 'false'}}
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: scan-build
           path: scan-build

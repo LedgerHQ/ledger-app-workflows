@@ -69,7 +69,7 @@ jobs:
 
     steps:
       - name: Clone
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: ${{ inputs.app_repository }}
           ref: ${{ inputs.app_branch_name }}
@@ -107,7 +107,7 @@ jobs:
 
       - name: Upload app binary
         if: ${{ inputs.upload_app_binaries_artifact != '' }}
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: ${{ inputs.upload_app_binaries_artifact }}
           path: ${{ needs.call_get_app_metadata.outputs.build_directory }}/build/*
