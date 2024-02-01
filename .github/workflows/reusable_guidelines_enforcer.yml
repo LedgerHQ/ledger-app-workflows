@@ -48,7 +48,7 @@ jobs:
       ledger-app-workflows_ref: ${{ needs.call_get_workflow_version.outputs.version }}
       run_for_devices: ${{ needs.call_get_app_metadata.outputs.compatible_devices }}
       relative_app_directory: ${{ needs.call_get_app_metadata.outputs.build_directory }}
-      is_rust:  ${{ needs.call_get_app_metadata.outputs.is_rust }}
+      is_rust: ${{ needs.call_get_app_metadata.outputs.is_rust }}
       upload_manifest_artifact_name: manifests
 
   call_check_icons:
@@ -95,7 +95,7 @@ jobs:
     name: Dispatch check
     needs: call_get_app_metadata
     uses: ./.github/workflows/_check_clang_static_analyzer_latest_sdk.yml
-    if: github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'scan_on_latest_sdk')      
+    if: github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'scan_on_latest_sdk')
     with:
       run_for_devices: ${{ needs.call_get_app_metadata.outputs.compatible_devices }}
       relative_app_directory: ${{ needs.call_get_app_metadata.outputs.build_directory }}

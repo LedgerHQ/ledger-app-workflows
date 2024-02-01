@@ -27,7 +27,7 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/ledgerhq/ledger-app-builder/ledger-app-builder:latest
-    
+
     steps:
       - name: Clone
         uses: actions/checkout@v4
@@ -44,7 +44,7 @@ jobs:
         with:
           source: ${{ inputs.source }}
           extensions: ${{ inputs.extensions }}
-          clangFormatVersion: ${{ inputs.version }}    
+          clangFormatVersion: ${{ inputs.version }}
 
       - name: Lint check for Rust app
         if: ${{ needs.call_get_app_metadata.outputs.is_rust == 'true'}}
