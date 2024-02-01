@@ -14,21 +14,28 @@ jobs:
     name: Shellcheck
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
-    - name: Run ShellCheck
-      uses: ludeeus/action-shellcheck@master
-      env:
-        SHELLCHECK_OPTS: -e SC2001 -e SC2002
-      with:
-        check_together: 'yes'
+      - uses: actions/checkout@v4
+      - name: Run ShellCheck
+        uses: ludeeus/action-shellcheck@master
+        env:
+          SHELLCHECK_OPTS: -e SC2001 -e SC2002
+        with:
+          check_together: 'yes'
 
   misspell:
     name: Check misspellings
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
-    - name: Check misspellings
-      uses: codespell-project/actions-codespell@v1
-      with:
-        builtin: clear,rare
-        check_filenames: true
+      - uses: actions/checkout@v4
+      - name: Check misspellings
+        uses: codespell-project/actions-codespell@v1
+        with:
+          builtin: clear,rare
+          check_filenames: true
+
+  yamllint:
+    name: Check yaml files
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: yamllint .
