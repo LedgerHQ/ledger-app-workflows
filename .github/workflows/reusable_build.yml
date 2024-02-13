@@ -84,8 +84,11 @@ jobs:
               BIN_DIR_NAME="$(echo ${{ matrix.device }} | sed 's/nanosp/nanos2/')" && \
               cd ${{ needs.call_get_app_metadata.outputs.build_directory }} && \
               cargo ledger build ${BUILD_DEVICE_NAME} -- -Zunstable-options --out-dir=./build/${BIN_DIR_NAME}/bin/ && \
-              APP_NAME=$(grep -E '^\s*name\s*=\s*' Cargo.toml | head -n 1 | awk -F'["]' '{print $2}') && \
-              mv ./build/${BIN_DIR_NAME}/bin/${APP_NAME} ./build/${BIN_DIR_NAME}/bin/app.elf
+              echo "Build complete" && \
+              APP_NAME=$(cargo metadata --format-version=1 --no-deps | jq -r '.packages[].name') && \
+              echo "APP_NAME=${APP_NAME}" && \
+              mv ./build/${BIN_DIR_NAME}/bin/${APP_NAME} ./build/${BIN_DIR_NAME}/bin/app.elf && \
+              echo "Binary ./build/${BIN_DIR_NAME}/bin/${APP_NAME} copied as ./build/${BIN_DIR_NAME}/bin/app.elf"
           else
               eval "BOLOS_SDK=\$$(echo ${{ matrix.device }} | tr [:lower:] [:upper:])_SDK" && \
               echo "BOLOS_SDK value will be: ${BOLOS_SDK}" && \
