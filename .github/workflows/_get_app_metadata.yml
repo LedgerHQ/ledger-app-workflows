@@ -100,7 +100,7 @@ jobs:
 
           # pytest_directory (if any)
           set +e  # when [tests.pytest_directory] is not set, ledger-manifest fails. We don't want that
-          if temp="$(ledger-manifest --output-pytest-directory "$APP_MANIFEST")";
+          if temp="$(ledger-manifest --output-tests-pytest-directory "$APP_MANIFEST")";
           then
               pytest_directory="${temp}";
           fi
