@@ -89,8 +89,8 @@ jobs:
           # build directory
           echo "build_directory=$(ledger-manifest --output-build-directory "$APP_MANIFEST")" >> "$GITHUB_OUTPUT";
 
-          # device list
-          compatible_devices="$(ledger-manifest --output-devices "$APP_MANIFEST")";
+          # get device list as a single line json formatted value
+          compatible_devices="$(ledger-manifest --output-devices "$APP_MANIFEST" -j | jq -rc '.devices')";
           if [[ '${{ inputs.compatible_devices }}' != 'None' ]];
           then
               # in case classic manifest with devices, the input takes precedence on it
