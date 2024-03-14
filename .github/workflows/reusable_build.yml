@@ -83,6 +83,8 @@ jobs:
               BUILD_DEVICE_NAME="$(echo ${{ matrix.device }} | sed 's/nanosp/nanosplus/')" && \
               BIN_DIR_NAME="$(echo ${{ matrix.device }} | sed 's/nanosp/nanos2/')" && \
               cd ${{ needs.call_get_app_metadata.outputs.build_directory }} && \
+              cargo +$RUST_NIGHTLY update ledger_device_sdk && \
+              cargo +$RUST_NIGHTLY update ledger_secure_sdk_sys && \
               cargo ledger build ${BUILD_DEVICE_NAME} -- -Zunstable-options --out-dir=./build/${BIN_DIR_NAME}/bin/ && \
               echo "Build complete" && \
               APP_NAME=$(cargo metadata --format-version=1 --no-deps -q | jq -r '.packages[].name') && \
