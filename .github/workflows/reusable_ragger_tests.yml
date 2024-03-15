@@ -86,6 +86,8 @@ jobs:
       matrix:
         device: ${{ fromJSON(needs.call_get_app_metadata.outputs.compatible_devices) }}
     runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/ledgerhq/ledger-app-builder/ledger-app-dev-tools:latest
 
     steps:
       - name: Check metadata
@@ -125,7 +127,6 @@ jobs:
 
       - name: Install tests dependencies
         run: |
-          sudo apt-get update && sudo apt-get install -y qemu-user-static tesseract-ocr libtesseract-dev
           pip install -U pip setuptools
           pip install -r "${{ needs.call_get_app_metadata.outputs.pytest_directory }}/requirements.txt"
           if [[ -f ${{ needs.call_get_app_metadata.outputs.pytest_directory }}/setup_script.sh ]]; then ./${{ needs.call_get_app_metadata.outputs.pytest_directory }}/setup_script.sh; fi
