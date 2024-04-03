@@ -76,6 +76,7 @@ jobs:
           submodules: recursive
 
       - name: Build application
+        id: "build"
         shell: bash
         run: |
           if [[ "${{ needs.call_get_app_metadata.outputs.is_rust }}" == "true" ]];
@@ -85,13 +86,14 @@ jobs:
               cargo +$RUST_NIGHTLY update ledger_device_sdk && \
               cargo +$RUST_NIGHTLY update ledger_secure_sdk_sys && \
               cargo ledger build ${BUILD_DEVICE_NAME} && \
-              echo "BINARY_PATH=${{ needs.call_get_app_metadata.outputs.build_directory }}/target/*" >> $GITHUB_ENV && \
+              echo "binary_path=${{ needs.call_get_app_metadata.outputs.build_directory }}/target/*" >> $GITHUB_OUTPUT && \
               echo "Build complete"
           else
               eval "BOLOS_SDK=\$$(echo ${{ matrix.device }} | tr [:lower:] [:upper:])_SDK" && \
               echo "BOLOS_SDK value will be: ${BOLOS_SDK}" && \
               make -C ${{ needs.call_get_app_metadata.outputs.build_directory }} -j ${{ inputs.flags }} BOLOS_SDK=${BOLOS_SDK} && \
-              echo "BINARY_PATH=${{ needs.call_get_app_metadata.outputs.build_directory }}/build/*" >> $GITHUB_ENV
+              echo "binary_path=${{ needs.call_get_app_metadata.outputs.build_directory }}/build/*" >> $GITHUB_OUTPUT
+              echo "Build complete"
           fi
 
       - name: Remove build artifacts before upload
@@ -117,5 +119,5 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: ${{ inputs.upload_app_binaries_artifact }}
-          path: ${{ env.BINARY_PATH }}
+          path: ${{ steps.build.outputs.binary_path }}
           if-no-files-found: error

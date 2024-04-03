@@ -104,19 +104,20 @@ jobs:
           submodules: recursive
 
       - name: Set binary path
+        id: "set_binary_path"
         run: |
           if [[ "${{ needs.call_get_app_metadata.outputs.is_rust }}" == "true" ]];
           then
-              echo "BINARY_PATH=${{ needs.call_get_app_metadata.outputs.build_directory }}/target/" >> $GITHUB_ENV
+              echo "binary_path=${{ needs.call_get_app_metadata.outputs.build_directory }}/target/" >> $GITHUB_OUTPUT
           else
-              echo "BINARY_PATH=${{ needs.call_get_app_metadata.outputs.build_directory }}/build/" >> $GITHUB_ENV
+              echo "binary_path=${{ needs.call_get_app_metadata.outputs.build_directory }}/build/" >> $GITHUB_OUTPUT
           fi
 
       - name: Download app binaries
         uses: actions/download-artifact@v3
         with:
           name: ${{ inputs.download_app_binaries_artifact }}
-          path: ${{ env.BINARY_PATH }}
+          path: ${{ steps.set_binary_path.outputs.binary_path }}
 
       - name: Display structure of downloaded files
         run: ls -R ${{ needs.call_get_app_metadata.outputs.build_directory }}/build/
