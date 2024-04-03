@@ -76,30 +76,34 @@ jobs:
           submodules: recursive
 
       - name: Build application
+        id: "build"
         shell: bash
         run: |
           if [[ "${{ needs.call_get_app_metadata.outputs.is_rust }}" == "true" ]];
           then
               BUILD_DEVICE_NAME="$(echo ${{ matrix.device }} | sed 's/nanosp/nanosplus/')" && \
-              BIN_DIR_NAME="$(echo ${{ matrix.device }} | sed 's/nanosp/nanos2/')" && \
               cd ${{ needs.call_get_app_metadata.outputs.build_directory }} && \
               cargo +$RUST_NIGHTLY update ledger_device_sdk && \
               cargo +$RUST_NIGHTLY update ledger_secure_sdk_sys && \
-              cargo ledger build ${BUILD_DEVICE_NAME} -- -Zunstable-options --out-dir=./build/${BIN_DIR_NAME}/bin/ && \
-              echo "Build complete" && \
-              APP_NAME=$(cargo metadata --format-version=1 --no-deps -q | jq -r '.packages[].name') && \
-              echo "APP_NAME=${APP_NAME}" && \
-              mv ./build/${BIN_DIR_NAME}/bin/${APP_NAME} ./build/${BIN_DIR_NAME}/bin/app.elf && \
-              echo "Binary ./build/${BIN_DIR_NAME}/bin/${APP_NAME} copied as ./build/${BIN_DIR_NAME}/bin/app.elf"
+              cargo ledger build ${BUILD_DEVICE_NAME} && \
+              echo "binary_path=${{ needs.call_get_app_metadata.outputs.build_directory }}/target/*" >> $GITHUB_OUTPUT && \
+              echo "Build complete"
           else
               eval "BOLOS_SDK=\$$(echo ${{ matrix.device }} | tr [:lower:] [:upper:])_SDK" && \
               echo "BOLOS_SDK value will be: ${BOLOS_SDK}" && \
-              make -C ${{ needs.call_get_app_metadata.outputs.build_directory }} -j ${{ inputs.flags }} BOLOS_SDK=${BOLOS_SDK}
+              make -C ${{ needs.call_get_app_metadata.outputs.build_directory }} -j ${{ inputs.flags }} BOLOS_SDK=${BOLOS_SDK} && \
+              echo "binary_path=${{ needs.call_get_app_metadata.outputs.build_directory }}/build/*" >> $GITHUB_OUTPUT
+              echo "Build complete"
           fi
 
       - name: Remove build artifacts before upload
         run: |
-          find ${{ needs.call_get_app_metadata.outputs.build_directory }}/build/ -mindepth 2 -maxdepth 2 -type d ! -name 'bin' -exec rm -r {} +
+          if [[ "${{ needs.call_get_app_metadata.outputs.is_rust }}" == "true" ]];
+          then
+              find ${{ needs.call_get_app_metadata.outputs.build_directory }}/target -mindepth 3 -maxdepth 3 -type d -exec rm -rf {} +
+          else
+              find ${{ needs.call_get_app_metadata.outputs.build_directory }}/build/ -mindepth 2 -maxdepth 2 -type d ! -name 'bin' -exec rm -r {} +
+          fi
 
       - name: Prepare to upload as lib
         if: ${{ inputs.upload_as_lib_artifact != '' }}
@@ -115,5 +119,5 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: ${{ inputs.upload_app_binaries_artifact }}
-          path: ${{ needs.call_get_app_metadata.outputs.build_directory }}/build/*
+          path: ${{ steps.build.outputs.binary_path }}
           if-no-files-found: error
