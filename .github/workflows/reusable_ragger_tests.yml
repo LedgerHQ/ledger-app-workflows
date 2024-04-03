@@ -109,6 +109,9 @@ jobs:
           name: ${{ inputs.download_app_binaries_artifact }}
           path: ${{ needs.call_get_app_metadata.outputs.build_directory }}/build/
 
+      - name: Display structure of downloaded files
+        run: ls -R ${{ needs.call_get_app_metadata.outputs.build_directory }}/build/
+
       - name: Download additional app binaries if required
         if: ${{ inputs.additional_app_binaries_artifact != '' }}
         uses: actions/download-artifact@v3
@@ -116,12 +119,20 @@ jobs:
           name: ${{ inputs.additional_app_binaries_artifact }}
           path: ${{ inputs.additional_app_binaries_artifact_dir }}
 
+      - name: Display structure of downloaded files
+        if: ${{ inputs.additional_app_binaries_artifact != '' }}
+        run: ls -R ${{ inputs.additional_app_binaries_artifact_dir }}
+
       - name: Download additional lib binaries if required
         if: ${{ inputs.lib_binaries_artifact != '' }}
         uses: actions/download-artifact@v3
         with:
           name: ${{ inputs.lib_binaries_artifact }}
           path: ${{ needs.call_get_app_metadata.outputs.pytest_directory }}/lib_binaries/
+
+      - name: Display structure of downloaded files
+        if: ${{ inputs.lib_binaries_artifact != '' }}
+        run: ls -R ${{ needs.call_get_app_metadata.outputs.pytest_directory }}/lib_binaries/
 
       - name: Install tests dependencies
         run: |
