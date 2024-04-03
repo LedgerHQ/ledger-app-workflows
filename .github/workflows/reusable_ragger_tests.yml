@@ -120,7 +120,7 @@ jobs:
           path: ${{ steps.set_binary_path.outputs.binary_path }}
 
       - name: Display structure of downloaded files
-        run: ls -R ${{ needs.call_get_app_metadata.outputs.build_directory }}/build/
+        run: ls -R ${{ needs.call_get_app_metadata.outputs.build_directory }}
 
       - name: Download additional app binaries if required
         if: ${{ inputs.additional_app_binaries_artifact != '' }}
