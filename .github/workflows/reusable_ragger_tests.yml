@@ -64,6 +64,11 @@ on:
         required: false
         default: '""'
         type: string
+      test_options:
+        description: 'Specify optional parameters to be passed to the running test'
+        required: false
+        default: '""'
+        type: string
 
 jobs:
   call_get_app_metadata:
@@ -155,7 +160,7 @@ jobs:
         env:
           CTEST_OUTPUT_ON_FAILURE: 1
           PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION: python
-        run: pytest ${{ needs.call_get_app_metadata.outputs.pytest_directory }}/ --tb=short -v --device ${{ matrix.device }} -k ${{ inputs.test_filter }}
+        run: pytest ${{ needs.call_get_app_metadata.outputs.pytest_directory }}/ --tb=short -v --device ${{ matrix.device }} -k ${{ inputs.test_filter }} ${{ inputs.test_options }}
 
       - name: Upload snapshots
         if: ${{ failure() && inputs.upload_snapshots_on_failure == true }}
