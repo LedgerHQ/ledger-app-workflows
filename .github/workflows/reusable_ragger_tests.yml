@@ -67,7 +67,7 @@ on:
       test_options:
         description: 'Specify optional parameters to be passed to the running test'
         required: false
-        default: '""'
+        default: ''
         type: string
 
 jobs:
