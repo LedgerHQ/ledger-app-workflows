@@ -23,6 +23,9 @@ check_geometry() (
         "stax")
             geometry="32x32"
             ;;
+        "flex")
+            geometry="40x40"
+            ;;
         *)
             log_error "Device '$device' not recognized"
             return 1
