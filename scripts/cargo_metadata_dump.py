@@ -28,7 +28,7 @@ def save_app_params(device: str, app_build_path: Path, json_path: Path) -> None:
         app_flags = int(app_flags, 16)
     else:
         app_flags = int(app_flags)
-    if device in ["nanox", "stax"]:
+    if device in ["nanox", "stax", "flex"]:
         app_flags = app_flags | 0x200
     app_flags = "0x{:03x}".format(app_flags)
 
@@ -63,7 +63,7 @@ if __name__ == "__main__":
     parser.add_argument("--device",
                         help="device model",
                         required=True,
-                        choices=["nanos", "nanox", "nanosp", "stax"])
+                        choices=["nanos", "nanox", "nanosp", "stax", "flex"])
     parser.add_argument("--app_build_path",
                         help="App build path, e.g. <app-boilerplate/app>",
                         required=True)
