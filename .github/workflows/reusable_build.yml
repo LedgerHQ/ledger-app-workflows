@@ -83,8 +83,9 @@ jobs:
           then
               BUILD_DEVICE_NAME="$(echo ${{ matrix.device }} | sed 's/nanosp/nanosplus/')" && \
               cd ${{ needs.call_get_app_metadata.outputs.build_directory }} && \
-              cargo +$RUST_NIGHTLY update ledger_device_sdk && \
+              cargo +$RUST_NIGHTLY update include_gif && \
               cargo +$RUST_NIGHTLY update ledger_secure_sdk_sys && \
+              cargo +$RUST_NIGHTLY update ledger_device_sdk && \
               cargo ledger build ${BUILD_DEVICE_NAME} && \
               echo "binary_path=${{ needs.call_get_app_metadata.outputs.build_directory }}/target/*" >> $GITHUB_OUTPUT && \
               echo "Build complete"
