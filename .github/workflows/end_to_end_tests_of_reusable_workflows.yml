@@ -155,3 +155,26 @@ jobs:
       download_app_binaries_artifact: plugin_boilerplate_binaries
       additional_app_binaries_artifact: ethereum_build_develop
       additional_app_binaries_artifact_dir: ./tests/.test_dependencies/ethereum/build
+
+
+  ####################################
+  ######### Rust Boilerplate #########
+  ####################################
+
+  build_rust_boilerplate_application:
+    name: Build rust boilerplate
+    uses: ./.github/workflows/reusable_build.yml
+    with:
+      app_repository: LedgerHQ/app-boilerplate-rust
+      app_branch_name: main
+      upload_app_binaries_artifact: "rust_boilerplate_binaries"
+      builder: ledger-app-builder
+
+  ragger_tests_rust_boilerplate:
+    name: Run rust boilerplate tests
+    needs: build_rust_boilerplate_application
+    uses: ./.github/workflows/reusable_ragger_tests.yml
+    with:
+      app_repository: LedgerHQ/app-boilerplate-rust
+      app_branch_name: main
+      download_app_binaries_artifact: "rust_boilerplate_binaries"
