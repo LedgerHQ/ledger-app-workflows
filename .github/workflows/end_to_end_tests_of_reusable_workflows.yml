@@ -25,7 +25,7 @@ jobs:
   ##################################
 
   build_sideloaded_applications_for_exchange:
-    name: Build sideloaded applications using the reusable workflow
+    name: Build sideloaded applications
     strategy:
       fail-fast: false
       matrix:
@@ -71,12 +71,14 @@ jobs:
     with:
       app_repository: ${{ matrix.coin.repo }}
       app_branch_name: ${{ matrix.coin.branch }}
-      flags: "COIN=${{ matrix.coin.name }} CHAIN=${{ matrix.coin.name }}"
+      # Set the coin variant to build with COIN or CHAIN depending on the app + flags for ETH compilation
+      # As a rule of thumb we don't care about giving unexisting flags to other apps, it has no effect
+      flags: "COIN=${{ matrix.coin.name }} CHAIN=${{ matrix.coin.name }} CAL_TEST_KEY=1 DOMAIN_NAME_TEST_KEY=1 SET_PLUGIN_TEST_KEY=1 NFT_TEST_KEY=1"
       upload_app_binaries_artifact: libraries_binaries
       upload_as_lib_artifact: ${{ matrix.coin.name }}
 
   build_exchange_application:
-    name: Build application using the reusable workflow
+    name: Build Exchange
     uses: ./.github/workflows/reusable_build.yml
     with:
       app_repository: LedgerHQ/app-exchange
@@ -85,7 +87,7 @@ jobs:
       upload_app_binaries_artifact: exchange_binaries
 
   ragger_tests_exchange:
-    name: Run ragger tests using the reusable workflow
+    name: Run Exchange tests
     needs:
       - build_exchange_application
       - build_sideloaded_applications_for_exchange
@@ -103,7 +105,7 @@ jobs:
   #####################################
 
   build_boilerplate_application:
-    name: Build application using the reusable workflow
+    name: Build boilerplate
     uses: ./.github/workflows/reusable_build.yml
     with:
       app_repository: LedgerHQ/app-boilerplate
@@ -111,7 +113,7 @@ jobs:
       upload_app_binaries_artifact: "boilerplate_binaries"
 
   ragger_tests_boilerplate:
-    name: Run ragger tests using the reusable workflow
+    name: Run boilerplate tests
     needs: build_boilerplate_application
     uses: ./.github/workflows/reusable_ragger_tests.yml
     with:
@@ -124,7 +126,7 @@ jobs:
   ############################################
 
   build_plugin_boilerplate:
-    name: Build plugin using the reusable workflow
+    name: Build plugin boilerplate
     uses: ./.github/workflows/reusable_build.yml
     with:
       app_repository: LedgerHQ/app-plugin-boilerplate
@@ -133,7 +135,7 @@ jobs:
       flags: "DEBUG=1"
 
   build_develop_ethereum_app:
-    name: Build Ethereum app using the reusable workflow
+    name: Build Ethereum
     uses: ./.github/workflows/reusable_build.yml
     with:
       app_repository: LedgerHQ/app-ethereum
@@ -142,7 +144,7 @@ jobs:
       upload_app_binaries_artifact: ethereum_build_develop
 
   ragger_tests_plugin_boilerplate:
-    name: Run ragger tests using the reusable workflow
+    name: Run plugin boilerplate tests
     needs:
       - build_plugin_boilerplate
       - build_develop_ethereum_app
