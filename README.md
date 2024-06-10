@@ -23,8 +23,7 @@ Others are optional and are provided here to help developers create their own ap
 		will perform some security and quality checks.
 
 - `reusable_build.yml` \
-This workflow will perform a build and upload the artifact containing the compiled application.
-This workflow is optional and is meant to help developers have their own CI.
+This workflow is mandatory, it will perform a build and upload the artifact containing the compiled application. It guarantees that the app will be buildable in the deployment environment.
 
 - `reusable_ragger_tests.yml`\
 This workflow will download the compiled application and run the tests using the ragger testing framework.
@@ -32,7 +31,7 @@ This workflow is optional and is meant to help developers have their own tests.
 
 - `reusable_linter.yml` \
 This workflow will perform linting checks on the application using DoozyX/clang-format-lint-action.
-This workflow is mandatory, however the content of the `.clang-format` file is not.
+This workflow is optional, the content of the `.clang-format` file can be customized.
 
 - `reusable_pypi_deployment.yml` \
 This workflow will build, check and deploy a Python package. This workflow is optional and is meant
