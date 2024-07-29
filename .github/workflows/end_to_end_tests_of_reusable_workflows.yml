@@ -141,7 +141,6 @@ jobs:
     with:
       app_repository: LedgerHQ/app-boilerplate
       app_branch_name: nanos_baseline
-      run_for_devices: '["nanos"]'
       upload_app_binaries_artifact: "boilerplate_binaries_nanos"
 
   ragger_tests_nanos_boilerplate:
@@ -151,7 +150,6 @@ jobs:
     with:
       app_repository: LedgerHQ/app-boilerplate
       app_branch_name: nanos_baseline
-      run_for_devices: '["nanos"]'
       download_app_binaries_artifact: "boilerplate_binaries_nanos"
 
   ############################################
