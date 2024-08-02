@@ -87,7 +87,8 @@ jobs:
               cargo +$RUST_NIGHTLY update ledger_secure_sdk_sys && \
               cargo +$RUST_NIGHTLY update ledger_device_sdk && \
               cargo ledger build ${BUILD_DEVICE_NAME} && \
-              echo "binary_path=${{ needs.call_get_app_metadata.outputs.build_directory }}/target/*" >> $GITHUB_OUTPUT && \
+              binary_path=$(cargo metadata --no-deps --format-version 1 | jq -r '.target_directory')/* && \
+              echo "binary_path=$binary_path" >> $GITHUB_OUTPUT && \
               echo "Build complete"
           else
               eval "BOLOS_SDK=\$$(echo ${{ matrix.device }} | tr [:lower:] [:upper:])_SDK" && \
@@ -101,9 +102,9 @@ jobs:
         run: |
           if [[ "${{ needs.call_get_app_metadata.outputs.is_rust }}" == "true" ]];
           then
-              find ${{ needs.call_get_app_metadata.outputs.build_directory }}/target -mindepth 3 -maxdepth 3 -type d -exec rm -rf {} +
+              find ${{ steps.build.outputs.binary_path }} -mindepth 3 -maxdepth 3 -type d -exec rm -rf {} +
           else
-              find ${{ needs.call_get_app_metadata.outputs.build_directory }}/build/ -mindepth 2 -maxdepth 2 -type d ! -name 'bin' -exec rm -r {} +
+              find ${{ steps.build.outputs.binary_path }} -mindepth 2 -maxdepth 2 -type d ! -name 'bin' -exec rm -r {} +
           fi
 
       - name: Prepare to upload as lib
@@ -114,6 +115,10 @@ jobs:
           find ${{ needs.call_get_app_metadata.outputs.build_directory }}/build/${DEVICE_NAME}/ -type f -name 'app.elf' -exec mv {} ${{ inputs.upload_as_lib_artifact }}_${DEVICE_NAME}.elf \; && \
           rm -r ${{ needs.call_get_app_metadata.outputs.build_directory }}/build/* && \
           mv ${{ inputs.upload_as_lib_artifact }}_${DEVICE_NAME}.elf ${{ needs.call_get_app_metadata.outputs.build_directory }}/build/
+
+      - name: Display structure of binary files
+        run: |
+          ls -R ${{ steps.build.outputs.binary_path }}
 
       - name: Upload app binary
         if: ${{ inputs.upload_app_binaries_artifact != '' }}

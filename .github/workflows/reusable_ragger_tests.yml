@@ -113,7 +113,10 @@ jobs:
         run: |
           if [[ "${{ needs.call_get_app_metadata.outputs.is_rust }}" == "true" ]];
           then
-              echo "binary_path=${{ needs.call_get_app_metadata.outputs.build_directory }}/target/" >> $GITHUB_OUTPUT
+              echo "Set Rust binary path" && \
+              cd ${{ needs.call_get_app_metadata.outputs.build_directory }} && \
+              binary_path=$(cargo metadata --no-deps --format-version 1 | jq -r '.target_directory')/ && \
+              echo "binary_path=$binary_path" >> $GITHUB_OUTPUT
           else
               echo "binary_path=${{ needs.call_get_app_metadata.outputs.build_directory }}/build/" >> $GITHUB_OUTPUT
           fi
@@ -125,7 +128,13 @@ jobs:
           path: ${{ steps.set_binary_path.outputs.binary_path }}
 
       - name: Display structure of downloaded files
-        run: ls -R ${{ needs.call_get_app_metadata.outputs.build_directory }}
+        run: |
+          if [[ "${{ needs.call_get_app_metadata.outputs.is_rust }}" == "true" ]];
+          then
+            ls -R ${{ env.binary_path }}
+          else
+            ls -R ${{ needs.call_get_app_metadata.outputs.build_directory }}
+          fi
 
       - name: Download additional app binaries if required
         if: ${{ inputs.additional_app_binaries_artifact != '' }}
