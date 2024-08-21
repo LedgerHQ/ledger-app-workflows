@@ -17,13 +17,17 @@ def save_app_params(device: str, app_build_path: Path, json_path: Path) -> None:
         rust_target = "nanosplus"
         c_target = "nanos2"
 
-    variant = metadata["packages"][0]["name"]
-    appname = metadata["packages"][0]["metadata"]["ledger"]["name"]
-    appversion = metadata["packages"][0]["version"]
-    iconname = metadata["packages"][0]["metadata"]["ledger"][rust_target]["icon"]
+    # find package with metadata.ledger
+    packages = metadata.get("packages", [])
+    package = next((pkg for pkg in packages if "metadata" in pkg and pkg["metadata"] is not None and "ledger" in pkg["metadata"]),None)
+
+    variant = package["name"]
+    appname = package["metadata"]["ledger"]["name"]
+    appversion = package["version"]
+    iconname = package["metadata"]["ledger"][rust_target]["icon"]
     glyph_files = "/opt/nanos-secure-sdk/fake_glyph"  # To please check_icons.sh
 
-    app_flags = metadata["packages"][0]["metadata"]["ledger"]["flags"]
+    app_flags = package["metadata"]["ledger"]["flags"]
     if app_flags.startswith("0x"):
         app_flags = int(app_flags, 16)
     else:
@@ -32,9 +36,9 @@ def save_app_params(device: str, app_build_path: Path, json_path: Path) -> None:
         app_flags = app_flags | 0x200
     app_flags = "0x{:03x}".format(app_flags)
 
-    app_curve = metadata["packages"][0]["metadata"]["ledger"]["curve"]
+    app_curve = package["metadata"]["ledger"]["curve"]
 
-    app_path = metadata["packages"][0]["metadata"]["ledger"]["path"]
+    app_path = package["metadata"]["ledger"]["path"]
 
     ret = {
         "BUILD_DIRECTORY": app_build_path,
