@@ -1,0 +1,101 @@
+---
+name: Open PR with new snapshots
+
+on:
+  workflow_call:
+    inputs:
+      app_repository:
+        description: 'The GIT repository to test (defaults to `github.repository`)'
+        required: false
+        default: ${{ github.repository }}
+        type: string
+      app_branch_name:
+        description: 'The GIT branch to test (defaults to `github.ref`)'
+        required: false
+        default: ${{ github.ref }}
+        type: string
+      snapshots_artifact_name:
+        description: 'The artifact name'
+        required: true
+        type: string
+      snapshots_directory:
+        description: 'The directory in which the snapshots are extracted'
+        required: true
+        type: string
+
+jobs:
+  commit_new_snapshots:
+    name: Commit new snapshots
+    runs-on: ubuntu-latest
+    steps:
+      - name: Refuse to run on anything else than workflow dispatch
+        if: ${{ github.event_name != 'workflow_dispatch' }}
+        # Running this job on PRs or push could get out of hand
+        run: |
+          echo "This workflow is only allowed to run on 'workflow_dispatch' events."
+          exit 1
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ inputs.app_repository }}
+          ref: ${{ inputs.app_branch_name }}
+          submodules: recursive
+          # by default the action uses fetch-depth = 1, which creates
+          # shallow repositories from which we can't push
+          fetch-depth: 0
+          # needed, else the push inside the action will use default credentials
+          # instead of provided ones
+          persist-credentials: false
+
+      - name: Download new snapshots
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.snapshots_artifact_name }}
+          path: ${{ inputs.snapshots_directory }}
+
+      - name: Check if update is needed
+        id: check-changes
+        run: |
+          if [[ -n $(git status --porcelain) ]]; then
+              echo "Changes detected"
+              echo "changes_detected=true" >> "$GITHUB_OUTPUT"
+          else
+              echo "No changes detected"
+              echo "changes_detected=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Commit changes, create branch and open a PR
+        if: ${{ steps.check-changes.outputs.changes_detected == 'true' }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Set credentials for commit creation
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add ${{ inputs.snapshots_directory }}
+          git status
+          git commit -m "[auto-update] Update Ragger snapshots"
+
+          # Use the commit sha in the branch name to allow this job to be parallelized
+          id=$(git rev-parse --short HEAD)
+          echo "ID: $id"
+          branch_name="auto/update_snapshots-$id"
+          echo "Branch Name: $branch_name"
+          git checkout -b $branch_name
+          git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git > /dev/null 2>&1
+          git push -u origin $branch_name
+
+          # Create 'auto' label if missing
+          if [[ -z $(gh label list --search auto) ]]; then
+            gh label create 'auto' --color 'b4a8d1' --description 'Automatically created'
+          fi
+
+          body="PR created by a Github workflow\n\n:warning: You <ins>need</ins> to review the generated snapshots :warning:"
+          # Create the PR with a placeholder body. Will be consolidated at a later step
+          gh pr create \
+            --base "${{ inputs.app_branch_name }}" \
+            --head "$branch_name" \
+            --label "auto" \
+            --title "[auto-update] Update Ragger snapshots" \
+            --body "$(printf "$body")"
