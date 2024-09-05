@@ -60,9 +60,6 @@ jobs:
           - name: solana
             repo: 'LedgerHQ/app-solana'
             branch: 'develop'
-          - name: bsc
-            repo: 'LedgerHQ/app-ethereum'
-            branch: 'develop'
           - name: DOT
             repo: 'LedgerHQ/app-polkadot'
             branch: 'develop'
