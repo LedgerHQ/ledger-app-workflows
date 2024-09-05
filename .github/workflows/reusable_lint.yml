@@ -40,7 +40,7 @@ jobs:
 
       - name: Lint check for C app
         if: ${{ needs.call_get_app_metadata.outputs.is_rust == 'false'}}
-        uses: DoozyX/clang-format-lint-action@v0.15
+        uses: DoozyX/clang-format-lint-action@v0.18.2
         with:
           source: ${{ inputs.source }}
           extensions: ${{ inputs.extensions }}
