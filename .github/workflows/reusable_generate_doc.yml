@@ -1,0 +1,56 @@
+name: Documentation generation & update
+
+on:
+  workflow_call:
+    inputs:
+      repository:
+        description: 'The GIT repository where to generate the documentation (defaults to `github.repository`)'
+        required: false
+        default: ${{ github.repository }}
+        type: string
+      branch_name:
+        description: 'The GIT branch where to generate the documentation (defaults to `github.ref`)'
+        required: false
+        default: ${{ github.ref }}
+        type: string
+    secrets:
+      envPAT:
+        description: 'Repository token to access the repo content'
+        required: true
+
+jobs:
+  generate:
+    name: Generate the documentation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Clone
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ inputs.repository }}
+          ref: ${{ inputs.branch_name }}
+          submodules: recursive
+          fetch-depth: 0
+      - name: Install Python dependencies
+        run: |
+          pip install -r docs/requirements.txt
+      - name: Generate the documentation
+        run: (cd docs && make html)
+      - name: Upload documentation bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: documentation
+          path: docs/build/html/
+
+  deploy:
+    name: Deploy the documentation on Github pages
+    runs-on: ubuntu-latest
+    needs: generate
+    if: github.event_name == 'push' && (inputs.branch_name == 'refs/heads/master' || startsWith(inputs.branch_name, 'refs/tags/'))
+    steps:
+      - name: Download documentation bundle
+        uses: actions/download-artifact@v4
+      - name: Deploy documentation on pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.envPAT }}
+          publish_dir: documentation/
