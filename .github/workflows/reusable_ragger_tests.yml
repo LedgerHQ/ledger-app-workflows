@@ -69,6 +69,11 @@ on:
         required: false
         default: ''
         type: string
+      regenerate_snapshots:
+        description: 'Clean snapshots, regenerate them, commit the changes in a branch, and open a PR'
+        required: false
+        default: false
+        type: boolean
 
 jobs:
   call_get_app_metadata:
@@ -95,10 +100,9 @@ jobs:
     steps:
       - name: Check metadata
         run: |
-          if [[ '${{ needs.call_get_app_metadata.outputs.pytest_directory }}' == 'None' ]];
-          then
-              >&2 echo "ERROR: This workflow either needs a 'ledger_app.toml' manifest with a 'tests.pytest_directory' section, or be configured with a valid 'test_dir' parameter";
-              exit 1;
+          if [[ '${{ needs.call_get_app_metadata.outputs.pytest_directory }}' == 'None' ]]; then
+              >&2 echo "ERROR: This workflow either needs a 'ledger_app.toml' manifest with a 'tests.pytest_directory' section, or be configured with a valid 'test_dir' parameter"
+              exit 1
           fi
 
       - name: Clone
@@ -129,8 +133,7 @@ jobs:
 
       - name: Display structure of downloaded files
         run: |
-          if [[ "${{ needs.call_get_app_metadata.outputs.is_rust }}" == "true" ]];
-          then
+          if [[ "${{ needs.call_get_app_metadata.outputs.is_rust }}" == "true" ]]; then
             ls -R ${{ env.binary_path }}
           else
             ls -R ${{ needs.call_get_app_metadata.outputs.build_directory }}
@@ -163,17 +166,69 @@ jobs:
           sudo apt-get update && sudo apt-get install -y qemu-user-static tesseract-ocr libtesseract-dev
           pip install -U pip setuptools
           pip install -r "${{ needs.call_get_app_metadata.outputs.pytest_directory }}/requirements.txt"
-          if [[ -f ${{ needs.call_get_app_metadata.outputs.pytest_directory }}/setup_script.sh ]]; then ./${{ needs.call_get_app_metadata.outputs.pytest_directory }}/setup_script.sh; fi
+          if [[ -f ${{ needs.call_get_app_metadata.outputs.pytest_directory }}/setup_script.sh ]]; then
+            ./${{ needs.call_get_app_metadata.outputs.pytest_directory }}/setup_script.sh
+          fi
 
       - name: Run test
         env:
           CTEST_OUTPUT_ON_FAILURE: 1
           PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION: python
-        run: pytest ${{ needs.call_get_app_metadata.outputs.pytest_directory }}/ --tb=short -v --device ${{ matrix.device }} -k ${{ inputs.test_filter }} ${{ inputs.test_options }}
+        run: |
+          pytest ${{ needs.call_get_app_metadata.outputs.pytest_directory }}/ \
+                 --tb=short -v \
+                 --device ${{ matrix.device }} \
+                 -k ${{ inputs.test_filter }} \
+                 ${{ inputs.test_options }} \
+                 ${{ inputs.regenerate_snapshots == true && '--golden_run' || '' }}
 
-      - name: Upload snapshots
+      - name: Upload snapshots on failure if needed
         if: ${{ failure() && inputs.upload_snapshots_on_failure == true }}
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.device }}-tests-snapshots
-          path: ${{ needs.call_get_app_metadata.outputs.pytest_directory }}/snapshots-tmp/${{ matrix.device }}
+          # Make the artifact name unique to allow running this job in parrallel
+          name: tests_snapshots${{ inputs.test_options }}-${{ matrix.device }}
+          path: ${{ needs.call_get_app_metadata.outputs.pytest_directory }}/snapshots-tmp
+
+      - name: Upload snapshots on success if needed
+        if: ${{ inputs.regenerate_snapshots == true }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: tests_snapshots${{ inputs.test_options }}-${{ matrix.device }}
+          path: ${{ needs.call_get_app_metadata.outputs.pytest_directory }}/snapshots-tmp
+
+      - name: Set upload flag
+        id: upload-flag
+        if: ${{ (failure() && inputs.upload_snapshots_on_failure == true) || ( success() && inputs.regenerate_snapshots == true) }}
+        run: |
+          echo "artifact_uploaded=true" >> "$GITHUB_OUTPUT"
+
+    outputs:
+      snapshot_artifact_uploaded: ${{ steps.upload-flag.outputs.artifact_uploaded }}
+
+  merge_artifacts_if_needed:
+    # Merge matrix output
+    name: Merge snapshots artifacts
+    needs: ragger_tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/upload-artifact/merge@v4
+        if: ${{ needs.ragger_tests.outputs.snapshot_artifact_uploaded == 'true' }}
+        with:
+          name: tests_snapshots${{ inputs.test_options }}
+          pattern: tests_snapshots${{ inputs.test_options }}-*
+          delete-merged: true
+
+    outputs:
+      snapshot_artifact_name: tests_snapshots${{ inputs.test_options }}
+
+  pr_new_snapshots:
+    name: Open a PR with the new snapshots
+    needs: [merge_artifacts_if_needed, call_get_app_metadata]
+    if: ${{ inputs.regenerate_snapshots == true }}
+    uses: ./.github/workflows/_open_pr_with_new_snapshots.yml
+    with:
+      app_repository: ${{ inputs.app_repository }}
+      app_branch_name: ${{ inputs.app_branch_name }}
+      snapshots_artifact_name: ${{ needs.merge_artifacts_if_needed.outputs.snapshot_artifact_name }}
+      snapshots_directory: ${{ needs.call_get_app_metadata.outputs.pytest_directory }}/snapshots
