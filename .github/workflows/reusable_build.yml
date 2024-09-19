@@ -83,21 +83,18 @@ jobs:
           then
               BUILD_DEVICE_NAME="$(echo ${{ matrix.device }} | sed 's/nanosp/nanosplus/')" && \
               cd ${{ needs.call_get_app_metadata.outputs.build_directory }}
-              
-              # List of crates to update
               crates=("include_gif" "ledger_secure_sdk_sys" "ledger_device_sdk")
-
-              # Loop through each crate and update it
               for crate in "${crates[@]}"; do
+                  echo "Updating $crate"
                   cargo +$RUST_NIGHTLY update $crate
+                  echo "Checking $crate version"
                   latest_version=$(cargo +$RUST_NIGHTLY search $crate | grep "^$crate" | awk '{print $3}' | tr -d '"')
                   tree_version=$(cargo +$RUST_NIGHTLY tree --depth 1 --prefix none | grep $crate | awk '{print $2}' | tr -d 'v')
                   if [[ $latest_version != $tree_version ]]; then
                       echo "Failure when updating $crate to $latest_version"
                       exit 1
                   fi
-              done               
-
+              done
               cargo ledger build ${BUILD_DEVICE_NAME} && \
               binary_path=$(cargo metadata --no-deps --format-version 1 | jq -r '.target_directory')/* && \
               echo "binary_path=$binary_path" >> $GITHUB_OUTPUT && \
