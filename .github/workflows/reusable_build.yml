@@ -83,7 +83,14 @@ jobs:
           then
               BUILD_DEVICE_NAME="$(echo ${{ matrix.device }} | sed 's/nanosp/nanosplus/')" && \
               cd ${{ needs.call_get_app_metadata.outputs.build_directory }}
-              crates=$(cargo +$RUST_NIGHTLY tree --depth 1 --prefix none | awk '{print $1}' | sort -ru | grep -E '^(include_gif|ledger_secure_sdk_sys|ledger_device_sdk)$')
+              # Get the list of crates to update from cargo tree and filter only the required crates
+              all_crates=$(cargo +$RUST_NIGHTLY tree --depth 1 --prefix none | awk '{print $1}' | sort -u)
+              crates=()
+              for crate in "ledger_secure_sdk_sys" "ledger_device_sdk" "include_gif"; do
+                  if echo "$all_crates" | grep -q "^$crate$"; then
+                      crates+=("$crate")
+                  fi
+              done
               for crate in "${crates[@]}"; do
                   echo "==> Updating $crate"
                   cargo +$RUST_NIGHTLY update $crate
