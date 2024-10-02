@@ -92,13 +92,11 @@ jobs:
                   fi
               done
               for crate in "${crates[@]}"; do
-                  echo "==> Updating $crate"
-                  cargo +$RUST_NIGHTLY update $crate
                   echo "==> Checking $crate version"
                   latest_version=$(cargo +$RUST_NIGHTLY search $crate | grep "^$crate" | awk '{print $3}' | tr -d '"')
                   tree_version=$(cargo +$RUST_NIGHTLY tree --depth 1 --prefix none | grep $crate | awk '{print $2}' | tr -d 'v')
                   if [[ $latest_version != $tree_version ]]; then
-                      echo "Failure when updating $crate to $latest_version"
+                      echo "$crate version is $tree_version whereas $latest_version is available; please update !"
                       exit 1
                   else
                       echo "==> $crate is up to date"
