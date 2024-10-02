@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Clone workflows repository
+      - name: Clone ledger-app-workflows repository
         uses: actions/checkout@v4
         with:
           repository: LedgerHQ/ledger-app-workflows
@@ -40,6 +40,6 @@ jobs:
 
       - name: Run script
         run: |
-          python3 ./ledger-app-database/scripts/app_load_params_check.py \
-          --database_path ./ledger-app-database/app-load-params-db.json \
-          --app_manifests_path ${{ inputs.download_manifest_artifact_name }}
+            ./ledger-app-workflows/scripts/check_all.sh \
+              -c app_load_params -d ./ledger-app-database \
+              -m ${{ inputs.download_manifest_artifact_name }}

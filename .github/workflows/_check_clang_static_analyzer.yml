@@ -3,6 +3,15 @@ name: Run Clang Static Analyzer
 on:
   workflow_call:
     inputs:
+      ledger-app-workflows_ref:
+        description: 'The current reference in use for the ledger-app-workflow repository'
+        required: true
+        type: string
+      app-repository:
+        description: 'The URL of the app repository to check. Defaults to the workflow caller repository URL'
+        required: false
+        default: ${{ github.repository }}
+        type: string
       run_for_devices:
         description: 'The list of device(s) on which the checking will run'
         required: true
@@ -29,24 +38,32 @@ jobs:
       image: ghcr.io/ledgerhq/ledger-app-builder/ledger-app-builder:latest
 
     steps:
-      - name: Clone
+      - name: Clone ledger-app-workflows repository
         uses: actions/checkout@v4
         with:
+          repository: LedgerHQ/ledger-app-workflows
+          path: ./ledger-app-workflows
+          ref: ${{ inputs.ledger-app-workflows_ref }}
+
+      - name: Clone app repository
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ inputs.app-repository }}
+          path: app-repository
           submodules: recursive
 
       - name: Run Clippy
         if: ${{ inputs.is_rust == 'true'}}
         run: |
-          cd ${{ inputs.relative_app_directory }} && \
-          DEVICE_NAME="$(echo ${{ matrix.device }} | sed 's/nanosp/nanosplus/')" && \
-          cargo +$RUST_NIGHTLY clippy --target ${DEVICE_NAME} -- -Dwarnings
+            ./ledger-app-workflows/scripts/check_all.sh -r -c scan -t ${{ matrix.device }} \
+              -a ./app-repository -b ${{ inputs.relative_app_directory }}
 
       - name: Build with Clang Static Analyzer
         if: ${{ inputs.is_rust == 'false'}}
         run: |
-          eval "BOLOS_SDK=\$$(echo ${{ matrix.device }} | tr [:lower:] [:upper:])_SDK" && \
-          echo "BOLOS_SDK value will be: ${BOLOS_SDK}" && \
-          make -C ${{ inputs.relative_app_directory }} -j ENABLE_SDK_WERROR=1 BOLOS_SDK=${BOLOS_SDK} scan-build
+            eval "BOLOS_SDK=\$$(echo ${{ matrix.device }} | tr [:lower:] [:upper:])_SDK" && \
+            ./ledger-app-workflows/scripts/check_all.sh -c scan -t ${{ matrix.device }} \
+              -a ./app-repository -b ${{ inputs.relative_app_directory }}
 
       - name: Upload scan result
         if: failure() && ${{ inputs.is_rust == 'false'}}
