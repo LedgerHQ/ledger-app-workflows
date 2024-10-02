@@ -48,7 +48,5 @@ jobs:
 
       - name: Lint check for Rust app
         if: ${{ needs.call_get_app_metadata.outputs.is_rust == 'true'}}
-        uses: actions-rs/cargo@v1
-        with:
-          command: fmt
-          args: --all -- --check
+        run: cargo fmt --all -- --check
+        working-directory: ${{ inputs.source }}
