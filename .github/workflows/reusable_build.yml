@@ -92,14 +92,19 @@ jobs:
                   fi
               done
               for crate in "${crates[@]}"; do
-                  echo "==> Checking $crate version"
-                  latest_version=$(cargo +$RUST_NIGHTLY search $crate | grep "^$crate" | awk '{print $3}' | tr -d '"')
-                  tree_version=$(cargo +$RUST_NIGHTLY tree --depth 1 --prefix none | grep $crate | awk '{print $2}' | tr -d 'v')
-                  if [[ $latest_version != $tree_version ]]; then
-                      echo "$crate version is $tree_version whereas $latest_version is available; please update !"
+                  tree_version_curr=$(cargo +$RUST_NIGHTLY tree --depth 1 --prefix none | grep $crate | awk '{print $2}' | tr -d 'v')
+                  echo "==> Try to update $crate"
+                  cargo +$RUST_NIGHTLY update $crate
+                  tree_version_new=$(cargo +$RUST_NIGHTLY tree --depth 1 --prefix none | grep $crate | awk '{print $2}' | tr -d 'v')
+                  if [[ $tree_version_curr != $tree_version_new ]]; then
+                      echo "$crate : version is $tree_version_curr whereas $tree_version_new is available; please update !"
                       exit 1
                   else
-                      echo "==> $crate is up to date"
+                      latest_version=$(cargo +$RUST_NIGHTLY search $crate | grep "^$crate" | awk '{print $3}' | tr -d '"')
+                      if [[ $latest_version != $tree_version_curr ]]; then
+                        echo "$crate : version is $tree_version_curr whereas $latest_version is available; please update !"
+                        exit 1
+                      fi
                   fi
               done
               cargo ledger build ${BUILD_DEVICE_NAME} && \
