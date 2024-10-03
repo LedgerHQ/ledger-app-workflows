@@ -102,7 +102,7 @@ jobs:
                   else
                       latest_version=$(cargo +$RUST_NIGHTLY search $crate | grep "^$crate" | awk '{print $3}' | tr -d '"')
                       if [[ $latest_version != $tree_version_curr ]]; then
-                        echo "$crate : version is $tree_version_curr whereas $latest_version is available; please update !"
+                        echo "$crate : version is enforced to $tree_version_curr whereas $latest_version is available; please update !"
                         exit 1
                       fi
                   fi
