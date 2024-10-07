@@ -35,8 +35,8 @@ main() (
         log_error_no_header "At least one error has been found"
         log_error_no_header "To check the Readme content, run \"cat '$repo/README.md'\""
     fi
-	
-    
+
+
     if echo "$repo_name" | grep -q "app.*boilerplate"; then
         log_warning "App specification check skipped for Boilerplate"
     else
@@ -47,7 +47,7 @@ main() (
             fi
         fi
     fi
-	
+
     return "$error"
 )
 

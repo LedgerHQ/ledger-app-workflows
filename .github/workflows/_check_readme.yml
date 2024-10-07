@@ -24,7 +24,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Clone workflows repository
+      - name: Clone ledger-app-workflows repository
         uses: actions/checkout@v4
         with:
           repository: LedgerHQ/ledger-app-workflows
@@ -39,4 +39,5 @@ jobs:
           submodules: recursive
 
       - name: Run script
-        run: bash ./ledger-app-workflows/scripts/check_readme.sh app-repository ${{ inputs.repo-name }}
+        run: |
+            ./ledger-app-workflows/scripts/check_all.sh -c readme -a ./app-repository

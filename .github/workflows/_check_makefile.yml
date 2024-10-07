@@ -28,7 +28,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Clone workflows repository
+      - name: Clone ledger-app-workflows repository
         uses: actions/checkout@v4
         with:
           repository: LedgerHQ/ledger-app-workflows
@@ -49,4 +49,6 @@ jobs:
           path: ${{ inputs.download_manifest_artifact_name }}
 
       - name: Run script
-        run: bash ./ledger-app-workflows/scripts/check_makefile.sh app-repository ${{ inputs.repo-name }} ${{ inputs.download_manifest_artifact_name }}
+        run: |
+            ./ledger-app-workflows/scripts/check_all.sh -c makefile \
+              -a ./app-repository -m ${{ inputs.download_manifest_artifact_name }}
