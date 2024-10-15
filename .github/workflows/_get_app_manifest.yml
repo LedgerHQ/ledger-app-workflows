@@ -37,7 +37,7 @@ jobs:
       fail-fast: false
       matrix:
         device: ${{ fromJSON(inputs.run_for_devices) }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     container:
       image: ghcr.io/ledgerhq/ledger-app-builder/ledger-app-builder:latest
 
@@ -81,7 +81,7 @@ jobs:
   merge_artifacts:
     name: Merge build artifacts
     needs: get_app_manifest
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/upload-artifact/merge@v4
         with:

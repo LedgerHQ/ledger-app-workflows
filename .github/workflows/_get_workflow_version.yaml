@@ -45,7 +45,7 @@ on:
 jobs:
   get-version:
     name: Get workflow version
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     timeout-minutes: 5
     steps:
       - name: Install pyyaml

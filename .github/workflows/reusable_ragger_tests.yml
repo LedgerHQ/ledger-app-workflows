@@ -95,7 +95,7 @@ jobs:
       fail-fast: false
       matrix:
         device: ${{ fromJSON(needs.call_get_app_metadata.outputs.compatible_devices) }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
 
     steps:
       - name: Check metadata
@@ -210,7 +210,7 @@ jobs:
     # Merge matrix output
     name: Merge snapshots artifacts
     needs: ragger_tests
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/upload-artifact/merge@v4
         if: ${{ needs.ragger_tests.outputs.snapshot_artifact_uploaded == 'true' }}

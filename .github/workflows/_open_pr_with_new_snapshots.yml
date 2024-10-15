@@ -26,7 +26,7 @@ on:
 jobs:
   commit_new_snapshots:
     name: Commit new snapshots
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - name: Refuse to run on anything else than workflow dispatch
         if: ${{ github.event_name != 'workflow_dispatch' }}
