@@ -72,47 +72,47 @@ jobs:
       - name: Gather application metadata, from inputs or 'ledger_app.toml'
         id: fetch_metadata
         run: |
-          pytest_directory='${{ inputs.pytest_directory }}';
+          pytest_directory='${{ inputs.pytest_directory }}'
           if [[ ! -f "$APP_MANIFEST" ]];
           then
-              >&2 echo "/!\ No $APP_MANIFEST manifest detected!";
-              >&2 echo "This file is mandatory, please add it on your repository";
-              >&2 echo "Documentation here: https://github.com/LedgerHQ/ledgered/blob/master/doc/utils/manifest.md";
-              exit 1;
+              >&2 echo "/!\ No $APP_MANIFEST manifest detected!"
+              >&2 echo "This file is mandatory, please add it on your repository"
+              >&2 echo "Documentation here: https://github.com/LedgerHQ/ledgered/blob/master/doc/utils/manifest.md"
+              exit 1
           fi
 
           # 'ledger_app.toml' exists
-          echo "Manifest detected.";
+          echo "Manifest detected."
           # checking the manifest with the repo
-          ledger-manifest --check . "$APP_MANIFEST";
+          ledger-manifest --check . "$APP_MANIFEST"
 
           # build directory
-          echo "build_directory=$(ledger-manifest --output-build-directory "$APP_MANIFEST")" >> "$GITHUB_OUTPUT";
+          echo "build_directory=$(ledger-manifest --output-build-directory "$APP_MANIFEST")" >> "$GITHUB_OUTPUT"
 
           # get device list as a single line json formatted value
-          compatible_devices="$(ledger-manifest --output-devices "$APP_MANIFEST" -j | jq -rc '.devices')";
+          compatible_devices="$(ledger-manifest --output-devices "$APP_MANIFEST" -j | jq -rc '.devices')"
           if [[ '${{ inputs.compatible_devices }}' != 'None' ]];
           then
               # in case classic manifest with devices, the input takes precedence on it
-              compatible_devices='${{ inputs.compatible_devices }}';
+              compatible_devices='${{ inputs.compatible_devices }}'
           fi
-          echo "compatible_devices=${compatible_devices}" | sed 's/+/p/' >> "$GITHUB_OUTPUT";
+          echo "compatible_devices=${compatible_devices}" | sed 's/+/p/' >> "$GITHUB_OUTPUT"
 
           # pytest_directory (if any)
           set +e  # when [tests.pytest_directory] is not set, ledger-manifest fails. We don't want that
           if temp="$(ledger-manifest --output-tests-pytest-directory "$APP_MANIFEST")";
           then
-              pytest_directory="${temp}";
+              pytest_directory="${temp}"
           fi
           set -e
-          echo "pytest_directory=${pytest_directory}" >> "$GITHUB_OUTPUT";
+          echo "pytest_directory=${pytest_directory}" >> "$GITHUB_OUTPUT"
 
           # SDK language
           if [[ "$(ledger-manifest --output-sdk "$APP_MANIFEST")" == "rust" ]];
           then
-              echo "is_rust=true" >> "$GITHUB_OUTPUT";
+              echo "is_rust=true" >> "$GITHUB_OUTPUT"
           else
-              echo "is_rust=false" >> "$GITHUB_OUTPUT";
+              echo "is_rust=false" >> "$GITHUB_OUTPUT"
           fi
 
           echo "Inferred metadata:"

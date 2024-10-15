@@ -186,7 +186,7 @@ jobs:
         if: ${{ failure() && inputs.upload_snapshots_on_failure == true }}
         uses: actions/upload-artifact@v4
         with:
-          # Make the artifact name unique to allow running this job in parrallel
+          # Make the artifact name unique to allow running this job in parallel
           name: tests_snapshots${{ inputs.test_options }}-${{ matrix.device }}
           path: ${{ needs.call_get_app_metadata.outputs.pytest_directory }}/snapshots-tmp
 

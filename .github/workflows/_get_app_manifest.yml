@@ -7,6 +7,11 @@ on:
         description: 'The current reference in use for the ledger-app-workflow repository'
         required: true
         type: string
+      app-repository:
+        description: 'The URL of the app repository to check. Defaults to the workflow caller repository URL'
+        required: false
+        default: ${{ github.repository }}
+        type: string
       run_for_devices:
         description: 'The list of device(s) on which the checking will run'
         required: true
@@ -37,7 +42,7 @@ jobs:
       image: ghcr.io/ledgerhq/ledger-app-builder/ledger-app-builder:latest
 
     steps:
-      - name: Clone workflows repository
+      - name: Clone ledger-app-workflows repository
         uses: actions/checkout@v4
         with:
           repository: LedgerHQ/ledger-app-workflows
@@ -47,27 +52,24 @@ jobs:
       - name: Clone app repository
         uses: actions/checkout@v4
         with:
+          repository: ${{ inputs.app-repository }}
           path: app-repository
           submodules: recursive
 
       - name: Call Cargo metadata dumper script
         if: ${{ inputs.is_rust == 'true'}}
         run: |
-          cd app-repository && \
-          BOLOS_SDK=${BOLOS_SDK} python ../ledger-app-workflows/scripts/cargo_metadata_dump.py \
-              --device ${{ matrix.device }} \
-              --app_build_path ${{ inputs.relative_app_directory }} \
-              --json_path ../manifest_${{ matrix.device }}.json
+            ./ledger-app-workflows/scripts/check_all.sh -r -c manifest -t ${{ matrix.device }} \
+              -a ./app-repository -b ${{ inputs.relative_app_directory }} \
+              -m ../manifest_${{ matrix.device }}.json
 
       - name: Call Makefile dumper script
         if: ${{ inputs.is_rust == 'false'}}
         run: |
-          cd app-repository && \
-          eval "BOLOS_SDK=\$$(echo ${{ matrix.device }} | tr [:lower:] [:upper:])_SDK" && \
-          echo "BOLOS_SDK value will be: ${BOLOS_SDK}" && \
-          BOLOS_SDK=${BOLOS_SDK} python ../ledger-app-workflows/scripts/makefile_dump.py \
-              --app_build_path ${{ inputs.relative_app_directory }} \
-              --json_path ../manifest_${{ matrix.device }}.json
+            eval "BOLOS_SDK=\$$(echo ${{ matrix.device }} | tr [:lower:] [:upper:])_SDK" && \
+            ./ledger-app-workflows/scripts/check_all.sh -c manifest -t ${{ matrix.device }} \
+              -a ./app-repository -b ${{ inputs.relative_app_directory }} \
+              -m ../manifest_${{ matrix.device }}.json
 
       - name: Upload app manifest
         uses: actions/upload-artifact@v4
