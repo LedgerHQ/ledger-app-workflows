@@ -80,7 +80,7 @@ jobs:
   merge_libraries_build:
     name: Merge built libraries
     needs: build_sideloaded_applications_for_exchange
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/upload-artifact/merge@v4
         with:

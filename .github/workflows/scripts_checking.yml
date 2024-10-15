@@ -12,7 +12,7 @@ on:
 jobs:
   shellcheck:
     name: Shellcheck
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
       - name: Run ShellCheck
@@ -24,7 +24,7 @@ jobs:
 
   misspell:
     name: Check misspellings
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
       - name: Check misspellings
@@ -35,7 +35,7 @@ jobs:
 
   yamllint:
     name: Check yaml files
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
       - run: yamllint .

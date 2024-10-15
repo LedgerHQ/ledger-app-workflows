@@ -29,7 +29,7 @@ on:
 jobs:
   package_and_deploy:
     name: Build and deploy a Python Package
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
 
       - name: Clone
