@@ -108,8 +108,9 @@ jobs:
                   fi
               done
               cargo ledger build ${BUILD_DEVICE_NAME} && \
-              binary_path=$(cargo metadata --no-deps --format-version 1 | jq -r '.target_directory')/* && \
+              binary_path=$(cargo metadata --no-deps --format-version 1 | jq -r '.target_directory')/ && \
               echo "binary_path=$binary_path" >> $GITHUB_OUTPUT && \
+              echo "binary_path=$binary_path" && \
               echo "Build complete"
           else
               eval "BOLOS_SDK=\$$(echo ${{ matrix.device }} | tr [:lower:] [:upper:])_SDK" && \
@@ -123,7 +124,8 @@ jobs:
         run: |
           if [[ "${{ needs.call_get_app_metadata.outputs.is_rust }}" == "true" ]];
           then
-              find ${{ steps.build.outputs.binary_path }} -mindepth 3 -maxdepth 3 -type d -exec rm -rf {} +
+              find ${{ steps.build.outputs.binary_path }} -mindepth 3 -maxdepth 3 -type d -exec rm -rf {} + && \
+              rm -rf ${{ steps.build.outputs.binary_path }}/release
           else
               find ${{ steps.build.outputs.binary_path }} -mindepth 2 -maxdepth 2 -type d ! -name 'bin' -exec rm -r {} +
           fi
@@ -132,10 +134,22 @@ jobs:
         if: ${{ inputs.upload_as_lib_artifact != '' }}
         shell: bash
         run: |
-          DEVICE_NAME="$(echo ${{ matrix.device }} | tr nanosp nanos2)" && \
-          find ${{ needs.call_get_app_metadata.outputs.build_directory }}/build/${DEVICE_NAME}/ -type f -name 'app.elf' -exec mv {} ${{ inputs.upload_as_lib_artifact }}_${DEVICE_NAME}.elf \; && \
-          rm -r ${{ needs.call_get_app_metadata.outputs.build_directory }}/build/* && \
-          mv ${{ inputs.upload_as_lib_artifact }}_${DEVICE_NAME}.elf ${{ needs.call_get_app_metadata.outputs.build_directory }}/build/
+          if [[ "${{ needs.call_get_app_metadata.outputs.is_rust }}" == "true" ]];
+          then
+            C_DEVICE_NAME="$(echo ${{ matrix.device }} | tr nanosp nanos2)" && \
+            echo "C_DEVICE_NAME=$C_DEVICE_NAME" && \
+            RUST_DEVICE_NAME="$(echo ${{ matrix.device }} | sed 's/sp/splus/')" && \
+            echo "RUST_DEVICE_NAME=$RUST_DEVICE_NAME" && \
+            ELF_NAME=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[] | select(.metadata.ledger != null) | .name') && \
+            echo "ELF_NAME=$ELF_NAME" && \
+            mv ${{ steps.build.outputs.binary_path }}${RUST_DEVICE_NAME}/release/${ELF_NAME} ${{ steps.build.outputs.binary_path }}/${{ inputs.upload_as_lib_artifact }}_${C_DEVICE_NAME}.elf && \
+            rm -rf ${{ steps.build.outputs.binary_path }}${RUST_DEVICE_NAME}
+          else
+            DEVICE_NAME="$(echo ${{ matrix.device }} | tr nanosp nanos2)" && \
+            find ${{ needs.call_get_app_metadata.outputs.build_directory }}/build/${DEVICE_NAME}/ -type f -name 'app.elf' -exec mv {} ${{ inputs.upload_as_lib_artifact }}_${DEVICE_NAME}.elf \; && \
+            rm -r ${{ needs.call_get_app_metadata.outputs.build_directory }}/build/* && \
+            mv ${{ inputs.upload_as_lib_artifact }}_${DEVICE_NAME}.elf ${{ needs.call_get_app_metadata.outputs.build_directory }}/build/
+          fi
 
       - name: Display structure of binary files
         run: |
