@@ -185,7 +185,7 @@ call_step() {
             if [[ "${IS_RUST}" == true ]]; then
                 COMMAND="(cd ${APP_DIR}/${BUILD_DIR} && cargo +$RUST_NIGHTLY clippy --target ${TARGET/nanosp/nanosplus} -- -Dwarnings)"
             else
-                COMMAND="make ${make_option[*]} ENABLE_SDK_WERROR=1 scan-build 2>/dev/null"
+                COMMAND="make ${make_option[*]} ENABLE_SDK_WERROR=1 scan-build"
             fi
             ;;
         * ) echo "Unimplemented step: ${step}" >&2; exit 1;;
