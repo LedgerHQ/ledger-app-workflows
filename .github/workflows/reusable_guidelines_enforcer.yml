@@ -29,7 +29,7 @@ jobs:
   # https://github.com/actions/toolkit/issues/1264
   call_get_workflow_version:
     name: Get workflow version
-    uses: ./.github/workflows/_get_workflow_version.yaml
+    uses: LedgerHQ/ledger-app-workflows/.github/workflows/_get_workflow_version.yaml
     with:
       repository-name: LedgerHQ/ledger-app-workflows
       file-name: reusable_guidelines_enforcer.yml
@@ -41,7 +41,7 @@ jobs:
     # file, in order to output relevant directories, compatible devices, and other variables needed
     # by following jobs.
     name: Retrieve application metadata
-    uses: ./.github/workflows/_get_app_metadata.yml
+    uses: LedgerHQ/ledger-app-workflows/.github/workflows/_get_app_metadata.yml
     with:
       app_repository: ${{ inputs.app_repository }}
       compatible_devices: ${{ inputs.run_for_devices }}
@@ -49,7 +49,7 @@ jobs:
   call_get_app_manifest:
     name: Dump app information
     needs: [call_get_workflow_version, call_get_app_metadata]
-    uses: ./.github/workflows/_get_app_manifest.yml
+    uses: LedgerHQ/ledger-app-workflows/.github/workflows/_get_app_manifest.yml
     with:
       app-repository: ${{ inputs.app_repository }}
       ledger-app-workflows_ref: ${{ needs.call_get_workflow_version.outputs.version }}
@@ -61,7 +61,7 @@ jobs:
   call_check_icons:
     name: Dispatch check
     needs: [call_get_workflow_version, call_get_app_manifest]
-    uses: ./.github/workflows/_check_icons.yml
+    uses: LedgerHQ/ledger-app-workflows/.github/workflows/_check_icons.yml
     with:
       app-repository: ${{ inputs.app_repository }}
       download_manifest_artifact_name: manifests
@@ -70,7 +70,7 @@ jobs:
   call_check_app_load_params:
     name: Dispatch check
     needs: [call_get_workflow_version, call_get_app_manifest]
-    uses: ./.github/workflows/_check_app_load_params.yml
+    uses: LedgerHQ/ledger-app-workflows/.github/workflows/_check_app_load_params.yml
     with:
       download_manifest_artifact_name: manifests
       ledger-app-workflows_ref: ${{ needs.call_get_workflow_version.outputs.version }}
@@ -78,7 +78,7 @@ jobs:
   call_check_makefile:
     name: Dispatch check
     needs: [call_get_workflow_version, call_get_app_manifest]
-    uses: ./.github/workflows/_check_makefile.yml
+    uses: LedgerHQ/ledger-app-workflows/.github/workflows/_check_makefile.yml
     with:
       app-repository: ${{ inputs.app_repository }}
       download_manifest_artifact_name: manifests
@@ -87,7 +87,7 @@ jobs:
   call_check_readme:
     name: Dispatch check
     needs: call_get_workflow_version
-    uses: ./.github/workflows/_check_readme.yml
+    uses: LedgerHQ/ledger-app-workflows/.github/workflows/_check_readme.yml
     with:
       app-repository: ${{ inputs.app_repository }}
       ledger-app-workflows_ref: ${{ needs.call_get_workflow_version.outputs.version }}
@@ -95,7 +95,7 @@ jobs:
   call_clang_static_analyzer:
     name: Dispatch check
     needs: [call_get_app_metadata, call_get_workflow_version]
-    uses: ./.github/workflows/_check_clang_static_analyzer.yml
+    uses: LedgerHQ/ledger-app-workflows/.github/workflows/_check_clang_static_analyzer.yml
     with:
       app-repository: ${{ inputs.app_repository }}
       run_for_devices: ${{ needs.call_get_app_metadata.outputs.compatible_devices }}
@@ -106,7 +106,7 @@ jobs:
   call_clang_static_analyzer_latest_sdk:
     name: Dispatch check
     needs: [call_get_app_metadata, call_get_workflow_version]
-    uses: ./.github/workflows/_check_clang_static_analyzer_latest_sdk.yml
+    uses: LedgerHQ/ledger-app-workflows/.github/workflows/_check_clang_static_analyzer_latest_sdk.yml
     if: github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'scan_on_latest_sdk')
     with:
       app-repository: ${{ inputs.app_repository }}

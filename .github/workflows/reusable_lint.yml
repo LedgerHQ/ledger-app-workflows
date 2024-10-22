@@ -19,7 +19,7 @@ jobs:
   call_get_app_metadata:
     # Call this job to infer the application language (C or Rust)
     name: Retrieve application metadata
-    uses: ./.github/workflows/_get_app_metadata.yml
+    uses: LedgerHQ/ledger-app-workflows/.github/workflows/_get_app_metadata.yml
 
   job_lint:
     name: Lint check
