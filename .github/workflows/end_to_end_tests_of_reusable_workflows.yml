@@ -67,7 +67,7 @@ jobs:
             repo: 'LedgerHQ/app-tron'
             branch: 'develop'
 
-    uses: ./.github/workflows/reusable_build.yml
+    uses: LedgerHQ/ledger-app-workflows/.github/workflows/reusable_build.yml
     with:
       app_repository: ${{ matrix.coin.repo }}
       app_branch_name: ${{ matrix.coin.branch }}
@@ -90,7 +90,7 @@ jobs:
 
   build_exchange_application:
     name: Build Exchange
-    uses: ./.github/workflows/reusable_build.yml
+    uses: LedgerHQ/ledger-app-workflows/.github/workflows/reusable_build.yml
     with:
       app_repository: LedgerHQ/app-exchange
       app_branch_name: develop
@@ -102,7 +102,7 @@ jobs:
     needs:
       - build_exchange_application
       - build_sideloaded_applications_for_exchange
-    uses: ./.github/workflows/reusable_ragger_tests.yml
+    uses: LedgerHQ/ledger-app-workflows/.github/workflows/reusable_ragger_tests.yml
     with:
       app_repository: LedgerHQ/app-exchange
       app_branch_name: develop
@@ -117,7 +117,7 @@ jobs:
 
   build_boilerplate_application:
     name: Build boilerplate
-    uses: ./.github/workflows/reusable_build.yml
+    uses: LedgerHQ/ledger-app-workflows/.github/workflows/reusable_build.yml
     with:
       app_repository: LedgerHQ/app-boilerplate
       app_branch_name: master
@@ -126,7 +126,7 @@ jobs:
   ragger_tests_boilerplate:
     name: Run boilerplate tests
     needs: build_boilerplate_application
-    uses: ./.github/workflows/reusable_ragger_tests.yml
+    uses: LedgerHQ/ledger-app-workflows/.github/workflows/reusable_ragger_tests.yml
     with:
       app_repository: LedgerHQ/app-boilerplate
       app_branch_name: master
@@ -134,7 +134,7 @@ jobs:
 
   build_nanos_boilerplate_application:
     name: Build boilerplate for Nano S
-    uses: ./.github/workflows/reusable_build.yml
+    uses: LedgerHQ/ledger-app-workflows/.github/workflows/reusable_build.yml
     with:
       app_repository: LedgerHQ/app-boilerplate
       app_branch_name: nanos_baseline
@@ -143,7 +143,7 @@ jobs:
   ragger_tests_nanos_boilerplate:
     name: Run boilerplate tests for Nano S
     needs: build_nanos_boilerplate_application
-    uses: ./.github/workflows/reusable_ragger_tests.yml
+    uses: LedgerHQ/ledger-app-workflows/.github/workflows/reusable_ragger_tests.yml
     with:
       app_repository: LedgerHQ/app-boilerplate
       app_branch_name: nanos_baseline
@@ -155,7 +155,7 @@ jobs:
 
   build_plugin_boilerplate:
     name: Build plugin boilerplate
-    uses: ./.github/workflows/reusable_build.yml
+    uses: LedgerHQ/ledger-app-workflows/.github/workflows/reusable_build.yml
     with:
       app_repository: LedgerHQ/app-plugin-boilerplate
       app_branch_name: develop
@@ -164,7 +164,7 @@ jobs:
 
   build_develop_ethereum_app:
     name: Build Ethereum
-    uses: ./.github/workflows/reusable_build.yml
+    uses: LedgerHQ/ledger-app-workflows/.github/workflows/reusable_build.yml
     with:
       app_repository: LedgerHQ/app-ethereum
       app_branch_name: develop
@@ -176,7 +176,7 @@ jobs:
     needs:
       - build_plugin_boilerplate
       - build_develop_ethereum_app
-    uses: ./.github/workflows/reusable_ragger_tests.yml
+    uses: LedgerHQ/ledger-app-workflows/.github/workflows/reusable_ragger_tests.yml
     with:
       app_repository: LedgerHQ/app-plugin-boilerplate
       app_branch_name: develop
@@ -191,7 +191,7 @@ jobs:
 
   build_rust_boilerplate_application:
     name: Build rust boilerplate
-    uses: ./.github/workflows/reusable_build.yml
+    uses: LedgerHQ/ledger-app-workflows/.github/workflows/reusable_build.yml
     with:
       app_repository: LedgerHQ/app-boilerplate-rust
       app_branch_name: main
@@ -201,7 +201,7 @@ jobs:
   ragger_tests_rust_boilerplate:
     name: Run rust boilerplate tests
     needs: build_rust_boilerplate_application
-    uses: ./.github/workflows/reusable_ragger_tests.yml
+    uses: LedgerHQ/ledger-app-workflows/.github/workflows/reusable_ragger_tests.yml
     with:
       app_repository: LedgerHQ/app-boilerplate-rust
       app_branch_name: main
