@@ -98,7 +98,7 @@ jobs:
                   tree_version_new=$(cargo +$RUST_NIGHTLY tree --depth 1 --prefix none | grep $crate | awk '{print $2}' | tr -d 'v')
                   if [[ $tree_version_curr != $tree_version_new ]]; then
                       echo "$crate : version is $tree_version_curr whereas $tree_version_new is available; please update !"
-                      echo "Please activate dependabot to automatically update the Rust SDK dependencies"
+                      echo "Don't forget to activate dependabot in your repository settings"
                       echo "see https://github.com/LedgerHQ/app-boilerplate-rust/blob/main/.github/dependabot.yml"
                       exit 1
                   else
