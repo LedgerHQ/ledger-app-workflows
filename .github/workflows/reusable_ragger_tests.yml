@@ -74,7 +74,11 @@ on:
         required: false
         default: false
         type: boolean
-
+      container_image:
+        description: 'Optional container image to run the ragger_tests job'
+        required: false
+        default: ''
+        type: string
 jobs:
   call_get_app_metadata:
     # This job digests inputs and repository metadata provided by the `ledger_app.toml` manifest
@@ -96,6 +100,7 @@ jobs:
       matrix:
         device: ${{ fromJSON(needs.call_get_app_metadata.outputs.compatible_devices) }}
     runs-on: ubuntu-22.04
+    container: ${{ inputs.container_image != '' && inputs.container_image || null }}
 
     steps:
       - name: Check metadata
