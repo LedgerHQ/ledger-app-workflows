@@ -175,6 +175,11 @@ jobs:
             ./${{ needs.call_get_app_metadata.outputs.pytest_directory }}/setup_script.sh
           fi
 
+      - name: Clear legacy snapshots
+        if: ${{ inputs.regenerate_snapshots == true }}
+        run: |
+          rm -rf ${{ needs.call_get_app_metadata.outputs.pytest_directory }}/snapshots
+
       - name: Run test
         env:
           CTEST_OUTPUT_ON_FAILURE: 1
