@@ -60,11 +60,17 @@ jobs:
           - name: solana
             repo: 'LedgerHQ/app-solana'
             branch: 'develop'
+          - name: solana
+            repo: 'LedgerHQ/app-solana'
+            branch: 'nanos'
           - name: DOT
             repo: 'LedgerHQ/app-polkadot'
             branch: 'develop'
           - name: tron
             repo: 'LedgerHQ/app-tron'
+            branch: 'develop'
+          - name: ton
+            repo: 'LedgerHQ/app-ton-new'
             branch: 'develop'
 
     uses: ./.github/workflows/reusable_build.yml
