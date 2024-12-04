@@ -48,6 +48,10 @@ jobs:
           # instead of provided ones
           persist-credentials: false
 
+      - name: Clear legacy snapshots
+        run: |
+          rm -rf ${{ inputs.snapshots_directory }}/*
+
       - name: Download new snapshots
         uses: actions/download-artifact@v4
         with:
