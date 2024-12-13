@@ -106,22 +106,18 @@ fi
 
 # Check if MANIFEST is given in parameter
 if [[ -z ${MANIFEST} ]]; then
-    if [[ -z ${TARGET} ]]; then
-        MANIFEST_FILE="/tmp/manifests/manifest.json"
-    else
-        MANIFEST_FILE="/tmp/manifests/manifest_${TARGET}.json"
-    fi
-    MANIFEST_DIR=$(dirname "${MANIFEST_FILE}")
+    MANIFEST_DIR="/tmp/manifests"
     # Remove the directory if it already exists
     [[ -d "${MANIFEST_DIR}" ]] && rm -rf "${MANIFEST_DIR}"
     mkdir -p "${MANIFEST_DIR}"
+    [[ -n ${TARGET} ]] && MANIFEST_FILE="${MANIFEST_DIR}/manifest_${TARGET}.json"
 else
     if [[ -d "${MANIFEST}" ]]; then
-        MANIFEST_FILE="${MANIFEST}/manifest.json"
+        MANIFEST_DIR="${MANIFEST}"
     else
         MANIFEST_FILE="${MANIFEST}"
+        MANIFEST_DIR=$(dirname "${MANIFEST_FILE}")
     fi
-    MANIFEST_DIR=$(dirname "${MANIFEST_FILE}")
 fi
 
 if [[ (-z ${REQUESTED_CHECK}) || ("${REQUESTED_CHECK}" == app_load_params) ]]; then
@@ -163,10 +159,32 @@ call_step() {
 
     case ${step} in
         "manifest")
-            if [[ "${IS_RUST}" == true ]]; then
-                COMMAND="(cd ${APP_DIR} && python ${dirName}/cargo_metadata_dump.py --device ${TARGET} --app_build_path ${BUILD_DIR} --json_path ${MANIFEST_FILE})"
+            if [[ -n ${MANIFEST_FILE} ]]; then
+                eval BOLOS_SDK="$(echo "\$${TARGET}" | tr '[:lower:]' '[:upper:]')_SDK"
+                if [[ "${IS_RUST}" == true ]]; then
+                    COMMAND="(cd ${APP_DIR} && python ${dirName}/cargo_metadata_dump.py --device ${TARGET} --app_build_path ${BUILD_DIR} --json_path ${MANIFEST_FILE})"
+                else
+                    COMMAND="(cd ${APP_DIR} && python ${dirName}/makefile_dump.py --app_build_path ${BUILD_DIR} --json_path ${MANIFEST_FILE})"
+                fi
             else
-                COMMAND="(cd ${APP_DIR} && python ${dirName}/makefile_dump.py --app_build_path ${BUILD_DIR} --json_path ${MANIFEST_FILE})"
+                log_step "Get ${step} (All targets)"
+                ALL_TARGETS=$(ledger-manifest --output-devices ledger_app.toml  | tail -n +2 | awk -F" " '{print $2}' | sed 's/+/p/' )
+                for tgt in ${ALL_TARGETS}; do
+                    eval BOLOS_SDK="$(echo "\$${tgt}" | tr '[:lower:]' '[:upper:]')_SDK"
+                    if [[ "${IS_RUST}" == true ]]; then
+                        COMMAND="(cd ${APP_DIR} && python ${dirName}/cargo_metadata_dump.py --device ${tgt} --app_build_path ${BUILD_DIR} --json_path ${MANIFEST_DIR}/manifest_${tgt}.json)"
+                    else
+                        COMMAND="(cd ${APP_DIR} && python ${dirName}/makefile_dump.py --app_build_path ${BUILD_DIR} --json_path ${MANIFEST_DIR}/manifest_${tgt}.json)"
+                    fi
+                    [[ "${VERBOSE}" == true ]] && echo "Running: ${COMMAND}"
+                    eval "${COMMAND}"
+                    err=$?
+                    if [[ ${err} -ne 0 ]]; then
+                        log_error "Check ${step} failed"
+                        exit 1
+                    fi
+                done
+                return
             fi
             ;;
         "icons")
