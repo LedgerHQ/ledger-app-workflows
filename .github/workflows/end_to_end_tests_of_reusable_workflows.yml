@@ -72,6 +72,9 @@ jobs:
           - name: ton
             repo: 'LedgerHQ/app-ton-new'
             branch: 'develop'
+          - name: cardano
+            repo: 'LedgerHQ/app-cardano'
+            branch: 'develop'
 
     uses: ./.github/workflows/reusable_build.yml
     with:
