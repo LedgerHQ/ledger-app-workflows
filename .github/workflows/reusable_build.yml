@@ -50,7 +50,7 @@ jobs:
     # file, in order to output relevant directories, compatible devices, and other variables needed
     # by following jobs.
     name: Retrieve application metadata
-    uses: ./.github/workflows/_get_app_metadata.yml
+    uses: LedgerHQ/ledger-app-workflows/.github/workflows/_get_app_metadata.yml
     with:
       app_repository: ${{ inputs.app_repository }}
       app_branch_name: ${{ inputs.app_branch_name }}
