@@ -3,12 +3,6 @@ name: E2E testing of the reusable workflows
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - master
-      - main
-      - develop
-  pull_request:
 
 # This workflow file contains the duplicates of several applications that use reusable workflows
 # The duplication is unfortunate but can't be avoided as github actions do not (yet ?) accept the

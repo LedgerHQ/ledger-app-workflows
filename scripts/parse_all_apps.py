@@ -2,6 +2,7 @@ import json
 import logging
 from argparse import ArgumentParser
 from dataclasses import asdict, dataclass
+from github.GithubException import GithubException
 from ledgered.github import AppRepository, Condition, GitHubLedgerHQ, NoManifestException
 
 LOGGER_FORMAT = "[%(asctime)s][%(levelname)s] %(name)s - %(message)s"
@@ -145,7 +146,7 @@ def main():
                 logging.debug("Wrong SDK, ignoring this app")
                 continue
             selected_apps.append(asdict(AppInfo(app, selected_devices)))
-        except NoManifestException:
+        except (NoManifestException, GithubException):
             logging.warning(f"Application '{app.name}' has no manifest! Ignoring.")
 
     print(json.dumps(selected_apps))
