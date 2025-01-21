@@ -1,0 +1,76 @@
+name: Get apps metadatas
+
+on:
+  workflow_call:
+    inputs:
+      ledger-app-workflows_ref:
+        description: 'The current reference in use for the ledger-app-workflow repository'
+        required: true
+        type: string
+      sdk:
+        description: |
+          The type of SDK the apps use. Could be `c`, `rust` or `all` (defaults to `all`)
+        required: false
+        default: 'all'
+        type: string
+      devices:
+        description: |
+          The list of device(s) the CI will run on. If an app does not implement a device, it will be ignored.
+          Defaults to the all the devices.
+
+          As GitHub does not support (yet?) array as an input, this field must be filled as a string, with escaped
+          quotation marks. For instance: "[\"nanos+\", \"nanox\", \"stax\"]"
+        required: false
+        default: 'all'
+        type: string
+      exclude_apps:
+        description: |
+          The application names which should not be included in the build.
+        required: false
+        type: string
+        default: ""
+      only_apps:
+        description: |
+          List of application names to include in the build.
+
+          Warning: `only_apps` takes precedence on `exclude_apps`: if an app name is in both lists, it will be selected
+        required: false
+        default: ""
+        type: string
+    outputs:
+      apps_metadata:
+        description: |
+          The metadata of all apps matching the given filters. The format will be:
+          [ { "default_branch": "main", "devices": "[\"nanos\", \"nanos+\", \"nanox\", \"flex\", \"stax\"]", "name": "app-boilerplate, "repository": "LedgerHQ/app-boilerplate }, ... ]
+        value: ${{ jobs.define_matrix.outputs.apps_config }}
+
+jobs:
+
+  define_matrix:
+    name: Generate applications list for each device according to manifests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Clone ledger-app-workflows repository
+        uses: actions/checkout@v4
+        with:
+          repository: LedgerHQ/ledger-app-workflows
+          path: ./ledger-app-workflows
+          ref: ${{ inputs.ledger-app-workflows_ref }}
+      - name: Install dependencies
+        run: |
+          pip install ledgered
+      - name: Define the list of application to build by device
+        id: process_devices
+        run: |
+          ARGS="-vv -s ${{ inputs.sdk }} -d ${{ inputs.devices }} -t ${{ secrets.GITHUB_TOKEN }}"
+          if [ -n "${{ inputs.exclude_apps }}" ]; then
+              ARGS="$ARGS -e ${{ inputs.exclude_apps }}"
+          fi
+          if [ -n "${{ inputs.only_apps }}" ]; then
+              ARGS="$ARGS -o ${{ inputs.only_apps }}"
+          fi
+          devices="$(python ./ledger-app-workflows/scripts/parse_all_apps.py ${ARGS})"
+          echo "apps_config=$devices" >> $GITHUB_OUTPUT
+          echo $devices
+    outputs:
+      apps_config: ${{ steps.process_devices.outputs.apps_config }}
