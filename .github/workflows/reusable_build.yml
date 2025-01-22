@@ -43,6 +43,16 @@ on:
         required: false
         default: 'ledger-app-builder-lite'
         type: string
+      sdk_reference:
+        description: |
+          A SDK reference to checkout before building the app. Does not apply on Rust application
+          Default behavior is to build on the current version of the app-builder Docker image.
+
+          As the branch `master` exists locally, `origin/master` should be used to checkout the
+          actual, current SDK master branch.
+        required: false
+        default: ""
+        type: string
 
 jobs:
   call_get_app_metadata:
@@ -96,9 +106,16 @@ jobs:
               echo "binary_path=$binary_path" && \
               echo "Build complete"
           else
-              eval "BOLOS_SDK=\$$(echo ${{ matrix.device }} | tr [:lower:] [:upper:])_SDK" && \
-              echo "BOLOS_SDK value will be: ${BOLOS_SDK}" && \
-              make -C ${{ needs.call_get_app_metadata.outputs.build_directory }} -j ${{ inputs.flags }} BOLOS_SDK=${BOLOS_SDK} && \
+              eval "BOLOS_SDK=\$$(echo ${{ matrix.device }} | tr [:lower:] [:upper:])_SDK"
+              echo "BOLOS_SDK value will be: ${BOLOS_SDK}"
+              if [ -n "${{ inputs.sdk_reference }}" ];
+              then
+                  echo "Checking out reference '${{ inputs.sdk_reference }}'..."
+                  (cd $BOLOS_SDK && git fetch -apt && git checkout ${{ inputs.sdk_reference }})
+                  ADDITIONAL_ARGS="TARGET=${{ matrix.device }}"
+              fi
+              echo "Compiling..."
+              make -C ${{ needs.call_get_app_metadata.outputs.build_directory }} -j ${{ inputs.flags }} ${ADDITIONAL_ARGS} BOLOS_SDK=${BOLOS_SDK}
               echo "binary_path=${{ needs.call_get_app_metadata.outputs.build_directory }}/build/*" >> $GITHUB_OUTPUT
               echo "Build complete"
           fi
