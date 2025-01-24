@@ -69,7 +69,7 @@ jobs:
           if [ -n "${{ inputs.only_apps }}" ]; then
               ARGS="$ARGS -o ${{ inputs.only_apps }}"
           fi
-          devices="$(python ./ledger-app-workflows/scripts/parse_all_apps.py ${ARGS} -l 4)"
+          devices="$(python ./ledger-app-workflows/scripts/parse_all_apps.py ${ARGS})"
           echo "apps_config=$devices" >> $GITHUB_OUTPUT
           echo $devices
     outputs:
