@@ -52,6 +52,11 @@ jobs:
           path: app-repository
           submodules: recursive
 
+      - name: Check Rust SDK version
+        if: ${{ inputs.is_rust == 'true'}}
+        run: |
+            ./ledger-app-workflows/scripts/check_rust_sdk.sh ./app-repository/${{ inputs.relative_app_directory }}
+
       - name: Run Clippy
         if: ${{ inputs.is_rust == 'true'}}
         run: |
