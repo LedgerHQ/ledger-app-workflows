@@ -75,6 +75,9 @@ jobs:
           - name: cardano
             repo: 'LedgerHQ/app-cardano'
             branch: 'develop'
+          - name: near
+            repo: 'LedgerHQ/app-near'
+            branch: 'develop'
 
     uses: ./.github/workflows/reusable_build.yml
     with:
