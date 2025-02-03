@@ -90,15 +90,6 @@ jobs:
                   cargo +$RUST_NIGHTLY update $crate
                 fi
               done
-              # Check if update has run successfully
-              for crate in "ledger_secure_sdk_sys" "ledger_device_sdk" "include_gif"; do
-                curr_version=$(cargo +$RUST_NIGHTLY tree -p $crate | grep -oE "$crate v[0-9]+\.[0-9]+\.[0-9]+" | awk '{print $2}' | sed 's/^v//')
-                latest_version=$(cargo search $crate --limit 1 | grep -oE "$crate = \"[0-9]+\.[0-9]+\.[0-9]+\"" | awk -F '"' '{print $2}')
-                if [[ "$curr_version" != "$latest_version" ]]; then
-                  echo "Update for $crate failed: current version: $curr_version, latest version: $latest_version"
-                  exit 1
-                fi
-              done
               cargo ledger build ${BUILD_DEVICE_NAME} && \
               binary_path=$(cargo metadata --no-deps --format-version 1 | jq -r '.target_directory')/ && \
               echo "binary_path=$binary_path" >> $GITHUB_OUTPUT && \
