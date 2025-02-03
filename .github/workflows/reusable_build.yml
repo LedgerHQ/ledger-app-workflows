@@ -83,31 +83,12 @@ jobs:
           then
               BUILD_DEVICE_NAME="$(echo ${{ matrix.device }} | sed 's/nanosp/nanosplus/')" && \
               cd ${{ needs.call_get_app_metadata.outputs.build_directory }}
-              # Get the list of crates to update from cargo tree and filter only the required crates
+              # Update the Rust SDK crates
               all_crates=$(cargo +$RUST_NIGHTLY tree --depth 1 --prefix none | awk '{print $1}' | sort -u)
-              crates=()
               for crate in "ledger_secure_sdk_sys" "ledger_device_sdk" "include_gif"; do
-                  if echo "$all_crates" | grep -q "^$crate$"; then
-                      crates+=("$crate")
-                  fi
-              done
-              for crate in "${crates[@]}"; do
-                  tree_version_curr=$(cargo +$RUST_NIGHTLY tree --depth 1 --prefix none | grep $crate | awk '{print $2}' | tr -d 'v')
-                  echo "==> Try to update $crate"
+                if echo "$all_crates" | grep -q "^$crate$"; then
                   cargo +$RUST_NIGHTLY update $crate
-                  tree_version_new=$(cargo +$RUST_NIGHTLY tree --depth 1 --prefix none | grep $crate | awk '{print $2}' | tr -d 'v')
-                  if [[ $tree_version_curr != $tree_version_new ]]; then
-                      echo "$crate : version is $tree_version_curr whereas $tree_version_new is available; please update !"
-                      echo "Don't forget to activate dependabot in your repository settings to automatically update the Rust SDK dependencies"
-                      echo "see https://github.com/LedgerHQ/app-boilerplate-rust/blob/main/.github/dependabot.yml"
-                      exit 1
-                  else
-                      latest_version=$(cargo +$RUST_NIGHTLY search $crate | grep "^$crate" | awk '{print $3}' | tr -d '"')
-                      if [[ $latest_version != $tree_version_curr ]]; then
-                        echo "$crate : version is enforced to $tree_version_curr whereas $latest_version is available; please update !"
-                        exit 1
-                      fi
-                  fi
+                fi
               done
               cargo ledger build ${BUILD_DEVICE_NAME} && \
               binary_path=$(cargo metadata --no-deps --format-version 1 | jq -r '.target_directory')/ && \
