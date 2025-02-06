@@ -26,7 +26,7 @@ jobs:
     needs: call_get_app_metadata
     runs-on: ubuntu-22.04
     container:
-      image: ghcr.io/ledgerhq/ledger-app-builder/ledger-app-builder:latest
+      image: ghcr.io/apaillier-ledger/ledger-app-builder/ledger-app-builder:latest
 
     steps:
       - name: Clone

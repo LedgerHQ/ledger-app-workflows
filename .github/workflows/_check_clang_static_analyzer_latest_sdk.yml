@@ -35,7 +35,7 @@ jobs:
         device: ${{ fromJSON(inputs.run_for_devices) }}
     runs-on: ubuntu-22.04
     container:
-      image: ghcr.io/ledgerhq/ledger-app-builder/ledger-app-builder:latest
+      image: ghcr.io/apaillier-ledger/ledger-app-builder/ledger-app-builder:latest
 
     steps:
       - name: Clone ledger-app-workflows repository

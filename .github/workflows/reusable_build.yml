@@ -75,7 +75,7 @@ jobs:
         device: ${{ fromJSON(needs.call_get_app_metadata.outputs.compatible_devices) }}
     runs-on: ubuntu-22.04
     container:
-      image: ghcr.io/ledgerhq/ledger-app-builder/${{ inputs.builder }}:latest
+      image: ghcr.io/apaillier-ledger/ledger-app-builder/${{ inputs.builder }}:latest
 
     steps:
       - name: Clone
