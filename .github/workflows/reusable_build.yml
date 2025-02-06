@@ -123,7 +123,7 @@ jobs:
             echo "C_DEVICE_NAME=$C_DEVICE_NAME" && \
             RUST_DEVICE_NAME="$(echo ${{ matrix.device }} | sed 's/sp/splus/')" && \
             echo "RUST_DEVICE_NAME=$RUST_DEVICE_NAME" && \
-            ELF_NAME=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[] | select(.metadata.ledger != null) | .name') && \
+            ELF_NAME=$(cargo metadata --manifest-path ${{ needs.call_get_app_metadata.outputs.build_directory }}/Cargo.toml --no-deps --format-version 1 | jq -r '.packages[] | select(.metadata.ledger != null) | .name') && \
             echo "ELF_NAME=$ELF_NAME" && \
             mv ${{ steps.build.outputs.binary_path }}${RUST_DEVICE_NAME}/release/${ELF_NAME} ${{ steps.build.outputs.binary_path }}/${{ inputs.upload_as_lib_artifact }}_${C_DEVICE_NAME}.elf && \
             rm -rf ${{ steps.build.outputs.binary_path }}${RUST_DEVICE_NAME}
