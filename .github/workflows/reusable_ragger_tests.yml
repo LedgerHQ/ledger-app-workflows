@@ -79,6 +79,10 @@ on:
         required: false
         default: ''
         type: string
+    secrets:
+      secret_test_options:
+        description: 'A string of secret options to be given to `pytest`'
+        required: false
 jobs:
   call_get_app_metadata:
     # This job digests inputs and repository metadata provided by the `ledger_app.toml` manifest
@@ -190,6 +194,7 @@ jobs:
                  --device ${{ matrix.device }} \
                  -k ${{ inputs.test_filter }} \
                  ${{ inputs.test_options }} \
+                 ${{ secrets.secret_test_options }} \
                  ${{ inputs.regenerate_snapshots == true && '--golden_run' || '' }}
 
       - name: Upload snapshots on failure if needed
