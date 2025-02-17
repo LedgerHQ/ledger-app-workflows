@@ -18,7 +18,7 @@ fi
 
 cd "$1"
 # Get the list of dependencies and filter the Rust SDK crates
-all_crates=$(cargo +"${RUST_NIGHTLY}" tree --depth 1 --prefix none | awk '{print $1}' | sort -u)
+all_crates=$(cargo +"${RUST_NIGHTLY}" tree --depth 2 --prefix none | awk '{print $1}' | sort -u)
 for crate in "ledger_secure_sdk_sys" "ledger_device_sdk" "include_gif"; do
     if echo "$all_crates" | grep -q "^$crate$"; then
         curr_version=$(cargo +"${RUST_NIGHTLY}" tree -p $crate | grep -oE "$crate v[0-9]+\.[0-9]+\.[0-9]+" | awk '{print $2}' | sed 's/^v//')

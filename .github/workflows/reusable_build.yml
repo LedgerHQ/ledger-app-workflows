@@ -84,7 +84,7 @@ jobs:
               BUILD_DEVICE_NAME="$(echo ${{ matrix.device }} | sed 's/nanosp/nanosplus/')" && \
               cd ${{ needs.call_get_app_metadata.outputs.build_directory }}
               # Update the Rust SDK crates
-              all_crates=$(cargo +$RUST_NIGHTLY tree --depth 1 --prefix none | awk '{print $1}' | sort -u)
+              all_crates=$(cargo +$RUST_NIGHTLY tree --depth 2 --prefix none | awk '{print $1}' | sort -u)
               for crate in "ledger_secure_sdk_sys" "ledger_device_sdk" "include_gif"; do
                 if echo "$all_crates" | grep -q "^$crate$"; then
                   cargo +$RUST_NIGHTLY update $crate
