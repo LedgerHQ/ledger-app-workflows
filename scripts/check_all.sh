@@ -162,9 +162,9 @@ call_step() {
             if [[ -n ${MANIFEST_FILE} ]]; then
                 eval BOLOS_SDK="$(echo "\$${TARGET}" | tr '[:lower:]' '[:upper:]')_SDK"
                 if [[ "${IS_RUST}" == true ]]; then
-                    COMMAND="(cd ${APP_DIR} && python ${dirName}/cargo_metadata_dump.py --device ${TARGET} --app_build_path ${BUILD_DIR} --json_path ${MANIFEST_FILE})"
+                    COMMAND="(cd ${APP_DIR} && python3 ${dirName}/cargo_metadata_dump.py --device ${TARGET} --app_build_path ${BUILD_DIR} --json_path ${MANIFEST_FILE})"
                 else
-                    COMMAND="(cd ${APP_DIR} && python ${dirName}/makefile_dump.py --app_build_path ${BUILD_DIR} --json_path ${MANIFEST_FILE})"
+                    COMMAND="(cd ${APP_DIR} && python3 ${dirName}/makefile_dump.py --app_build_path ${BUILD_DIR} --json_path ${MANIFEST_FILE})"
                 fi
             else
                 log_step "Get ${step} (All targets)"
@@ -172,9 +172,9 @@ call_step() {
                 for tgt in ${ALL_TARGETS}; do
                     eval BOLOS_SDK="$(echo "\$${tgt}" | tr '[:lower:]' '[:upper:]')_SDK"
                     if [[ "${IS_RUST}" == true ]]; then
-                        COMMAND="(cd ${APP_DIR} && python ${dirName}/cargo_metadata_dump.py --device ${tgt} --app_build_path ${BUILD_DIR} --json_path ${MANIFEST_DIR}/manifest_${tgt}.json)"
+                        COMMAND="(cd ${APP_DIR} && python3 ${dirName}/cargo_metadata_dump.py --device ${tgt} --app_build_path ${BUILD_DIR} --json_path ${MANIFEST_DIR}/manifest_${tgt}.json)"
                     else
-                        COMMAND="(cd ${APP_DIR} && python ${dirName}/makefile_dump.py --app_build_path ${BUILD_DIR} --json_path ${MANIFEST_DIR}/manifest_${tgt}.json)"
+                        COMMAND="(cd ${APP_DIR} && python3 ${dirName}/makefile_dump.py --app_build_path ${BUILD_DIR} --json_path ${MANIFEST_DIR}/manifest_${tgt}.json)"
                     fi
                     [[ "${VERBOSE}" == true ]] && echo "Running: ${COMMAND}"
                     eval "${COMMAND}"
@@ -191,7 +191,7 @@ call_step() {
             COMMAND="${dirName}/check_icons.sh ${APP_DIR} ${REPO_NAME} ${MANIFEST_DIR}"
             ;;
         "app_load_params")
-            COMMAND="python ${DATABASE_DIR}/scripts/app_load_params_check.py --database_path ${DATABASE_DIR}/app-load-params-db.json --app_manifests_path ${MANIFEST_DIR}"
+            COMMAND="python3 ${DATABASE_DIR}/scripts/app_load_params_check.py --database_path ${DATABASE_DIR}/app-load-params-db.json --app_manifests_path ${MANIFEST_DIR}"
             ;;
         "makefile")
             COMMAND="${dirName}/check_makefile.sh ${APP_DIR} ${REPO_NAME} ${MANIFEST_DIR}"
