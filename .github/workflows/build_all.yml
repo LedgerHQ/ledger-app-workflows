@@ -1,0 +1,24 @@
+name: Build all apps
+
+on:
+  workflow_dispatch:
+  pull_request:
+
+jobs:
+
+  build_all_applications:
+    name: Build all the applications on all the devices
+    uses: ./.github/workflows/reusable_build_several.yml
+    with:
+      sdk: all
+      devices: nanox
+      only_apps: app-starknet app-passwords
+
+  build_all_applications_on_latest:
+    name: Build all the applications on all the devices on the latest SDK
+    uses: ./.github/workflows/reusable_build_several.yml
+    with:
+      sdk: all
+      sdk_reference: origin/master
+      exclude_apps: app-u2f app-passwords app-starknet
+      devices: flex stax

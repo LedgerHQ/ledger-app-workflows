@@ -1,0 +1,80 @@
+name: Building several apps, depending on given inputs
+
+on:
+  workflow_call:
+    inputs:
+      sdk:
+        description: |
+          The type of SDK the apps use. Could be `c`, `rust` or `all` (defaults to `all`)
+        required: false
+        default: all
+        type: string
+      sdk_reference:
+        description: |
+          A SDK reference to checkout before building the app. Does not apply on Rust application
+          Default behavior is to build on the current version of the app-builder Docker image.
+
+          As the branch `master` exists locally, `origin/master` should be used to checkout the
+          actual, current SDK master branch.
+        required: false
+        default: ""
+        type: string
+      devices:
+        description: |
+          The list of device(s) the CI will run on. If an app does not implement a device, it will be ignored.
+          Defaults to the all the devices.
+        required: false
+        default: all
+        type: string
+      exclude_apps:
+        description: |
+          The application names which should not be included in the build.
+
+          Warning: `only_apps` takes precedence on `exclude_apps`: if an app name is in both lists, it will be selected
+        required: false
+        type: string
+        default: ""
+      only_apps:
+        description: |
+          List of application names to include in the build.
+        required: false
+        type: string
+        default: ""
+
+jobs:
+  # We can't simply know the current ledger-app-workflow ref from inside the reusable workflow
+  # We use the workaround linked in the following Github issue until a proper API is available at Github API level
+  # https://github.com/actions/toolkit/issues/1264
+  call_get_workflow_version:
+    name: Get workflow version
+    uses: ./.github/workflows/_get_workflow_version.yaml
+    with:
+      repository-name: LedgerHQ/ledger-app-workflows
+      file-name: reusable_build_several.yml
+
+  call_get_apps_metadata:
+    name: Retrieve applications metadata
+    uses: ./.github/workflows/reusable_get_apps_metadata.yml
+    needs: call_get_workflow_version
+    with:
+      sdk: ${{ inputs.sdk }}
+      devices: ${{ inputs.devices }}
+      exclude_apps: ${{ inputs.exclude_apps }}
+      only_apps: ${{ inputs.only_apps }}
+      ledger-app-workflows_ref: ${{ needs.call_get_workflow_version.outputs.version }}
+
+  build_applications:
+    name: Build all selected applications using the reusable workflow
+    needs: call_get_apps_metadata
+    strategy:
+      fail-fast: false
+      matrix:
+        app: ${{ fromJSON(needs.call_get_apps_metadata.outputs.apps_metadata) }}
+    uses: ./.github/workflows/reusable_build.yml
+    with:
+      app_repository: ${{ matrix.app.repository }}
+      run_for_devices: ${{ matrix.app.devices }}
+      upload_app_binaries_artifact: ${{ matrix.app.name }}  # else will colide with other matrix' jobs
+      app_branch_name: ${{ matrix.app.default_branch }}  # else takes the current repo default branch
+      builder: ledger-app-builder  # needed for Rust applications
+      sdk_reference: ${{ inputs.sdk_reference }}
