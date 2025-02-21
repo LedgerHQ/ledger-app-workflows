@@ -78,6 +78,15 @@ jobs:
           - name: near
             repo: 'LedgerHQ/app-near'
             branch: 'develop'
+          - name: APTOS
+            repo: 'LedgerHQ/app-aptos'
+            branch: 'develop'
+          - name: sui
+            repo: 'LedgerHQ/app-sui'
+            branch: 'develop'
+          - name: ATOM
+            repo: 'LedgerHQ/app-cosmos'
+            branch: 'develop'
 
     uses: ./.github/workflows/reusable_build.yml
     with:
