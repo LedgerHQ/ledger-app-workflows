@@ -77,7 +77,7 @@ jobs:
           then
               >&2 echo "/!\ No $APP_MANIFEST manifest detected!"
               >&2 echo "This file is mandatory, please add it on your repository"
-              >&2 echo "Documentation here: https://github.com/LedgerHQ/ledgered/blob/master/doc/utils/manifest.md"
+              >&2 echo "Documentation here: https://github.com/LedgerHQ/ledgered/blob/master/doc/manifest.md"
               exit 1
           fi
 
