@@ -73,7 +73,7 @@ jobs:
         id: fetch_metadata
         run: |
           pytest_directory='${{ inputs.pytest_directory }}'
-          if [[ ! -f "$APP_MANIFEST" ]];
+          if [ ! -f "$APP_MANIFEST" ];
           then
               >&2 echo "/!\ No $APP_MANIFEST manifest detected!"
               >&2 echo "This file is mandatory, please add it on your repository"
@@ -91,7 +91,7 @@ jobs:
 
           # get device list as a single line json formatted value
           compatible_devices="$(ledger-manifest --output-devices "$APP_MANIFEST" -j | jq -rc '.devices')"
-          if [[ '${{ inputs.compatible_devices }}' != 'None' ]];
+          if [ '${{ inputs.compatible_devices }}' != 'None' ];
           then
               # in case classic manifest with devices, the input takes precedence on it
               compatible_devices='${{ inputs.compatible_devices }}'
@@ -108,7 +108,7 @@ jobs:
           echo "pytest_directory=${pytest_directory}" >> "$GITHUB_OUTPUT"
 
           # SDK language
-          if [[ "$(ledger-manifest --output-sdk "$APP_MANIFEST")" == "rust" ]];
+          if [ "$(ledger-manifest --output-sdk "$APP_MANIFEST")" = "rust" ];
           then
               echo "is_rust=true" >> "$GITHUB_OUTPUT"
           else

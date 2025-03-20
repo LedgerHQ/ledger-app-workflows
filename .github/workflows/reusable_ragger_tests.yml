@@ -109,7 +109,7 @@ jobs:
     steps:
       - name: Check metadata
         run: |
-          if [[ '${{ needs.call_get_app_metadata.outputs.pytest_directory }}' == 'None' ]]; then
+          if [ '${{ needs.call_get_app_metadata.outputs.pytest_directory }}' = 'None' ]; then
               >&2 echo "ERROR: This workflow either needs a 'ledger_app.toml' manifest with a 'tests.pytest_directory' section, or be configured with a valid 'test_dir' parameter"
               exit 1
           fi
@@ -124,7 +124,7 @@ jobs:
       - name: Set binary path
         id: "set_binary_path"
         run: |
-          if [[ "${{ needs.call_get_app_metadata.outputs.is_rust }}" == "true" ]];
+          if [ "${{ needs.call_get_app_metadata.outputs.is_rust }}" = "true" ];
           then
               echo "Set Rust binary path" && \
               cd ${{ needs.call_get_app_metadata.outputs.build_directory }} && \
@@ -142,7 +142,7 @@ jobs:
 
       - name: Display structure of downloaded files
         run: |
-          if [[ "${{ needs.call_get_app_metadata.outputs.is_rust }}" == "true" ]]; then
+          if [ "${{ needs.call_get_app_metadata.outputs.is_rust }}" = "true" ]; then
             ls -R ${{ env.binary_path }}
           else
             ls -R ${{ needs.call_get_app_metadata.outputs.build_directory }}
@@ -175,7 +175,7 @@ jobs:
           sudo apt-get update && sudo apt-get install -y qemu-user-static tesseract-ocr libtesseract-dev
           pip install -U pip packaging setuptools
           pip install -r "${{ needs.call_get_app_metadata.outputs.pytest_directory }}/requirements.txt"
-          if [[ -f ${{ needs.call_get_app_metadata.outputs.pytest_directory }}/setup_script.sh ]]; then
+          if [ -f ${{ needs.call_get_app_metadata.outputs.pytest_directory }}/setup_script.sh ]; then
             ./${{ needs.call_get_app_metadata.outputs.pytest_directory }}/setup_script.sh
           fi
 
