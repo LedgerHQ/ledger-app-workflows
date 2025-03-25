@@ -17,12 +17,12 @@ jobs:
       - name: Determine SDK reference
         id: determine_sdk_ref
         run: |
-          if [[ "${{ github.event_name }}" == 'pull_request' ]]; then
+          if [ "${{ github.event_name }}" = 'pull_request' ]; then
             ref_to_use="${{ github.base_ref }}"
           else
             ref_to_use="${{ github.ref_name }}"
           fi
-          if [[ "$ref_to_use" =~ ^(main|master)$ ]]; then
+          if [ "$ref_to_use" = "main" ] || [ "$ref_to_use" = "master" ]; then
             echo "sdk_ref=master" >> $GITHUB_OUTPUT
           else
             echo "sdk_ref=develop" >> $GITHUB_OUTPUT
@@ -39,7 +39,7 @@ jobs:
         run: |
           repo_sdk_hash="$(git submodule status | grep sdk | cut -d ' ' -f2)"
           current_sdk_hash="$(cd ./plugin-sdk/ && git rev-parse HEAD)"
-          if [[ "$repo_sdk_hash" == "$current_sdk_hash" ]]; then
+          if [ "$repo_sdk_hash" = "$current_sdk_hash" ]; then
             echo "SDK versions match!"
             exit 0
           else

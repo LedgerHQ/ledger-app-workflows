@@ -39,7 +39,7 @@ jobs:
 
       - name: Configure target deploiement repository
         run: |
-          if [[ "${{ inputs.stable_deployment }}" == "true" ]];
+          if [ "${{ inputs.stable_deployment }}" = "true" ];
           then
               echo "DEPLOYMENT_TARGET=https://pypi.org/simple/" >> "$GITHUB_ENV";
           else
@@ -72,7 +72,7 @@ jobs:
         run: |
           PACKAGE_VERSION=$(find "${{ inputs.package_directory }}/dist" -name *.tar.gz | grep -Eo '[0-9]+\.[0-9]+\.[0-9]+')
           CHANGELOG_VERSION=$(grep -Po '(?<=## \[)(\d+\.)+[^\]]' "${{ inputs.package_directory }}/CHANGELOG.md" | head -n 1)
-          if [[ "${PACKAGE_VERSION}" == "${CHANGELOG_VERSION}" ]];
+          if [ "${PACKAGE_VERSION}" = "${CHANGELOG_VERSION}" ];
           then
               exit 0;
           else
@@ -84,7 +84,7 @@ jobs:
         if: inputs.publish
         run: |
           cd ${{ inputs.package_directory }}
-          if [[ "${{ inputs.stable_deployment }}" == "true" ]];
+          if [ "${{ inputs.stable_deployment }}" = "true" ];
           then
               python -m twine upload dist/*;
           else

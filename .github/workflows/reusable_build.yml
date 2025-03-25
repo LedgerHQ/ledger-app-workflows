@@ -89,7 +89,7 @@ jobs:
         id: "build"
         shell: bash
         run: |
-          if [[ "${{ needs.call_get_app_metadata.outputs.is_rust }}" == "true" ]];
+          if [ "${{ needs.call_get_app_metadata.outputs.is_rust }}" = "true" ];
           then
               BUILD_DEVICE_NAME="$(echo ${{ matrix.device }} | sed 's/nanosp/nanosplus/')" && \
               cd ${{ needs.call_get_app_metadata.outputs.build_directory }}
@@ -122,7 +122,7 @@ jobs:
 
       - name: Remove build artifacts before upload
         run: |
-          if [[ "${{ needs.call_get_app_metadata.outputs.is_rust }}" == "true" ]];
+          if [ "${{ needs.call_get_app_metadata.outputs.is_rust }}" = "true" ];
           then
               find ${{ steps.build.outputs.binary_path }} -mindepth 3 -maxdepth 3 -type d -exec rm -rf {} + && \
               rm -rf ${{ steps.build.outputs.binary_path }}/release
@@ -134,7 +134,7 @@ jobs:
         if: ${{ inputs.upload_as_lib_artifact != '' }}
         shell: bash
         run: |
-          if [[ "${{ needs.call_get_app_metadata.outputs.is_rust }}" == "true" ]];
+          if [ "${{ needs.call_get_app_metadata.outputs.is_rust }}" = "true" ];
           then
             C_DEVICE_NAME="$(echo ${{ matrix.device }} | tr nanosp nanos2)" && \
             echo "C_DEVICE_NAME=$C_DEVICE_NAME" && \

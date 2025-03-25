@@ -61,7 +61,7 @@ jobs:
       - name: Check if update is needed
         id: check-changes
         run: |
-          if [[ -n $(git status --porcelain) ]]; then
+          if [ -n "$(git status --porcelain)" ]; then
               echo "Changes detected"
               echo "changes_detected=true" >> "$GITHUB_OUTPUT"
           else
@@ -91,7 +91,7 @@ jobs:
           git push -u origin $branch_name
 
           # Create 'auto' label if missing
-          if [[ -z $(gh label list --search auto) ]]; then
+          if [ -z $(gh label list --search auto) ]; then
             gh label create 'auto' --color 'b4a8d1' --description 'Automatically created'
           fi
 
