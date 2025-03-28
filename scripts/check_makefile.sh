@@ -13,6 +13,7 @@ main() (
 
     declare -A variants_array
     declare -A appnames_array
+    declare -A is_allowed_makefile_array
 
     if [[ "$repo_name" == "app-boilerplate" || "$repo_name" == "app-plugin-boilerplate" ]]; then
         is_boilerplate=true
@@ -35,6 +36,9 @@ main() (
             variants_array["$variant"]=1
             appnames_array["$appname"]=1
         done < <(echo "$variants_list")
+
+        is_allowed_makefile=$(jq -r '.IS_ALLOWED_MAKEFILE' "$manifest")
+        is_allowed_makefile_array["$manifest"]=$is_allowed_makefile
     done < <(echo "$manifests_list")
 
     log_info "All manifests checked"
@@ -64,6 +68,16 @@ main() (
             else
                 log_success "VARIANT name '$variant' is valid"
             fi
+        fi
+    done
+
+    # check if makefile included in the app makefile is allowed
+    for manifest in "${!is_allowed_makefile_array[@]}"; do
+        if [ "${is_allowed_makefile_array[$manifest]}" != "true" ]; then
+            log_error "Makefile $manifest is not standard"
+            error=1
+        else
+            log_success "Makefile $manifest is standard"
         fi
     done
 

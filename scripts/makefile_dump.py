@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Tuple, List, Dict
 from tempfile import NamedTemporaryFile
 import json
+import os
 from utils import run_cmd
 
 
@@ -99,7 +100,8 @@ def save_app_params(app_build_path: Path, json_path: Path) -> None:
     ret = {
         "BUILD_DIRECTORY": app_build_path,
         "VARIANT_PARAM": variant_param_name,
-        "VARIANTS": {}
+        "VARIANTS": {},
+        "IS_ALLOWED_MAKEFILE": is_allowed_makefile(app_build_path)
     }
 
     for variant in variants:
@@ -112,6 +114,28 @@ def save_app_params(app_build_path: Path, json_path: Path) -> None:
 
     with open(json_path, "w") as f:
         json.dump(ret, f, indent=4)
+
+
+def is_allowed_makefile(app_build_path: Path) -> bool:
+    makefile_path = os.path.join(app_build_path, "Makefile")
+
+    # list of the allowed makefiles included in the app Makefile
+    allowed_makefiles = [
+        "ledger-zxlib/makefiles", # Zondax like makefiles
+        "Makefile.standard_app", # standard app Makefile
+        "include lib-app-bitcoin/Makefile", # Bitcoin clone makefiles 
+        "include bitcoin_app_base/Makefile", # Bitcoin clone makefiles 
+        "include ethereum-plugin-sdk/standard_plugin.mk" # Ethereum plugin makefiles
+    ]
+
+    with open(makefile_path, "r") as f:
+        for line in f:
+            stripped_line = line.strip()
+            if any(allowed_makefile in stripped_line and not stripped_line.startswith("#")
+                   for allowed_makefile in allowed_makefiles):
+                return True
+
+    return False
 
 
 if __name__ == "__main__":
