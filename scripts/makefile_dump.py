@@ -121,11 +121,11 @@ def is_allowed_makefile(app_build_path: Path) -> bool:
 
     # list of the allowed makefiles included in the app Makefile
     allowed_makefiles = [
-        "ledger-zxlib/makefiles", # Zondax like makefiles
         "Makefile.standard_app", # standard app Makefile
         "include lib-app-bitcoin/Makefile", # Bitcoin clone makefiles 
         "include bitcoin_app_base/Makefile", # Bitcoin clone makefiles 
-        "include ethereum-plugin-sdk/standard_plugin.mk" # Ethereum plugin makefiles
+        "include ethereum-plugin-sdk/standard_plugin.mk", # Ethereum plugin makefiles
+        "ledger-zxlib/makefiles" # Zondax like makefiles
     ]
 
     with open(makefile_path, "r") as f:
