@@ -71,10 +71,11 @@ main() (
         fi
     done
 
-    # check if makefile included in the app makefile is allowed
+    # check if makefile included in the app makefile is allowed (bypass for rust apps - empty array)
     for manifest in "${!is_allowed_makefile_array[@]}"; do
-        if [ "${is_allowed_makefile_array[$manifest]}" != "true" ]; then
-            log_error "Makefile $manifest is not standard"
+        if [ "${is_allowed_makefile_array[$manifest]}" == "false" ]; then
+            log_error "Makefile $manifest is not standard."
+            log_error "Please refer to the Boilerplate app makefile available here : https://github.com/LedgerHQ/app-boilerplate/blob/master/Makefile"
             error=1
         else
             log_success "Makefile $manifest is standard"
