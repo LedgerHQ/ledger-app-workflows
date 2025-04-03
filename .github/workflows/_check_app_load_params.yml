@@ -30,7 +30,7 @@ jobs:
         with:
           repository: LedgerHQ/ledger-app-database
           path: ./ledger-app-database
-          ref: main
+          ref: recovery_key_updater
 
       - name: Download manifest
         uses: actions/download-artifact@v4
