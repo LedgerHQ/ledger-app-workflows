@@ -54,15 +54,9 @@ jobs:
           - name: bitcoin
             repo: 'LedgerHQ/app-bitcoin-new'
             branch: 'develop'
-          - name: bitcoin
-            repo: 'LedgerHQ/app-bitcoin-new'
-            branch: 'nanos'
           - name: solana
             repo: 'LedgerHQ/app-solana'
             branch: 'develop'
-          - name: solana
-            repo: 'LedgerHQ/app-solana'
-            branch: 'nanos'
           - name: DOT
             repo: 'LedgerHQ/app-polkadot'
             branch: 'develop'
