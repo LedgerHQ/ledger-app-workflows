@@ -87,6 +87,9 @@ jobs:
           - name: ATOM
             repo: 'LedgerHQ/app-cosmos'
             branch: 'develop'
+          - name: boilerplate
+            repo: 'LedgerHQ/app-boilerplate'
+            branch: 'master'
 
     uses: ./.github/workflows/reusable_build.yml
     with:
