@@ -170,6 +170,7 @@ call_step() {
                 log_step "Get ${step} (All targets)"
                 ALL_TARGETS=$(ledger-manifest --output-devices ledger_app.toml  | tail -n +2 | awk -F" " '{print $2}' | sed 's/+/p/' )
                 for tgt in ${ALL_TARGETS}; do
+                    echo "Processing target: ${tgt}"
                     eval BOLOS_SDK="$(echo "\$${tgt}" | tr '[:lower:]' '[:upper:]')_SDK"
                     if [[ "${IS_RUST}" == true ]]; then
                         COMMAND="(cd ${APP_DIR} && python3 ${dirName}/cargo_metadata_dump.py --device ${tgt} --app_build_path ${BUILD_DIR} --json_path ${MANIFEST_DIR}/manifest_${tgt}.json)"
@@ -181,9 +182,11 @@ call_step() {
                     err=$?
                     if [[ ${err} -ne 0 ]]; then
                         log_error "Check ${step} failed"
+                        echo -n "|:x:" >> "${FILE_STATUS}"
                         exit 1
                     fi
                 done
+                echo -n "|:white_check_mark:" >> "${FILE_STATUS}"
                 return
             fi
             ;;
@@ -220,7 +223,10 @@ call_step() {
     err=$?
     if [[ ${err} -ne 0 ]]; then
         log_error "Check ${step} failed"
-        exit 1
+        echo -n "|:x:" >> "${FILE_STATUS}"
+        [[ "${step}" == manifest ]] && exit 1
+    else
+        echo -n "|:white_check_mark:" >> "${FILE_STATUS}"
     fi
 }
 
@@ -236,6 +242,8 @@ else
     log_title "Running Guideline_enforcer checks for '${TARGET}'"
 fi
 
+FILE_STATUS="/tmp/check_status.md"
+rm -f "${FILE_STATUS}"
 if [[ -z ${REQUESTED_CHECK} ]]; then
     REQUESTED_CHECK="${ALL_CHECKS}"
 else
@@ -250,9 +258,14 @@ for check in ${REQUESTED_CHECK}; do
     call_step "${check}"
 done
 
-echo
-if [[ -z "${TARGET}" ]]; then
-    log_success "Successfully ran Guideline_enforcer checks"
+nb_errors=$(grep -o ":x:" "${FILE_STATUS}" | wc -l)
+echo ""
+
+[[ -n "${TARGET}" ]] && SUBSTR="for '${TARGET}'"
+if [[ "${nb_errors}" -eq 0 ]]; then
+    log_success "Successful Guideline_enforcer checks ${SUBSTR}"
+    exit 0
 else
-    log_success "Successfully ran Guideline_enforcer checks for '${TARGET}'"
+    log_error_no_header "Fail with ${nb_errors} error(s) during Guideline_enforcer checks ${SUBSTR}"
+    exit 1
 fi
