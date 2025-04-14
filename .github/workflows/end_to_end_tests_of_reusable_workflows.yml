@@ -54,15 +54,9 @@ jobs:
           - name: bitcoin
             repo: 'LedgerHQ/app-bitcoin-new'
             branch: 'develop'
-          - name: bitcoin
-            repo: 'LedgerHQ/app-bitcoin-new'
-            branch: 'nanos'
           - name: solana
             repo: 'LedgerHQ/app-solana'
             branch: 'develop'
-          - name: solana
-            repo: 'LedgerHQ/app-solana'
-            branch: 'nanos'
           - name: DOT
             repo: 'LedgerHQ/app-polkadot'
             branch: 'develop'
@@ -87,6 +81,9 @@ jobs:
           - name: ATOM
             repo: 'LedgerHQ/app-cosmos'
             branch: 'develop'
+          - name: boilerplate
+            repo: 'LedgerHQ/app-boilerplate'
+            branch: 'master'
 
     uses: ./.github/workflows/reusable_build.yml
     with:
@@ -94,7 +91,7 @@ jobs:
       app_branch_name: ${{ matrix.coin.branch }}
       # Set the coin variant to build with COIN or CHAIN depending on the app + flags for ETH compilation
       # As a rule of thumb we don't care about giving unexisting flags to other apps, it has no effect
-      flags: "COIN=${{ matrix.coin.name }} CHAIN=${{ matrix.coin.name }} CAL_TEST_KEY=1 DOMAIN_NAME_TEST_KEY=1 SET_PLUGIN_TEST_KEY=1 NFT_TEST_KEY=1"
+      flags: "COIN=${{ matrix.coin.name }} CHAIN=${{ matrix.coin.name }} CAL_TEST_KEY=1 DOMAIN_NAME_TEST_KEY=1 SET_PLUGIN_TEST_KEY=1 NFT_TEST_KEY=1 TRUSTED_NAME_TEST_KEY=1"
       upload_app_binaries_artifact: libraries_binaries-${{ matrix.coin.name }}-${{ strategy.job-index }}
       upload_as_lib_artifact: ${{ matrix.coin.name }}
       builder: ledger-app-builder
