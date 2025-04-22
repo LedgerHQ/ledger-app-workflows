@@ -87,7 +87,7 @@ fi
 if [[ "${REQUESTED_CHECK}" != app_load_params ]]; then
     # Check if APP_DIR is given in parameter
     [[ -z "${APP_DIR}" ]] && help "Missing mandatory parameter 'Application directory'!"
-    # Check if REPO_NAME is given in parameter
+    # Determine REPO_NAME
     REPO_NAME=$(basename "$(git -C "${APP_DIR}" remote get-url origin)")
     REPO_NAME=${REPO_NAME%%.*}
 fi
@@ -135,17 +135,23 @@ fi
 #===============================================================================
 BG_TITLE="\e[48;6;3;1;44m"
 FG_TITLE="\e[38;5;44m"
+FG_BOLD="\e[${BOLD}m"
 
 (( STEP=1 ))
 log_step() {
     echo
-    _log_colored_line "$BG_WARNING" "[STEP ${STEP}]: " "$FG_WARNING" "$1"
+    _log_colored_line "${BG_WARNING}" "[STEP ${STEP}]: " "${FG_WARNING}" "$1"
     (( STEP++ ))
 }
 
 log_title() {
     echo
-    _log_colored_line "$BG_TITLE" "Starting: " "$FG_TITLE" "$1"
+    _log_colored_line "${BG_TITLE}" "Starting: " "${FG_TITLE}" "$1"
+}
+
+log_bold () {
+    local msg="$1"
+    echo -e "${FG_BOLD}${msg}${COLOR_OFF}"
 }
 
 #===============================================================================
@@ -160,6 +166,7 @@ call_step() {
     case ${step} in
         "manifest")
             if [[ -n ${MANIFEST_FILE} ]]; then
+                log_bold "********* Processing target: ${TARGET}"
                 eval BOLOS_SDK="$(echo "\$${TARGET}" | tr '[:lower:]' '[:upper:]')_SDK"
                 if [[ "${IS_RUST}" == true ]]; then
                     COMMAND="(cd ${APP_DIR} && python3 ${dirName}/cargo_metadata_dump.py --device ${TARGET} --app_build_path ${BUILD_DIR} --json_path ${MANIFEST_FILE})"
@@ -168,9 +175,9 @@ call_step() {
                 fi
             else
                 log_step "Get ${step} (All targets)"
-                ALL_TARGETS=$(ledger-manifest --output-devices ledger_app.toml  | tail -n +2 | awk -F" " '{print $2}' | sed 's/+/p/' )
+                ALL_TARGETS=$(ledger-manifest --output-devices ledger_app.toml | tail -n +2 | awk -F" " '{print $2}' | sed 's/+/p/')
                 for tgt in ${ALL_TARGETS}; do
-                    echo "Processing target: ${tgt}"
+                    log_bold "********* Processing target: ${tgt}"
                     eval BOLOS_SDK="$(echo "\$${tgt}" | tr '[:lower:]' '[:upper:]')_SDK"
                     if [[ "${IS_RUST}" == true ]]; then
                         COMMAND="(cd ${APP_DIR} && python3 ${dirName}/cargo_metadata_dump.py --device ${tgt} --app_build_path ${BUILD_DIR} --json_path ${MANIFEST_DIR}/manifest_${tgt}.json)"
@@ -181,7 +188,7 @@ call_step() {
                     eval "${COMMAND}"
                     err=$?
                     if [[ ${err} -ne 0 ]]; then
-                        log_error "Check ${step} failed"
+                        log_error "Check ${step} failed for target ${tgt}"
                         echo -n "|:x:" >> "${FILE_STATUS}"
                         exit 1
                     fi
@@ -203,10 +210,36 @@ call_step() {
             COMMAND="${dirName}/check_readme.sh ${APP_DIR} ${REPO_NAME}"
             ;;
         "scan")
-            if [[ "${IS_RUST}" == true ]]; then
-                COMMAND="(cd ${APP_DIR}/${BUILD_DIR} && cargo +$RUST_NIGHTLY clippy --target ${TARGET/nanosp/nanosplus} -- -Dwarnings)"
+            if [[ -n ${TARGET} ]]; then
+                log_bold "********* Processing target: ${TARGET}"
+                eval BOLOS_SDK="$(echo "\$${TARGET}" | tr '[:lower:]' '[:upper:]')_SDK"
+                if [[ "${IS_RUST}" == true ]]; then
+                    COMMAND="(cd ${APP_DIR}/${BUILD_DIR} && cargo +$RUST_NIGHTLY clippy --target ${TARGET/nanosp/nanosplus} -- -Dwarnings)"
+                else
+                    COMMAND="make ${make_option[*]} ENABLE_SDK_WERROR=1 scan-build"
+                fi
             else
-                COMMAND="make ${make_option[*]} ENABLE_SDK_WERROR=1 scan-build"
+                log_step "Check ${step} (All targets)"
+                ALL_TARGETS=$(ledger-manifest --output-devices ledger_app.toml | tail -n +2 | awk -F" " '{print $2}' | sed 's/+/p/')
+                for tgt in ${ALL_TARGETS}; do
+                    log_bold "********* Processing target: ${tgt}"
+                    eval BOLOS_SDK="$(echo "\$${tgt}" | tr '[:lower:]' '[:upper:]')_SDK"
+                    if [[ "${IS_RUST}" == true ]]; then
+                        COMMAND="(cd ${APP_DIR}/${BUILD_DIR} && cargo +$RUST_NIGHTLY clippy --target ${TARGET/nanosp/nanosplus} -- -Dwarnings)"
+                    else
+                        COMMAND="make ${make_option[*]} ENABLE_SDK_WERROR=1 scan-build"
+                    fi
+                    [[ "${VERBOSE}" == true ]] && echo "Running: ${COMMAND}"
+                    eval "${COMMAND}"
+                    err=$?
+                    if [[ ${err} -ne 0 ]]; then
+                        log_error "Check ${step} failed for target ${tgt}"
+                        echo -n "|:x:" >> "${FILE_STATUS}"
+                        return
+                    fi
+                done
+                echo -n "|:white_check_mark:" >> "${FILE_STATUS}"
+                return
             fi
             ;;
         * ) echo "Unimplemented step: ${step}" >&2; exit 1;;
