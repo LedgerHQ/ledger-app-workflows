@@ -225,7 +225,7 @@ call_step() {
                     log_bold "********* Processing target: ${tgt}"
                     eval BOLOS_SDK="$(echo "\$${tgt}" | tr '[:lower:]' '[:upper:]')_SDK"
                     if [[ "${IS_RUST}" == true ]]; then
-                        COMMAND="(cd ${APP_DIR}/${BUILD_DIR} && cargo +$RUST_NIGHTLY clippy --target ${TARGET/nanosp/nanosplus} -- -Dwarnings)"
+                        COMMAND="(cd ${APP_DIR}/${BUILD_DIR} && cargo +$RUST_NIGHTLY clippy --target ${tgt/nanosp/nanosplus} -- -Dwarnings)"
                     else
                         COMMAND="make ${make_option[*]} ENABLE_SDK_WERROR=1 scan-build"
                     fi
