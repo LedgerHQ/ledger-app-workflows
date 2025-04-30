@@ -53,6 +53,11 @@ on:
         required: false
         default: ""
         type: string
+      cargo_ledger_build_args:
+        description: "Additional arguments to pass to the cargo ledger build command for Rust applications"
+        required: false
+        default: ""
+        type: string
 
 jobs:
   call_get_app_metadata:
@@ -100,7 +105,7 @@ jobs:
                   cargo +$RUST_NIGHTLY update $crate
                 fi
               done
-              cargo ledger build ${BUILD_DEVICE_NAME} && \
+              cargo ledger build ${BUILD_DEVICE_NAME} -- ${{inputs.cargo_ledger_build_args}} && \
               binary_path=$(cargo metadata --no-deps --format-version 1 | jq -r '.target_directory')/ && \
               echo "binary_path=$binary_path" >> $GITHUB_OUTPUT && \
               echo "binary_path=$binary_path" && \
