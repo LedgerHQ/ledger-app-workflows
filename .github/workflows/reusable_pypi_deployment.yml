@@ -3,23 +3,25 @@ name: Build, check and deploy an package on pypi.org or test.pypi.org
 on:
   workflow_call:
     inputs:
-      stable_deployment:
-        description: If the package is to be deployed on pypiorg (true) or test.pypi.org (false)
-        required: true
-        type: boolean
-      package_directory:
-        description: The directory where the Python package lies (where the setup.py or setup.cfg or pyproject.toml can be found)
+      package_name:
+        description: The name of the package.
         required: true
         type: string
-      check_changelog_version:
-        description: If true, a CHANGELOG.md file is expected in the `package_directory`. The workflow will check that its latest
-                     version matches the Python package version.
-        required: true
-        type: boolean
+      package_directory:
+        description: The directory where the Python package lies (where the setup.py or setup.cfg or
+                     pyproject.toml can be found)
+        type: string
+        default: .
       publish:
-        description: Whether the package should be published (on pypi.org or test.pypi.org depending on `stable_deployment`) or not
+        description: Whether the package should be published or not
         required: true
         type: boolean
+      jfrog_deployment:
+        description: If the Python package should be pushed on Ledger Jfrog or not.
+                     Ignored if `publish` is `false`.
+        type: boolean
+        required: false
+        default: true
     secrets:
       pypi_token:
         description: A token enabling to push a package on pypi.org or test.pypi.org
@@ -29,7 +31,11 @@ on:
 jobs:
   package_and_deploy:
     name: Build and deploy a Python Package
-    runs-on: ubuntu-22.04
+    runs-on: public-ledgerhq-shared-small
+    permissions:
+      id-token: write
+      attestations: write
+      contents: write
     steps:
 
       - name: Clone
@@ -37,60 +43,78 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Configure target deploiement repository
+      - name: Build Python package
         run: |
-          if [ "${{ inputs.stable_deployment }}" = "true" ];
-          then
-              echo "DEPLOYMENT_TARGET=https://pypi.org/simple/" >> "$GITHUB_ENV";
-          else
-              echo "DEPLOYMENT_TARGET=https://test.pypi.org/simple/" >> "$GITHUB_ENV";
-          fi
-
-      - name: Display current parameters
-        run: |
-          echo "Parameters are:"
-          echo "- Stable deployment: ${{ inputs.stable_deployment }}"
-          echo "- Will be deployed: ${{ inputs.publish }}"
-          echo "- If deployed, will be on ${{ env.DEPLOYMENT_TARGET }}"
-
-      - name: Check Python package dependencies and local install
-        run: |
-          cd ${{ inputs.package_directory }}
-          pip install -v --extra-index-url ${{ env.DEPLOYMENT_TARGET }} .
-
-      # Fetching dependencies from test.pypi,org or pypi.org depending on the package destination:
-      # tag -> pypi.org, not tag -> test.pypi.org
-      - name: Build and check Python package
-        run: |
-          cd ${{ inputs.package_directory }}
+          # Needed to workaround this bug https://github.com/pypa/setuptools/issues/4759
+          # To be removed when it's fixed
+          pip install -U packaging
           pip install --upgrade pip build twine
-          PIP_EXTRA_INDEX_URL=${{ env.DEPLOYMENT_TARGET }} python -m build
+          cd ${{ inputs.package_directory }}
+          python -m build
+          pip install .
           python -m twine check dist/*
+          echo "TAG_VERSION=$(python -c 'from ${{ inputs.package_name }} import __version__; print(__version__)')" >> "$GITHUB_ENV"
+
+      - name: Display current status
+        run: |
+          echo "- Tag version: ${{ env.TAG_VERSION }}"
 
       - name: Check version against CHANGELOG
-        if: inputs.check_changelog_version
+        if: ${{ success() && inputs.publish }}
         run: |
-          PACKAGE_VERSION=$(find "${{ inputs.package_directory }}/dist" -name *.tar.gz | grep -Eo '[0-9]+\.[0-9]+\.[0-9]+')
-          CHANGELOG_VERSION=$(grep -Po '(?<=## \[)(\d+\.)+[^\]]' "${{ inputs.package_directory }}/CHANGELOG.md" | head -n 1)
-          if [ "${PACKAGE_VERSION}" = "${CHANGELOG_VERSION}" ];
+          CHANGELOG_VERSION=$(grep -Po '(?<=## \[)(\d+\.)+[^\]]' CHANGELOG.md | head -n 1)
+          if [ "${{ env.TAG_VERSION }}" == "${CHANGELOG_VERSION}" ]
           then
-              exit 0;
-          else
-              echo "Tag '${PACKAGE_VERSION}' and CHANGELOG '${CHANGELOG_VERSION}' versions mismatch!";
-              exit 1;
+              exit 0
           fi
+          echo "Tag '${{ env.TAG_VERSION }}' and CHANGELOG '${CHANGELOG_VERSION}' versions mismatch!"
+          exit 1
 
-      - name: Publish Python package on pypi.org or test.pypi.org
-        if: inputs.publish
-        run: |
-          cd ${{ inputs.package_directory }}
-          if [ "${{ inputs.stable_deployment }}" = "true" ];
-          then
-              python -m twine upload dist/*;
-          else
-              python -m twine upload --repository testpypi dist/*;
-          fi
+      - name: Publish Python package on pypi.org
+        if: ${{ success() && inputs.publish }}
+        run: python -m twine upload ${{ inputs.package_directory }}/dist/*
         env:
           TWINE_USERNAME: __token__
-          TWINE_PASSWORD: ${{ secrets.pypi_token }}
+          TWINE_PASSWORD: ${{ secrets.pypi_token  }}
           TWINE_NON_INTERACTIVE: 1
+
+      - name: Login to Ledger Artifactory
+        if: ${{ success() && inputs.publish && inputs.jfrog_deployment }}
+        timeout-minutes: 10
+        id: jfrog-login
+        uses: LedgerHQ/actions-security/actions/jfrog-login@actions/jfrog-login-1
+
+      - name: Publish Python package on Ledger Artifactory
+        if: ${{ success() && inputs.publish && inputs.jfrog_deployment }}
+        run: python -m twine upload ${{ inputs.package_directory }}/dist/*
+        env:
+          TWINE_REPOSITORY_URL: https://jfrog.ledgerlabs.net/artifactory/api/pypi/embedded-apps-pypi-prod-green
+          TWINE_USERNAME: ${{ steps.jfrog-login.outputs.oidc-user }}
+          TWINE_PASSWORD: ${{ steps.jfrog-login.outputs.oidc-token }}
+          TWINE_NON_INTERACTIVE: 1
+
+      - name: Generate library build attestations
+        if: ${{ success() && inputs.publish && inputs.jfrog_deployment }}
+        timeout-minutes: 10
+        uses: LedgerHQ/actions-security/actions/attest@actions/attest-1
+        with:
+          subject-path: ${{ inputs.package_directory }}/dist/*
+
+      - name: Sign library artifacts
+        if: ${{ success() && inputs.publish && inputs.jfrog_deployment }}
+        timeout-minutes: 10
+        uses: LedgerHQ/actions-security/actions/sign-blob@actions/sign-blob-1
+        with:
+          path: ${{ inputs.package_directory }}/dist
+
+      - name: Publish a release on the repo
+        if: ${{ success() && inputs.publish }}
+        uses: "marvinpinto/action-automatic-releases@latest"
+        with:
+          automatic_release_tag: "v${{ env.TAG_VERSION }}"
+          repo_token: "${{ secrets.GITHUB_TOKEN }}"
+          prerelease: false
+          files: |
+            LICENSE
+            CHANGELOG.md
+            ${{ inputs.package_directory }}/dist/
