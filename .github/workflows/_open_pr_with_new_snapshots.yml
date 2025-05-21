@@ -48,10 +48,6 @@ jobs:
           # instead of provided ones
           persist-credentials: false
 
-      - name: Clear legacy snapshots
-        run: |
-          rm -rf ${{ inputs.snapshots_directory }}/*
-
       - name: Download new snapshots
         uses: actions/download-artifact@v4
         with:
@@ -61,6 +57,7 @@ jobs:
       - name: Check if update is needed
         id: check-changes
         run: |
+          git status
           if [ -n "$(git status --porcelain)" ]; then
               echo "Changes detected"
               echo "changes_detected=true" >> "$GITHUB_OUTPUT"
