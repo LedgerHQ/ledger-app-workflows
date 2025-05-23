@@ -167,7 +167,7 @@ call_step() {
         "manifest")
             if [[ -n ${MANIFEST_FILE} ]]; then
                 log_bold "********* Processing target: ${TARGET}"
-                eval BOLOS_SDK="$(echo "\$${TARGET}" | tr '[:lower:]' '[:upper:]')_SDK"
+                eval BOLOS_SDK="$(echo "\$${TARGET}" | sed 's/[2+]/p/' | tr '[:lower:]' '[:upper:]')_SDK"
                 if [[ "${IS_RUST}" == true ]]; then
                     COMMAND="(cd ${APP_DIR} && python3 ${dirName}/cargo_metadata_dump.py --device ${TARGET} --app_build_path ${BUILD_DIR} --json_path ${MANIFEST_FILE})"
                 else
@@ -175,7 +175,7 @@ call_step() {
                 fi
             else
                 log_step "Get ${step} (All targets)"
-                ALL_TARGETS=$(ledger-manifest --output-devices ledger_app.toml | tail -n +2 | awk -F" " '{print $2}' | sed 's/+/p/')
+                ALL_TARGETS=$(ledger-manifest --output-devices ledger_app.toml | tail -n +2 | awk -F" " '{print $2}' | sed 's/[2+]/p/')
                 for tgt in ${ALL_TARGETS}; do
                     log_bold "********* Processing target: ${tgt}"
                     eval BOLOS_SDK="$(echo "\$${tgt}" | tr '[:lower:]' '[:upper:]')_SDK"
@@ -212,7 +212,7 @@ call_step() {
         "scan")
             if [[ -n ${TARGET} ]]; then
                 log_bold "********* Processing target: ${TARGET}"
-                eval BOLOS_SDK="$(echo "\$${TARGET}" | tr '[:lower:]' '[:upper:]')_SDK"
+                eval BOLOS_SDK="$(echo "\$${TARGET}" | sed 's/[2+]/p/' | tr '[:lower:]' '[:upper:]')_SDK"
                 if [[ "${IS_RUST}" == true ]]; then
                     COMMAND="(cd ${APP_DIR}/${BUILD_DIR} && cargo +$RUST_NIGHTLY clippy --target ${TARGET/nanosp/nanosplus} -- -Dwarnings)"
                 else
@@ -220,7 +220,7 @@ call_step() {
                 fi
             else
                 log_step "Check ${step} (All targets)"
-                ALL_TARGETS=$(ledger-manifest --output-devices ledger_app.toml | tail -n +2 | awk -F" " '{print $2}' | sed 's/+/p/')
+                ALL_TARGETS=$(ledger-manifest --output-devices ledger_app.toml | tail -n +2 | awk -F" " '{print $2}' | sed 's/[2+]/p/')
                 for tgt in ${ALL_TARGETS}; do
                     log_bold "********* Processing target: ${tgt}"
                     eval BOLOS_SDK="$(echo "\$${tgt}" | tr '[:lower:]' '[:upper:]')_SDK"
