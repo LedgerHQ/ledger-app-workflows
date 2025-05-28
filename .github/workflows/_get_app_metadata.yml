@@ -2,6 +2,10 @@ name: Output metadata on the application, inferred from the local 'ledger_app.to
 
 on:
   workflow_call:
+    secrets:
+      token:
+        description: 'A token passed from the caller workflow'
+        required: false
     inputs:
       app_repository:
         description: 'The GIT repository to build (defaults to `github.repository`)'
@@ -65,6 +69,7 @@ jobs:
           repository: ${{ inputs.app_repository }}
           ref: ${{ inputs.app_branch_name }}
           submodules: recursive
+          token: ${{ secrets.token && secrets.token || github.token }}
 
       - name: Install dependencies
         run: pip install ledgered
