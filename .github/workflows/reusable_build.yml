@@ -2,6 +2,10 @@ name: Build the application for all devices and upload the artifact
 
 on:
   workflow_call:
+    secrets:
+      token:
+        description: 'A token passed from the caller workflow'
+        required: false
     inputs:
       app_repository:
         description: 'The GIT repository to build (defaults to `github.repository`)'
@@ -58,6 +62,11 @@ on:
         required: false
         default: ""
         type: string
+      token:
+        description: 'Optional token for authentication'
+        required: false
+        default: ${{ github.token }}
+        type: string
 
 jobs:
   call_get_app_metadata:
@@ -89,6 +98,7 @@ jobs:
           repository: ${{ inputs.app_repository }}
           ref: ${{ inputs.app_branch_name }}
           submodules: recursive
+          token: ${{ secrets.token }}
 
       - name: Build application
         id: "build"
