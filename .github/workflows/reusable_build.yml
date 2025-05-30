@@ -2,6 +2,10 @@ name: Build the application for all devices and upload the artifact
 
 on:
   workflow_call:
+    secrets:
+      token:
+        description: 'A token passed from the caller workflow'
+        required: false
     inputs:
       app_repository:
         description: 'The GIT repository to build (defaults to `github.repository`)'
@@ -70,6 +74,8 @@ jobs:
       app_repository: ${{ inputs.app_repository }}
       app_branch_name: ${{ inputs.app_branch_name }}
       compatible_devices: ${{ inputs.run_for_devices }}
+    secrets:
+      token: ${{ secrets.token }}
 
   build:
     name: Build application for NanoS, X, S+, and Stax
@@ -89,6 +95,7 @@ jobs:
           repository: ${{ inputs.app_repository }}
           ref: ${{ inputs.app_branch_name }}
           submodules: recursive
+          token: ${{ secrets.token && secrets.token || github.token }}
 
       - name: Build application
         id: "build"
