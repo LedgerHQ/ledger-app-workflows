@@ -62,6 +62,7 @@ jobs:
       - name: Check version against CHANGELOG
         if: ${{ success() && inputs.publish }}
         run: |
+          cd ${{ inputs.package_directory }}
           CHANGELOG_VERSION=$(grep -Po '(?<=## \[)(\d+\.)+[^\]]' CHANGELOG.md | head -n 1)
           if [ "${{ env.TAG_VERSION }}" == "${CHANGELOG_VERSION}" ]
           then
