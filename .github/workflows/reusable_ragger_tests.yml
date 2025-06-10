@@ -94,11 +94,18 @@ jobs:
       app_repository: ${{ inputs.app_repository }}
       app_branch_name: ${{ inputs.app_branch_name }}
       compatible_devices: ${{ inputs.run_for_devices }}
+
+  call_get_test_metadata:
+    name: Retrieve test metadata
+    uses: ./.github/workflows/_get_test_metadata.yml
+    with:
+      app_repository: ${{ inputs.app_repository }}
+      app_branch_name: ${{ inputs.app_branch_name }}
       pytest_directory: ${{ inputs.test_dir }}
 
   ragger_tests:
     name: Functional tests with Ragger
-    needs: call_get_app_metadata
+    needs: [call_get_app_metadata, call_get_test_metadata]
     strategy:
       fail-fast: false
       matrix:
@@ -109,7 +116,7 @@ jobs:
     steps:
       - name: Check metadata
         run: |
-          if [ '${{ needs.call_get_app_metadata.outputs.pytest_directory }}' = 'None' ]; then
+          if [ '${{ needs.call_get_test_metadata.outputs.pytest_directory }}' = 'None' ]; then
               >&2 echo "ERROR: This workflow either needs a 'ledger_app.toml' manifest with a 'tests.pytest_directory' section, or be configured with a valid 'test_dir' parameter"
               exit 1
           fi
@@ -164,32 +171,53 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: ${{ inputs.lib_binaries_artifact }}
-          path: ${{ needs.call_get_app_metadata.outputs.pytest_directory }}/lib_binaries/
+          path: ${{ needs.call_get_test_metadata.outputs.pytest_directory }}/lib_binaries/
 
       - name: Display structure of downloaded files
         if: ${{ inputs.lib_binaries_artifact != '' }}
-        run: ls -R ${{ needs.call_get_app_metadata.outputs.pytest_directory }}/lib_binaries/
+        run: ls -R ${{ needs.call_get_test_metadata.outputs.pytest_directory }}/lib_binaries/
+
+      # To be suppressed when ledgered for manifest v2 is released
+      - name: Clone ledgered repository
+        uses: actions/checkout@v4
+        with:
+          repository: LedgerHQ/ledgered
+          ref: y333/manage_pytest_swap_directory
+          path: ledgered
+          fetch-tags: true
+          fetch-depth: 0
+          token: ${{ secrets.token && secrets.token || github.token }}
+
+      - name: Install local version of ledgered
+        run: |
+          # Install the local version of ledgered
+          cd ledgered
+          python -m pip install --upgrade pip
+          pip install -e .[dev]
+          cd ..
+          rm -rf ledgered/tests
+      # #######################################################
 
       - name: Install tests dependencies
         run: |
           sudo apt-get update && sudo apt-get install -y qemu-user-static tesseract-ocr libtesseract-dev
           pip install -U pip packaging setuptools
-          pip install -r "${{ needs.call_get_app_metadata.outputs.pytest_directory }}/requirements.txt"
-          if [ -f ${{ needs.call_get_app_metadata.outputs.pytest_directory }}/setup_script.sh ]; then
-            ./${{ needs.call_get_app_metadata.outputs.pytest_directory }}/setup_script.sh
+          pip install -r "${{ needs.call_get_test_metadata.outputs.pytest_directory }}/requirements.txt"
+          if [ -f ${{ needs.call_get_test_metadata.outputs.pytest_directory }}/setup_script.sh ]; then
+            ./${{ needs.call_get_test_metadata.outputs.pytest_directory }}/setup_script.sh
           fi
 
       - name: Clear legacy snapshots
         if: ${{ inputs.regenerate_snapshots == true }}
         run: |
-          rm -rf ${{ needs.call_get_app_metadata.outputs.pytest_directory }}/snapshots
+          rm -rf ${{ needs.call_get_test_metadata.outputs.pytest_directory }}/snapshots
 
       - name: Run test
         env:
           CTEST_OUTPUT_ON_FAILURE: 1
           PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION: python
         run: |
-          pytest ${{ needs.call_get_app_metadata.outputs.pytest_directory }}/ \
+          pytest ${{ needs.call_get_test_metadata.outputs.pytest_directory }}/ \
                  --tb=short -v \
                  --device ${{ matrix.device }} \
                  -k ${{ inputs.test_filter }} \
@@ -203,14 +231,14 @@ jobs:
         with:
           # Make the artifact name unique to allow running this job in parallel
           name: tests_snapshots${{ inputs.test_options }}-${{ matrix.device }}
-          path: ${{ needs.call_get_app_metadata.outputs.pytest_directory }}/snapshots-tmp
+          path: ${{ needs.call_get_test_metadata.outputs.pytest_directory }}/snapshots-tmp
 
       - name: Upload snapshots on success if needed
         if: ${{ inputs.regenerate_snapshots == true }}
         uses: actions/upload-artifact@v4
         with:
           name: tests_snapshots${{ inputs.test_options }}-${{ matrix.device }}
-          path: ${{ needs.call_get_app_metadata.outputs.pytest_directory }}/snapshots-tmp
+          path: ${{ needs.call_get_test_metadata.outputs.pytest_directory }}/snapshots-tmp
 
       - name: Set upload flag
         id: upload-flag
@@ -246,4 +274,4 @@ jobs:
       app_repository: ${{ inputs.app_repository }}
       app_branch_name: ${{ inputs.app_branch_name }}
       snapshots_artifact_name: ${{ needs.merge_artifacts_if_needed.outputs.snapshot_artifact_name }}
-      snapshots_directory: ${{ needs.call_get_app_metadata.outputs.pytest_directory }}/snapshots
+      snapshots_directory: ${{ needs.call_get_test_metadata.outputs.pytest_directory }}/snapshots
