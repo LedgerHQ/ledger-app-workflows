@@ -1,0 +1,103 @@
+name: Output metadata on the application, inferred from the local 'ledger_app.toml' manifest or not
+
+on:
+  workflow_call:
+    secrets:
+      token:
+        description: 'A token passed from the caller workflow'
+        required: false
+    inputs:
+      app_repository:
+        description: 'The GIT repository to build (defaults to `github.repository`)'
+        required: false
+        default: ${{ github.repository }}
+        type: string
+      app_branch_name:
+        description: 'The GIT branch to build (defaults to `github.ref`)'
+        required: false
+        default: ${{ github.ref }}
+        type: string
+      pytest_directory:
+        description: |
+          The directory where the Python tests are stored (a `conftest.py` file is expected there).
+        required: false
+        default: 'None'
+        type: string
+    outputs:
+      pytest_directory:
+        description: |
+          The directory where the Python tests are stored (a `conftest.py` file is expected there).
+        value: ${{ jobs.fetch_metadata.outputs.pytest_directory }}
+
+env:
+  APP_MANIFEST: "ledger_app.toml"
+
+jobs:
+  fetch_metadata:
+    name: Retrieve application metadata
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Clone app repository
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ inputs.app_repository }}
+          ref: ${{ inputs.app_branch_name }}
+          submodules: recursive
+          token: ${{ secrets.token && secrets.token || github.token }}
+
+      # To be suppressed when ledgered for manifest v2 is released
+      - name: Clone ledgered repository
+        uses: actions/checkout@v4
+        with:
+          repository: LedgerHQ/ledgered
+          ref: y333/manage_pytest_swap_directory
+          path: ledgered
+          token: ${{ secrets.token && secrets.token || github.token }}
+          
+      - name: Install dependencies
+        run: |
+          # pip install ledgered
+          # Install the local version of ledgered
+          cd ledgered
+          python -m pip install --upgrade pip
+          python -m pip install -e .[dev]
+
+      - name: Gather application metadata, from inputs or 'ledger_app.toml'
+        id: fetch_metadata
+        run: |
+          if [ ! -f "$APP_MANIFEST" ];
+          then
+              >&2 echo "/!\ No $APP_MANIFEST manifest detected!"
+              >&2 echo "This file is mandatory, please add it on your repository"
+              >&2 echo "Documentation here: https://github.com/LedgerHQ/ledgered/blob/master/doc/utils/manifest.md"
+              exit 1
+          fi
+
+          # 'ledger_app.toml' exists
+          echo "Manifest detected."
+          # checking the manifest with the repo
+          ledger-manifest --check . "$APP_MANIFEST"
+
+          temp = "$(ledger-manifest --output-tests-pytest-directory "$APP_MANIFEST")"
+          # catch the error if the manifest does not contain the pytest_directory
+          if [ $? -ne 0 ]; then
+              >&2 echo "This is a v2 manifest"
+              temp = "$(ledger-manifest --output-pytest-directories -j -- "$APP_MANIFEST" | jq -rc '.pytest_directories')"
+              for dir in $temp; do
+                  # if the dir is the same as input.pytest_directory, we keep it
+                  if [ "$dir" = "${{ inputs.pytest_directory }}" ]; then
+                      pytest_directory="$dir"
+                      break
+                  fi
+              done
+          else
+              pytest_directory="${temp}"
+          fi
+          echo "pytest_directory=${pytest_directory}" >> "$GITHUB_OUTPUT"
+
+          echo "Inferred test metadata:"
+          cat "$GITHUB_OUTPUT"
+
+    outputs:
+      pytest_directory: ${{ steps.fetch_metadata.outputs.pytest_directory }}
