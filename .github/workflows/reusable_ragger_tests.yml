@@ -177,6 +177,15 @@ jobs:
         if: ${{ inputs.lib_binaries_artifact != '' }}
         run: ls -R ${{ needs.call_get_test_metadata.outputs.pytest_directory }}/lib_binaries/
 
+      - name: Install tests dependencies
+        run: |
+          sudo apt-get update && sudo apt-get install -y qemu-user-static tesseract-ocr libtesseract-dev
+          pip install -U pip packaging setuptools
+          pip install -r "${{ needs.call_get_test_metadata.outputs.pytest_directory }}/requirements.txt"
+          if [ -f ${{ needs.call_get_test_metadata.outputs.pytest_directory }}/setup_script.sh ]; then
+            ./${{ needs.call_get_test_metadata.outputs.pytest_directory }}/setup_script.sh
+          fi
+
       # To be suppressed when ledgered for manifest v2 is released
       - name: Clone ledgered repository
         uses: actions/checkout@v4
@@ -190,20 +199,11 @@ jobs:
         run: |
           # Install the local version of ledgered
           cd ledgered
-          python -m pip install --upgrade pip
-          python -m pip install -e .[dev]
+          pip uninstall ledgered -y || true
+          pip install -e .[dev]
           cd ..
           rm -rf ledgered
       # #######################################################
-      
-      - name: Install tests dependencies
-        run: |
-          sudo apt-get update && sudo apt-get install -y qemu-user-static tesseract-ocr libtesseract-dev
-          pip install -U pip packaging setuptools
-          pip install -r "${{ needs.call_get_test_metadata.outputs.pytest_directory }}/requirements.txt"
-          if [ -f ${{ needs.call_get_test_metadata.outputs.pytest_directory }}/setup_script.sh ]; then
-            ./${{ needs.call_get_test_metadata.outputs.pytest_directory }}/setup_script.sh
-          fi
 
       - name: Clear legacy snapshots
         if: ${{ inputs.regenerate_snapshots == true }}
