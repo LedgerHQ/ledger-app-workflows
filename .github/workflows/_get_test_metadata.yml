@@ -79,9 +79,12 @@ jobs:
           # checking the manifest with the repo
           ledger-manifest --check . "$APP_MANIFEST"
 
+          set +e
           temp="$(ledger-manifest --output-tests-pytest-directory "$APP_MANIFEST")"
+          status=$?
+          set -e
           # catch the error if the manifest does not contain the pytest_directory
-          if [ $? -ne 0 ]; then
+          if [ $status -ne 0 ]; then
               >&2 echo "This is a v2 manifest"
               temp="$(ledger-manifest --output-pytest-directories -j -- "$APP_MANIFEST" | jq -rc '.pytest_directories')"
               for dir in $temp; do
