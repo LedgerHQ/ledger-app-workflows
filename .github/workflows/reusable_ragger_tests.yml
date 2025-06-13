@@ -185,6 +185,7 @@ jobs:
           ref: y333/manage_pytest_swap_directory
           path: ledgered
           fetch-tags: true
+          fetch-depth: 0
           token: ${{ secrets.token && secrets.token || github.token }}
           
       - name: Install local version of ledgered
