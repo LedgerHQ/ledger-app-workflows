@@ -34,7 +34,7 @@ env:
 
 jobs:
   fetch_metadata:
-    name: Retrieve application metadata
+    name: Retrieve tests metadata
     runs-on: ubuntu-22.04
 
     steps:
@@ -88,6 +88,7 @@ jobs:
               >&2 echo "This is a v2 manifest"
               temp="$(ledger-manifest --output-pytest-directories -j -- "$APP_MANIFEST" | jq -rc '.pytest_directories')"
               for dir in $temp; do
+                  echo "Found in Manifest pytest directory: $dir, searching for $${ inputs.pytest_directory }"
                   # if the dir is the same as input.pytest_directory, we keep it
                   if [ "$dir" = "${{ inputs.pytest_directory }}" ]; then
                       pytest_directory="$dir"
