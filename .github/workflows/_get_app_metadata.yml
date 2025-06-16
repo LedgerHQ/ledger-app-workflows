@@ -27,6 +27,16 @@ on:
         required: false
         default: 'None'
         type: string
+      flags:
+        description: "Additional compilation flags (default to none)"
+        required: false
+        default: ''
+        type: string
+      use_case:
+        description: "The use case to build the application for"
+        required: false
+        default: ''
+        type: string
     outputs:
       is_rust:
         description: Returns "true" if the app is using Rust SDK, else returns "false"
@@ -40,6 +50,10 @@ on:
         description:
           The list of device(s) supported by the application.
         value: ${{ jobs.fetch_metadata.outputs.compatible_devices }}
+      flags:
+        description: |
+          The additional compilation flags to use when building the application.
+        value: ${{ jobs.fetch_metadata.outputs.flags }}
 
 env:
   APP_MANIFEST: "ledger_app.toml"
@@ -112,6 +126,18 @@ jobs:
               echo "is_rust=false" >> "$GITHUB_OUTPUT"
           fi
 
+          # Compilation flags
+          if [ -n "${{ inputs.flags }}" ]; then
+              echo "flags=${{ inputs.flags }}" >> "$GITHUB_OUTPUT"
+          elif [ -n "${{ inputs.use_case }}" ]; then
+              # if a use case is provided, we use the one from the manifest
+              use_case=${{ inputs.use_case }}
+              echo "use_case is set to '${use_case}'"
+              echo "flags=$(ledger-manifest "$APP_MANIFEST" --output-use-cases ${use_case})" >> "$GITHUB_OUTPUT"
+          else
+              echo "flags=" >> "$GITHUB_OUTPUT"
+          fi
+
           echo "Inferred metadata:"
           cat "$GITHUB_OUTPUT"
 
@@ -119,3 +145,4 @@ jobs:
       is_rust: ${{ steps.fetch_metadata.outputs.is_rust }}
       compatible_devices: ${{ steps.fetch_metadata.outputs.compatible_devices }}
       build_directory: ${{ steps.fetch_metadata.outputs.build_directory }}
+      flags: ${{ steps.fetch_metadata.outputs.flags }}

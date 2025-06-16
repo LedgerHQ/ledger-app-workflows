@@ -22,6 +22,11 @@ on:
         required: false
         default: ''
         type: string
+      use_case:
+        description: "The use case to build the application for"
+        required: false
+        default: ''
+        type: string
       upload_app_binaries_artifact:
         description: "The name of the artifact containing the built application binary file(s) to be tested"
         required: false
@@ -74,6 +79,8 @@ jobs:
       app_repository: ${{ inputs.app_repository }}
       app_branch_name: ${{ inputs.app_branch_name }}
       compatible_devices: ${{ inputs.run_for_devices }}
+      flags: ${{ inputs.flags }}
+      use_case: ${{ inputs.use_case }}
     secrets:
       token: ${{ secrets.token }}
 
@@ -127,7 +134,7 @@ jobs:
                   ADDITIONAL_ARGS="TARGET=${{ matrix.device }}"
               fi
               echo "Compiling..."
-              make -C ${{ needs.call_get_app_metadata.outputs.build_directory }} -j ${{ inputs.flags }} ${ADDITIONAL_ARGS} BOLOS_SDK=${BOLOS_SDK}
+              make -C ${{ needs.call_get_app_metadata.outputs.build_directory }} -j ${{ needs.call_get_app_metadata.outputs.flags }} ${ADDITIONAL_ARGS} BOLOS_SDK=${BOLOS_SDK}
               echo "binary_path=${{ needs.call_get_app_metadata.outputs.build_directory }}/build/*" >> $GITHUB_OUTPUT
               echo "Build complete"
           fi
