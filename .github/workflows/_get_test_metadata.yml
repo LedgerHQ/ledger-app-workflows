@@ -1,0 +1,96 @@
+name: Output metadata on the application, inferred from the local 'ledger_app.toml' manifest or not
+
+on:
+  workflow_call:
+    secrets:
+      token:
+        description: 'A token passed from the caller workflow'
+        required: false
+    inputs:
+      app_repository:
+        description: 'The GIT repository to build (defaults to `github.repository`)'
+        required: false
+        default: ${{ github.repository }}
+        type: string
+      app_branch_name:
+        description: 'The GIT branch to build (defaults to `github.ref`)'
+        required: false
+        default: ${{ github.ref }}
+        type: string
+      pytest_directory:
+        description: |
+          The directory where the Python tests are stored (a `conftest.py` file is expected inside).
+        required: false
+        default: 'None'
+        type: string
+    outputs:
+      pytest_directory:
+        description: |
+          The directory where the Python tests are stored (a `conftest.py` file is expected inside).
+        value: ${{ jobs.fetch_metadata.outputs.pytest_directory }}
+
+env:
+  APP_MANIFEST: "ledger_app.toml"
+
+jobs:
+  fetch_metadata:
+    name: Retrieve tests metadata
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Clone app repository
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ inputs.app_repository }}
+          ref: ${{ inputs.app_branch_name }}
+          submodules: recursive
+          token: ${{ secrets.token && secrets.token || github.token }}
+
+      - name: Install dependencies
+        run: |
+          pip install ledgered
+
+      - name: Gather application metadata, from inputs or 'ledger_app.toml'
+        id: fetch_metadata
+        run: |
+          if [ ! -f "$APP_MANIFEST" ];
+          then
+              >&2 echo "/!\ No $APP_MANIFEST manifest detected!"
+              >&2 echo "This file is mandatory, please add it on your repository"
+              >&2 echo "Documentation here: https://github.com/LedgerHQ/ledgered/blob/master/doc/utils/manifest.md"
+              exit 1
+          fi
+
+          # 'ledger_app.toml' exists
+          echo "Manifest detected."
+          # checking the manifest with the repo
+          ledger-manifest --check . "$APP_MANIFEST"
+
+          set +e
+          temp="$(ledger-manifest --output-tests-pytest-directory "$APP_MANIFEST")"
+          status=$?
+          set -e
+          # catch the error if the manifest does not contain the pytest_directory
+          if [ $status -ne 0 ]; then
+              >&2 echo "This is a v2 manifest"
+              pytest_directory=""
+              temp="$(ledger-manifest --output-pytest-directories -j -- "$APP_MANIFEST")"
+              for dir in $(echo "$temp" | jq -r '.pytest_directories[]'); do
+                  echo "Found in Manifest pytest directory: $dir"
+                  echo "Searching for '${{ inputs.pytest_directory }}'"
+                  # if the dir is the same as input.pytest_directory, we keep it
+                  if [ "$dir" = "${{ inputs.pytest_directory }}" ]; then
+                      pytest_directory="$dir"
+                      break
+                  fi
+              done
+          else
+              pytest_directory="${temp}"
+          fi
+          echo "pytest_directory=${pytest_directory}" >> "$GITHUB_OUTPUT"
+
+          echo "Inferred test metadata:"
+          cat "$GITHUB_OUTPUT"
+
+    outputs:
+      pytest_directory: ${{ steps.fetch_metadata.outputs.pytest_directory }}

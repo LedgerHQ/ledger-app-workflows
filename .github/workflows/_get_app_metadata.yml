@@ -27,14 +27,15 @@ on:
         required: false
         default: 'None'
         type: string
-      pytest_directory:
-        description: |
-          The directory where the Python tests are stored (a `conftest.py` file is expected there).
-
-          If the application is configured with a 'ledger_app.toml' manifest at its root with a
-          'tests.pytest_directory' field, this parameter is ignored.
+      flags:
+        description: "Additional compilation flags (default to none)"
         required: false
-        default: 'None'
+        default: ''
+        type: string
+      use_case:
+        description: "The use case to build the application for. Ignored if 'flags' is set"
+        required: false
+        default: ''
         type: string
     outputs:
       is_rust:
@@ -49,10 +50,10 @@ on:
         description:
           The list of device(s) supported by the application.
         value: ${{ jobs.fetch_metadata.outputs.compatible_devices }}
-      pytest_directory:
+      flags:
         description: |
-          The directory where the Python tests are stored (a `conftest.py` file is expected there).
-        value: ${{ jobs.fetch_metadata.outputs.pytest_directory }}
+          The additional compilation flags to use when building the application.
+        value: ${{ jobs.fetch_metadata.outputs.flags }}
 
 env:
   APP_MANIFEST: "ledger_app.toml"
@@ -72,7 +73,8 @@ jobs:
           token: ${{ secrets.token && secrets.token || github.token }}
 
       - name: Install dependencies
-        run: pip install ledgered
+        run: |
+          pip install ledgered
 
       - name: Gather application metadata, from inputs or 'ledger_app.toml'
         id: fetch_metadata
@@ -103,21 +105,24 @@ jobs:
           fi
           echo "compatible_devices=${compatible_devices}" | sed 's/+/p/' >> "$GITHUB_OUTPUT"
 
-          # pytest_directory (if any)
-          set +e  # when [tests.pytest_directory] is not set, ledger-manifest fails. We don't want that
-          if temp="$(ledger-manifest --output-tests-pytest-directory "$APP_MANIFEST")";
-          then
-              pytest_directory="${temp}"
-          fi
-          set -e
-          echo "pytest_directory=${pytest_directory}" >> "$GITHUB_OUTPUT"
-
           # SDK language
           if [ "$(ledger-manifest --output-sdk "$APP_MANIFEST")" = "rust" ];
           then
               echo "is_rust=true" >> "$GITHUB_OUTPUT"
           else
               echo "is_rust=false" >> "$GITHUB_OUTPUT"
+          fi
+
+          # Compilation flags
+          if [ -n "${{ inputs.flags }}" ]; then
+              echo "flags=${{ inputs.flags }}" >> "$GITHUB_OUTPUT"
+          elif [ -n "${{ inputs.use_case }}" ]; then
+              # if a use case is provided, we use the one from the manifest
+              use_case=${{ inputs.use_case }}
+              echo "use_case is set to '${use_case}'"
+              echo "flags=$(ledger-manifest "$APP_MANIFEST" --output-use-cases ${use_case})" >> "$GITHUB_OUTPUT"
+          else
+              echo "flags=" >> "$GITHUB_OUTPUT"
           fi
 
           echo "Inferred metadata:"
@@ -127,4 +132,4 @@ jobs:
       is_rust: ${{ steps.fetch_metadata.outputs.is_rust }}
       compatible_devices: ${{ steps.fetch_metadata.outputs.compatible_devices }}
       build_directory: ${{ steps.fetch_metadata.outputs.build_directory }}
-      pytest_directory: ${{ steps.fetch_metadata.outputs.pytest_directory }}
+      flags: ${{ steps.fetch_metadata.outputs.flags }}
