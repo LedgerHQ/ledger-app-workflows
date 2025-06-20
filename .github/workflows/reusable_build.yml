@@ -108,6 +108,14 @@ jobs:
         id: "build"
         shell: bash
         run: |
+          eval "BOLOS_SDK=\$$(echo ${{ matrix.device }} | tr [:lower:] [:upper:])_SDK"
+          echo "BOLOS_SDK value will be: ${BOLOS_SDK}"
+          if [ -n "${{ inputs.sdk_reference }}" ];
+          then
+              echo "Checking out reference '${{ inputs.sdk_reference }}'..."
+              (cd $BOLOS_SDK && git fetch -apt && git checkout ${{ inputs.sdk_reference }})
+              ADDITIONAL_ARGS="TARGET=${{ matrix.device }}"
+          fi
           if [ "${{ needs.call_get_app_metadata.outputs.is_rust }}" = "true" ];
           then
               BUILD_DEVICE_NAME="$(echo ${{ matrix.device }} | sed 's/nanosp/nanosplus/')" && \
@@ -119,20 +127,13 @@ jobs:
                   cargo +$RUST_NIGHTLY update $crate
                 fi
               done
-              cargo ledger build ${BUILD_DEVICE_NAME} -- ${{inputs.cargo_ledger_build_args}} && \
+              # Always using provided C SDK
+              LEDGER_SDK_PATH=${BOLOS_SDK} cargo ledger build ${BUILD_DEVICE_NAME} -- ${{inputs.cargo_ledger_build_args}} && \
               binary_path=$(cargo metadata --no-deps --format-version 1 | jq -r '.target_directory')/ && \
               echo "binary_path=$binary_path" >> $GITHUB_OUTPUT && \
               echo "binary_path=$binary_path" && \
               echo "Build complete"
           else
-              eval "BOLOS_SDK=\$$(echo ${{ matrix.device }} | tr [:lower:] [:upper:])_SDK"
-              echo "BOLOS_SDK value will be: ${BOLOS_SDK}"
-              if [ -n "${{ inputs.sdk_reference }}" ];
-              then
-                  echo "Checking out reference '${{ inputs.sdk_reference }}'..."
-                  (cd $BOLOS_SDK && git fetch -apt && git checkout ${{ inputs.sdk_reference }})
-                  ADDITIONAL_ARGS="TARGET=${{ matrix.device }}"
-              fi
               echo "Compiling..."
               make -C ${{ needs.call_get_app_metadata.outputs.build_directory }} -j ${{ needs.call_get_app_metadata.outputs.flags }} ${ADDITIONAL_ARGS} BOLOS_SDK=${BOLOS_SDK}
               echo "binary_path=${{ needs.call_get_app_metadata.outputs.build_directory }}/build/*" >> $GITHUB_OUTPUT
