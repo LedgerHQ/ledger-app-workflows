@@ -177,27 +177,6 @@ jobs:
         if: ${{ inputs.lib_binaries_artifact != '' }}
         run: ls -R ${{ needs.call_get_test_metadata.outputs.pytest_directory }}/lib_binaries/
 
-      # To be suppressed when ledgered for manifest v2 is released
-      - name: Clone ledgered repository
-        uses: actions/checkout@v4
-        with:
-          repository: LedgerHQ/ledgered
-          ref: y333/manage_pytest_swap_directory
-          path: ledgered
-          fetch-tags: true
-          fetch-depth: 0
-          token: ${{ secrets.token && secrets.token || github.token }}
-
-      - name: Install local version of ledgered
-        run: |
-          # Install the local version of ledgered
-          cd ledgered
-          python -m pip install --upgrade pip
-          pip install -e .[dev]
-          cd ..
-          rm -rf ledgered/tests
-      # #######################################################
-
       - name: Install tests dependencies
         run: |
           sudo apt-get update && sudo apt-get install -y qemu-user-static tesseract-ocr libtesseract-dev

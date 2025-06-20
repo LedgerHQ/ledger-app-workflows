@@ -23,7 +23,7 @@ on:
         default: ''
         type: string
       use_case:
-        description: "The use case to build the application for"
+        description: "The use case to build the application for. Ignored if 'flags' is set"
         required: false
         default: ''
         type: string

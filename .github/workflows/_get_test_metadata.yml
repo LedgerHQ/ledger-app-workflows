@@ -19,14 +19,14 @@ on:
         type: string
       pytest_directory:
         description: |
-          The directory where the Python tests are stored (a `conftest.py` file is expected there).
+          The directory where the Python tests are stored (a `conftest.py` file is expected inside).
         required: false
         default: 'None'
         type: string
     outputs:
       pytest_directory:
         description: |
-          The directory where the Python tests are stored (a `conftest.py` file is expected there).
+          The directory where the Python tests are stored (a `conftest.py` file is expected inside).
         value: ${{ jobs.fetch_metadata.outputs.pytest_directory }}
 
 env:
@@ -46,22 +46,9 @@ jobs:
           submodules: recursive
           token: ${{ secrets.token && secrets.token || github.token }}
 
-      # To be suppressed when ledgered for manifest v2 is released
-      - name: Clone ledgered repository
-        uses: actions/checkout@v4
-        with:
-          repository: LedgerHQ/ledgered
-          ref: y333/manage_pytest_swap_directory
-          path: ledgered
-          token: ${{ secrets.token && secrets.token || github.token }}
-
       - name: Install dependencies
         run: |
-          # pip install ledgered
-          # Install the local version of ledgered
-          cd ledgered
-          python -m pip install --upgrade pip
-          python -m pip install -e .[dev]
+          pip install ledgered
 
       - name: Gather application metadata, from inputs or 'ledger_app.toml'
         id: fetch_metadata
