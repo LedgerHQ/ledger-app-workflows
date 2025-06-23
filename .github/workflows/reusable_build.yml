@@ -110,24 +110,25 @@ jobs:
         run: |
           eval "BOLOS_SDK=\$$(echo ${{ matrix.device }} | tr [:lower:] [:upper:])_SDK"
           echo "BOLOS_SDK value will be: ${BOLOS_SDK}"
-          if [ -n "${{ inputs.sdk_reference }}" ];
-          then
+          if [ -n "${{ inputs.sdk_reference }}" ]; then
               echo "Checking out reference '${{ inputs.sdk_reference }}'..."
               (cd $BOLOS_SDK && git fetch -apt && git checkout ${{ inputs.sdk_reference }})
               ADDITIONAL_ARGS="TARGET=${{ matrix.device }}"
+              ADDITIONAL_ARGS_RUST="LEDGER_SDK_PATH=${BOLOS_SDK}"
           fi
           if [ "${{ needs.call_get_app_metadata.outputs.is_rust }}" = "true" ];
           then
               BUILD_DEVICE_NAME="$(echo ${{ matrix.device }} | sed 's/nanosp/nanosplus/')" && \
               cd ${{ needs.call_get_app_metadata.outputs.build_directory }}
-              # Update the Rust SDK crates
-              all_crates=$(cargo +$RUST_NIGHTLY tree --depth 2 --prefix none | awk '{print $1}' | sort -u)
-              for crate in "ledger_secure_sdk_sys" "ledger_device_sdk" "include_gif"; do
-                if echo "$all_crates" | grep -q "^$crate$"; then
-                  cargo +$RUST_NIGHTLY update $crate
-                fi
-              done
-              # Always using provided C SDK
+              # Update the Rust SDK crates only if not using a special SDK reference
+              if [ -z "${ADDITIONAL_ARGS_RUST}" ]; then
+                  all_crates=$(cargo +$RUST_NIGHTLY tree --depth 2 --prefix none | awk '{print $1}' | sort -u)
+                  for crate in "ledger_secure_sdk_sys" "ledger_device_sdk" "include_gif"; do
+                    if echo "$all_crates" | grep -q "^$crate$"; then
+                      cargo +$RUST_NIGHTLY update $crate
+                    fi
+                  done
+              fi
               LEDGER_SDK_PATH=${BOLOS_SDK} cargo ledger build ${BUILD_DEVICE_NAME} -- ${{inputs.cargo_ledger_build_args}} && \
               binary_path=$(cargo metadata --no-deps --format-version 1 | jq -r '.target_directory')/ && \
               echo "binary_path=$binary_path" >> $GITHUB_OUTPUT && \
