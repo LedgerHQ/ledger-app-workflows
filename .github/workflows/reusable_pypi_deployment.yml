@@ -16,6 +16,11 @@ on:
         description: Whether the package should be published or not
         required: true
         type: boolean
+      release:
+        description: Whether the package should be packaged as a release or not
+        required: false
+        type: boolean
+        default: true
       jfrog_deployment:
         description: If the Python package should be pushed on Ledger Jfrog or not.
                      Ignored if `publish` is `false`.
@@ -109,7 +114,7 @@ jobs:
           path: ${{ inputs.package_directory }}/dist
 
       - name: Publish a release on the repo
-        if: ${{ success() && inputs.publish }}
+        if: ${{ success() && inputs.publish && inputs.release }}
         uses: "marvinpinto/action-automatic-releases@latest"
         with:
           automatic_release_tag: "v${{ env.TAG_VERSION }}"
