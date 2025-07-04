@@ -108,6 +108,9 @@ jobs:
         id: "build"
         shell: bash
         run: |
+          apt install -y --no-install-recommends picolibc-arm-none-eabi
+          apt remove -y libnewlib-arm-none-eabi
+
           eval "BOLOS_SDK=\$$(echo ${{ matrix.device }} | tr [:lower:] [:upper:])_SDK"
           echo "BOLOS_SDK value will be: ${BOLOS_SDK}"
           if [ -n "${{ inputs.sdk_reference }}" ]; then
