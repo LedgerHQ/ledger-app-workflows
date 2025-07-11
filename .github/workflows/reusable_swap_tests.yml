@@ -94,8 +94,8 @@ jobs:
       - name: Get swap test directory
         id: get_swap_test_dir
         run: |
-          echo "swap_test_dir=${{ input.swap_test_dir }}" >> "$GITHUB_OUTPUT"
-          echo "main_app_dir=${{ input.swap_test_dir }}/main_app/exchange/build" >> "$GITHUB_OUTPUT"
+          echo "swap_test_dir=${{ inputs.swap_test_dir }}" >> "$GITHUB_OUTPUT"
+          echo "main_app_dir=${{ inputs.swap_test_dir }}/main_app/exchange/build" >> "$GITHUB_OUTPUT"
       - name: Show swap test directory
         run: |
           echo "Swap test directory: ${{ steps.get_swap_test_dir.outputs.swap_test_dir }}"
