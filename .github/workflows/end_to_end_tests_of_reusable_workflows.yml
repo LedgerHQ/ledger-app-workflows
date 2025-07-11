@@ -10,6 +10,11 @@ on:
       - develop
   pull_request:
 
+# Cancel previous runs on this reference
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 # This workflow file contains the duplicates of several applications that use reusable workflows
 # The duplication is unfortunate but can't be avoided as github actions do not (yet ?) accept the
 # syntax 'uses: org/repo@${{ inputs.ref }}'
@@ -80,6 +85,9 @@ jobs:
             branch: 'develop'
           - name: ATOM
             repo: 'LedgerHQ/app-cosmos'
+            branch: 'develop'
+          - name: hedera
+            repo: 'LedgerHQ/app-hedera'
             branch: 'develop'
           - name: boilerplate
             repo: 'LedgerHQ/app-boilerplate'
