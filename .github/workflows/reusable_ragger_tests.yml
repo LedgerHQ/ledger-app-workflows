@@ -44,6 +44,11 @@ on:
         required: false
         default: ''
         type: string
+      lib_binaries_artifact_dir:
+        description: 'The directory where the additional lib binaries will be downloaded (defaults to ".")'
+        required: false
+        default: '.'
+        type: string
       run_for_devices:
         description: |
           The list of device(s) on which the test will run.
@@ -148,12 +153,7 @@ jobs:
           path: ${{ steps.set_binary_path.outputs.binary_path }}
 
       - name: Display structure of downloaded files
-        run: |
-          if [ "${{ needs.call_get_app_metadata.outputs.is_rust }}" = "true" ]; then
-            ls -R ${{ env.binary_path }}
-          else
-            ls -R ${{ needs.call_get_app_metadata.outputs.build_directory }}
-          fi
+        run: ls -R ${{ steps.set_binary_path.outputs.binary_path }}
 
       - name: Download additional app binaries if required
         if: ${{ inputs.additional_app_binaries_artifact != '' }}
@@ -171,11 +171,11 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: ${{ inputs.lib_binaries_artifact }}
-          path: ${{ needs.call_get_test_metadata.outputs.pytest_directory }}/lib_binaries/
+          path: ${{ inputs.lib_binaries_artifact_dir }}
 
       - name: Display structure of downloaded files
         if: ${{ inputs.lib_binaries_artifact != '' }}
-        run: ls -R ${{ needs.call_get_test_metadata.outputs.pytest_directory }}/lib_binaries/
+        run: ls -R ${{ inputs.lib_binaries_artifact_dir }}
 
       - name: Install tests dependencies
         run: |
