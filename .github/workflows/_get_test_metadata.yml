@@ -53,44 +53,58 @@ jobs:
       - name: Gather application metadata, from inputs or 'ledger_app.toml'
         id: fetch_metadata
         run: |
-          if [ ! -f "$APP_MANIFEST" ];
-          then
+          # Fail if manifest file is missing
+          if [ ! -f "$APP_MANIFEST" ]; then
               >&2 echo "/!\ No $APP_MANIFEST manifest detected!"
-              >&2 echo "This file is mandatory, please add it on your repository"
-              >&2 echo "Documentation here: https://github.com/LedgerHQ/ledgered/blob/master/doc/utils/manifest.md"
+              >&2 echo "This file is mandatory, please add it to your repository"
+              >&2 echo "Documentation: https://github.com/LedgerHQ/ledgered/blob/master/doc/utils/manifest.md"
               exit 1
           fi
 
-          # 'ledger_app.toml' exists
           echo "Manifest detected."
-          # checking the manifest with the repo
           ledger-manifest --check . "$APP_MANIFEST"
 
-          set +e
-          temp="$(ledger-manifest --output-tests-pytest-directory "$APP_MANIFEST")"
-          status=$?
-          set -e
-          # catch the error if the manifest does not contain the pytest_directory
-          if [ $status -ne 0 ]; then
-              >&2 echo "This is a v2 manifest"
-              pytest_directory=""
-              temp="$(ledger-manifest --output-pytest-directories -j -- "$APP_MANIFEST")"
-              for dir in $(echo "$temp" | jq -r '.pytest_directories[]'); do
-                  echo "Found in Manifest pytest directory: $dir"
-                  echo "Searching for '${{ inputs.pytest_directory }}'"
-                  # if the dir is the same as input.pytest_directory, we keep it
-                  if [ "$dir" = "${{ inputs.pytest_directory }}" ]; then
-                      pytest_directory="$dir"
+          # Read the input directory from caller
+          input_pytest_dir="${{ inputs.pytest_directory }}"
+
+          if [ "$input_pytest_dir" != "None" ]; then
+              # Use the provided input as-is
+              pytest_directory="$input_pytest_dir"
+
+              # Check if it's listed in the manifest
+              manifest_json="$(ledger-manifest --output-pytest-directories -j -- "$APP_MANIFEST")"
+              mapfile -t manifest_dirs < <(echo "$manifest_json" | jq -r '.pytest_directories[]')
+
+              found=0
+              for dir in "${manifest_dirs[@]}"; do
+                  if [ "$dir" = "$input_pytest_dir" ]; then
+                      found=1
                       break
                   fi
               done
-          else
-              pytest_directory="${temp}"
-          fi
-          echo "pytest_directory=${pytest_directory}" >> "$GITHUB_OUTPUT"
 
+              if [ "$found" -ne 1 ]; then
+                  >&2 echo "::warning::Provided pytest_directory '$input_pytest_dir' not found in manifest. Proceeding anyway."
+              fi
+
+          else
+              # No input: try to infer the directory using legacy logic
+              set +e
+              pytest_directory="$(ledger-manifest --output-tests-pytest-directory "$APP_MANIFEST")"
+              status=$?
+              set -e
+
+              if [ "$status" -ne 0 ]; then
+                  >&2 echo "Error: Could not infer pytest_directory automatically. Multiple or missing entries in manifest."
+                  exit 1
+              fi
+          fi
+
+          # Set output for downstream steps or workflows
+          echo "pytest_directory=${pytest_directory}" >> "$GITHUB_OUTPUT"
           echo "Inferred test metadata:"
           cat "$GITHUB_OUTPUT"
+
 
     outputs:
       pytest_directory: ${{ steps.fetch_metadata.outputs.pytest_directory }}

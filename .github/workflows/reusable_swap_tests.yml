@@ -3,7 +3,17 @@ name: Run Swap Functional tests
 on:
   workflow_call:
     inputs:
-      app_build_artifact:
+      app_repository:
+        description: 'The GIT repository to test (defaults to `github.repository`)'
+        required: false
+        default: ${{ github.repository }}
+        type: string
+      app_branch_name:
+        description: 'The GIT branch to test (defaults to `github.ref`)'
+        required: false
+        default: ${{ github.ref }}
+        type: string
+      download_app_binaries_artifact:
         required: true
         type: string
       exchange_build_artifact:
@@ -110,7 +120,9 @@ jobs:
     needs: [get_artifacts_names, get_dir_names]
     uses: ./.github/workflows/reusable_ragger_tests.yml
     with:
-      download_app_binaries_artifact: ${{ inputs.app_build_artifact }}
+      app_repository: ${{ inputs.app_repository }}
+      app_branch_name: ${{ inputs.app_branch_name }}
+      download_app_binaries_artifact: ${{ inputs.download_app_binaries_artifact }}
       additional_app_binaries_artifact: ${{ needs.get_artifacts_names.outputs.exchange_build_artifact }}
       additional_app_binaries_artifact_dir: ${{ needs.get_dir_names.outputs.main_app_dir }}
       lib_binaries_artifact: ${{ needs.get_artifacts_names.outputs.ethereum_build_artifact }}
