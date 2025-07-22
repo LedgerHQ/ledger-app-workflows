@@ -159,6 +159,17 @@ jobs:
       app_repository: LedgerHQ/app-boilerplate
       app_branch_name: master
       download_app_binaries_artifact: "boilerplate_binaries"
+      test_dir: "tests/standalone"
+
+  ragger_swap_tests_boilerplate:
+    name: Run boilerplate swap tests
+    needs: build_boilerplate_application
+    uses: ./.github/workflows/reusable_swap_tests.yml
+    with:
+      app_repository: LedgerHQ/app-boilerplate
+      app_branch_name: master
+      download_app_binaries_artifact: "boilerplate_binaries"
+      swap_test_dir: "tests/swap"
 
   build_nanos_boilerplate_application:
     name: Build boilerplate for Nano S
