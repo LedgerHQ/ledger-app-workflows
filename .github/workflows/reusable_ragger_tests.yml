@@ -246,7 +246,7 @@ jobs:
 
   pr_new_snapshots:
     name: Open a PR with the new snapshots
-    needs: [merge_artifacts_if_needed, call_get_app_metadata]
+    needs: [merge_artifacts_if_needed, call_get_app_metadata, call_get_test_metadata]
     if: ${{ inputs.regenerate_snapshots == true }}
     uses: ./.github/workflows/_open_pr_with_new_snapshots.yml
     with:
