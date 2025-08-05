@@ -114,7 +114,7 @@ jobs:
               cd ${{ needs.call_get_app_metadata.outputs.build_directory }}
               # Update the Rust SDK crates
               all_crates=$(cargo +$RUST_NIGHTLY tree --depth 2 --prefix none | awk '{print $1}' | sort -u)
-              for crate in "ledger_secure_sdk_sys" "ledger_device_sdk" "include_gif"; do
+              for crate in "include_gif" "ledger_secure_sdk_sys" "ledger_device_sdk"; do
                 if echo "$all_crates" | grep -q "^$crate$"; then
                   cargo +$RUST_NIGHTLY update $crate
                 fi
