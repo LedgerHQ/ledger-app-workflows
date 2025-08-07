@@ -14,7 +14,7 @@ on:
 
           Defaults to the full list of device(s) supported by the application as configured in the
           'ledger_app.toml' manifest.
-          If the manifest is missing, defaults to ALL (["nanos", "nanox", "nanosp", "stax", "flex"]).
+          If the manifest is missing, defaults to ALL (["nanos", "nanox", "nanosp", "stax", "flex", "apex_m", "apex_p"]).
         required: false
         default: 'None'
         type: string
