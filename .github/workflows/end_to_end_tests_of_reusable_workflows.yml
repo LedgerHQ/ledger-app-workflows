@@ -92,6 +92,9 @@ jobs:
           - name: boilerplate
             repo: 'LedgerHQ/app-boilerplate'
             branch: 'master'
+          - name: kaspa
+            repo: 'LedgerHQ/app-kaspa'
+            branch: 'develop'
 
     uses: ./.github/workflows/reusable_build.yml
     with:
