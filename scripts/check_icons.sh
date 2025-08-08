@@ -5,25 +5,23 @@ set -e
 # shellcheck source=scripts/logger.sh
 source "$(dirname "$0")/logger.sh"
 
+
 check_geometry() (
     error=0
     file="$1"
     device="$2"
 
     case "$device" in
-        "nanos")
+        nanos)
             geometry="16x16"
             ;;
-        "nanox")
+        nanox | nanos2)
             geometry="14x14"
             ;;
-        "nanos2")
-            geometry="14x14"
-            ;;
-        "stax")
+        stax | apex | apex_m | apex_p)
             geometry="32x32"
             ;;
-        "flex")
+        flex)
             geometry="40x40"
             ;;
         *)
@@ -202,7 +200,13 @@ main() (
     for icon_and_device in "${!icons_and_devices[@]}"; do
         icon="$(echo "$icon_and_device" | cut -d';' -f1)"
         device="$(echo "$icon_and_device" | cut -d';' -f2)"
-        check_icon "$repo_name" "$device" "$repo/$build_directory/$icon" || error=1
+        img_file="$repo/$build_directory/$icon"
+        if ! [[ -f "$img_file" ]]; then
+            log_error "Icon file '$img_file' Doesn't exist!"
+            error=1
+            continue
+        fi
+        check_icon "$repo_name" "$device" "$img_file" || error=1
     done
 
     # As we scanned for all devices and all variants, we can have a lot of duplicates for glyphs. Filter out duplicates and empty lines
@@ -210,6 +214,12 @@ main() (
     while IFS= read -r file; do
         # Skip SDK glyphs
         if [[ "$file" != "/opt/"*"-secure-sdk/"* ]]; then
+            img_file="$repo/$build_directory/$file"
+            if ! [[ -f "$img_file" ]]; then
+                log_error "Glyph file '$img_file' Doesn't exist!"
+                error=1
+                continue
+            fi
             check_glyph "$repo/$build_directory/$file" || error=1
         fi
     done < <(echo "$all_glyph_files_no_duplicates")
