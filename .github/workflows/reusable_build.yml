@@ -155,7 +155,7 @@ jobs:
         run: |
           if [ "${{ needs.call_get_app_metadata.outputs.is_rust }}" = "true" ];
           then
-            C_DEVICE_NAME="$(echo ${{ matrix.device }} | tr nanosp nanos2)" && \
+            C_DEVICE_NAME="$(echo ${{ matrix.device }} | sed 's/nanosp/nanos2/')" && \
             echo "C_DEVICE_NAME=$C_DEVICE_NAME" && \
             RUST_DEVICE_NAME="$(echo ${{ matrix.device }} | sed 's/sp/splus/')" && \
             echo "RUST_DEVICE_NAME=$RUST_DEVICE_NAME" && \
@@ -164,7 +164,7 @@ jobs:
             mv ${{ steps.build.outputs.binary_path }}${RUST_DEVICE_NAME}/release/${ELF_NAME} ${{ steps.build.outputs.binary_path }}/${{ inputs.upload_as_lib_artifact }}_${C_DEVICE_NAME}.elf && \
             rm -rf ${{ steps.build.outputs.binary_path }}${RUST_DEVICE_NAME}
           else
-            DEVICE_NAME="$(echo ${{ matrix.device }} | tr nanosp nanos2)" && \
+            DEVICE_NAME="$(echo ${{ matrix.device }} | sed 's/nanosp/nanos2/')" && \
             find ${{ needs.call_get_app_metadata.outputs.build_directory }}/build/${DEVICE_NAME}/ -type f -name 'app.elf' -exec mv {} ${{ inputs.upload_as_lib_artifact }}_${DEVICE_NAME}.elf \; && \
             rm -r ${{ needs.call_get_app_metadata.outputs.build_directory }}/build/* && \
             mv ${{ inputs.upload_as_lib_artifact }}_${DEVICE_NAME}.elf ${{ needs.call_get_app_metadata.outputs.build_directory }}/build/
