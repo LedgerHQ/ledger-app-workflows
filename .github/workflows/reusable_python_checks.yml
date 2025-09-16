@@ -1,0 +1,99 @@
+name: Code style check
+
+on:
+  workflow_call:
+    inputs:
+      run_linter:
+        description: "Select the Linter to run (pylint or flake8)"
+        type: string
+        required: true
+        default: ''
+      run_type_check:
+        description: "Whether to run mypy type check (defaults to false)"
+        required: true
+        default: false
+        type: boolean
+      src_directory:
+        description: "The directory containing the python sources to check"
+        required: true
+        default: ''
+        type: string
+      req_directory:
+        description: "The directory containing the requirements.txt (if any)"
+        required: false
+        default: ''
+        type: string
+      setup_directory:
+        description: "The directory containing the setup.cfg (if any)"
+        required: false
+        default: ''
+        type: string
+      additional_packages:
+        description: "Additional packages to install (default to none)"
+        required: false
+        default: ''
+        type: string
+
+jobs:
+  pylint:
+    name: Python Linting with pylint
+    if: ${{ inputs.run_linter == 'pylint' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Clone
+        uses: actions/checkout@v4
+
+      - name: Installing PIP dependencies
+        run: |
+          if [ -n "${{ inputs.additional_packages }}" ]; then
+            sudo apt-get update && sudo apt-get install -y ${{ inputs.additional_packages }}
+          fi
+          pip install pylint
+          if [ -n "${{ inputs.req_directory }}" ] && [ -f "${{ inputs.req_directory }}/requirements.txt" ]; then
+            pip install -r ${{ inputs.req_directory }}/requirements.txt
+          fi
+
+      - name: Lint Python code
+        run: |
+          ARGS=(-j 0)
+          if [ -n "${{ inputs.setup_directory }}" ] && [ -f "${{ inputs.setup_directory }}/setup.cfg" ]; then
+              ARGS+=(--rcfile "${{ inputs.setup_directory }}/setup.cfg")
+          fi
+          pylint "${ARGS[@]}" ${{ inputs.src_directory }}
+
+  flake8:
+    name: Python Linting with flake8
+    if: ${{ inputs.run_linter == 'flake8' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Clone
+        uses: actions/checkout@v4
+
+      - name: Installing PIP dependencies
+        run: |
+          pip install flake8 flake8-pyproject
+          if [ -n "${{ inputs.req_directory }}" ] && [ -f "${{ inputs.req_directory }}/requirements.txt" ]; then
+            pip install -r ${{ inputs.req_directory }}/requirements.txt
+          fi
+
+      - name: Lint Python code
+        run: |
+          cd ${{ inputs.setup_directory }} && flake8 ${{ inputs.src_directory }}
+
+  mypy:
+    name: Type checking
+    if: ${{ inputs.run_type_check == true }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Clone
+        uses: actions/checkout@v4
+
+      - name: Installing PIP dependencies
+        run: |
+          pip install mypy
+          if [ -n "${{ inputs.req_directory }}" ] && [ -f "${{ inputs.req_directory }}/requirements.txt" ]; then
+            pip install -r ${{ inputs.req_directory }}/requirements.txt
+          fi
+
+      - name: Mypy type checking
+        run: mypy ${{ inputs.src_directory }}

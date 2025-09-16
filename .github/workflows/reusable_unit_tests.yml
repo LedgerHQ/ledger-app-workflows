@@ -1,0 +1,79 @@
+name: Unit testing with Codecov coverage checking and upload the result
+
+on:
+  workflow_call:
+    inputs:
+      app_repository:
+        description: 'The GIT repository to test (defaults to `github.repository`)'
+        required: false
+        default: ${{ github.repository }}
+        type: string
+      app_branch_name:
+        description: 'The GIT branch to test (defaults to `github.ref`)'
+        required: false
+        default: ${{ github.ref }}
+        type: string
+      test_directory:
+        description: "The directory containing the unit-tests to run"
+        required: true
+        default: ''
+        type: string
+      builder:
+        description: "The docker image to build the application in (defaults to ledger-app-builder-lite)"
+        required: false
+        default: 'ledger-app-builder-lite'
+        type: string
+
+jobs:
+  unit_test:
+    name: Unit test
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/ledgerhq/ledger-app-builder/${{ inputs.builder }}:latest
+
+    steps:
+      - name: Clone
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ inputs.app_repository }}
+          ref: ${{ inputs.app_branch_name }}
+          submodules: recursive
+          token: ${{ secrets.token && secrets.token || github.token }}
+
+      - name: Build unit tests
+        run: |
+          cd ${{ inputs.test_directory }}
+          cmake -Bbuild -H. && make -C build
+
+      - name: Run unit tests
+        run: |
+          cd ${{ inputs.test_directory }}
+          make -C build test
+
+      - name: Generate code coverage
+        run: |
+          cd ${{ inputs.test_directory }}
+          lcov --directory . -b "$(realpath build/)" --capture --initial -o coverage.base
+          lcov --rc lcov_branch_coverage=1 --directory . -b "$(realpath build/)" --capture -o coverage.capture
+          lcov --directory . -b "$(realpath build/)" --add-tracefile coverage.base --add-tracefile coverage.capture -o coverage.info
+          lcov --directory . -b "$(realpath build/)" --remove coverage.info "*/${{ inputs.test_directory }}/*" -o coverage.info
+          genhtml coverage.info -o coverage
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: code-coverage
+          path: ${{ inputs.test_directory }}/coverage
+
+      - name: Install codecov dependencies
+        run: apt install --no-install-recommends -y curl gpg
+
+      - name: Upload to codecov.io
+        uses: codecov/codecov-action@v5
+        env:
+          CODECOV_TOKEN: ${{ secrets.codecov_token }}
+        with:
+          files: ./${{ inputs.test_directory }}/coverage.info
+          flags: unittests
+          name: codecov-${{ inputs.app_repository }}
+          fail_ci_if_error: true
+          verbose: true
