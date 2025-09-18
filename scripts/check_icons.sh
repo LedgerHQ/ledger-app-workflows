@@ -91,6 +91,7 @@ check_glyph() (
         colors_nb=$(echo "$content" | grep "Colors: " | rev | cut -d' ' -f1 | rev)
         if [[ "$colors_nb" -gt 16 ]]; then
             log_error "4bpp glyphs can't have more than 16 colors, $colors_nb found"
+            error=1
         fi
 
         # Be somewhat tolerant to different possible wordings for depth "8 bit" "8-bit" "8/8 bit" etc
@@ -155,12 +156,17 @@ main() (
     repo="$1"
     repo_name="$2"
     manifests_dir="$3"
+    target="$4"
 
     all_glyph_files=""
     declare -A icons_and_devices
 
     # Parse all manifest files
-    manifests_list=$(find "$manifests_dir" -type f -name "*.json")
+    if [[ -n "${target}" ]]; then
+        manifests_list="${manifests_dir}/manifest_${target}.json"
+    else
+        manifests_list=$(find "$manifests_dir" -type f -name "*.json")
+    fi
     while IFS= read -r manifest; do
         log_info "Checking manifest $manifest"
 
