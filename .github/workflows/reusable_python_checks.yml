@@ -40,14 +40,17 @@ jobs:
     if: ${{ inputs.run_linter == 'pylint' }}
     runs-on: ubuntu-latest
     steps:
+      - name: Installing requiered packages
+        run: |
+          if [ -n "${{ inputs.additional_packages }}" ]; then
+            sudo apt-get update && sudo apt-get install -y ${{ inputs.additional_packages }}
+          fi
+
       - name: Clone
         uses: actions/checkout@v4
 
       - name: Installing PIP dependencies
         run: |
-          if [ -n "${{ inputs.additional_packages }}" ]; then
-            sudo apt-get update && sudo apt-get install -y ${{ inputs.additional_packages }}
-          fi
           pip install pylint
           if [ -n "${{ inputs.req_directory }}" ] && [ -f "${{ inputs.req_directory }}/requirements.txt" ]; then
             pip install -r ${{ inputs.req_directory }}/requirements.txt
@@ -56,8 +59,11 @@ jobs:
       - name: Lint Python code
         run: |
           ARGS=(-j 0)
-          if [ -n "${{ inputs.setup_directory }}" ] && [ -f "${{ inputs.setup_directory }}/setup.cfg" ]; then
-              ARGS+=(--rcfile "${{ inputs.setup_directory }}/setup.cfg")
+          if [ -n "${{ inputs.setup_directory }}" ]; then
+            cd ${{ inputs.setup_directory }}
+          fi
+          if [ -f "./setup.cfg" ]; then
+              ARGS+=(--rcfile "./setup.cfg")
           fi
           pylint "${ARGS[@]}" ${{ inputs.src_directory }}
 
@@ -66,6 +72,12 @@ jobs:
     if: ${{ inputs.run_linter == 'flake8' }}
     runs-on: ubuntu-latest
     steps:
+      - name: Installing requiered packages
+        run: |
+          if [ -n "${{ inputs.additional_packages }}" ]; then
+            sudo apt-get update && sudo apt-get install -y ${{ inputs.additional_packages }}
+          fi
+
       - name: Clone
         uses: actions/checkout@v4
 
@@ -78,13 +90,22 @@ jobs:
 
       - name: Lint Python code
         run: |
-          cd ${{ inputs.setup_directory }} && flake8 ${{ inputs.src_directory }}
+          if [ -n "${{ inputs.setup_directory }}" ]; then
+            cd ${{ inputs.setup_directory }}
+          fi
+          flake8 ${{ inputs.src_directory }}
 
   mypy:
     name: Type checking
     if: ${{ inputs.run_type_check == true }}
     runs-on: ubuntu-latest
     steps:
+      - name: Installing requiered packages
+        run: |
+          if [ -n "${{ inputs.additional_packages }}" ]; then
+            sudo apt-get update && sudo apt-get install -y ${{ inputs.additional_packages }}
+          fi
+
       - name: Clone
         uses: actions/checkout@v4
 
@@ -96,4 +117,8 @@ jobs:
           fi
 
       - name: Mypy type checking
-        run: mypy ${{ inputs.src_directory }}
+        run: |
+          if [ -n "${{ inputs.setup_directory }}" ]; then
+            cd ${{ inputs.setup_directory }}
+          fi
+          mypy ${{ inputs.src_directory }}
