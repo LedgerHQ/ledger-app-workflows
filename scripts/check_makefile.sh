@@ -10,6 +10,7 @@ main() (
     repo="$1"
     repo_name="$2"
     manifests_dir="$3"
+    target="$4"
 
     declare -A variants_array
     declare -A appnames_array
@@ -22,7 +23,11 @@ main() (
     fi
 
     # Parse all manifest files
-    manifests_list=$(find "$manifests_dir" -type f -name "*.json")
+    if [[ -n "${target}" ]]; then
+        manifests_list="${manifests_dir}/manifest_${target}.json"
+    else
+        manifests_list=$(find "$manifests_dir" -type f -name "*.json")
+    fi
     while IFS= read -r manifest; do
         log_info "Checking manifest $manifest"
 

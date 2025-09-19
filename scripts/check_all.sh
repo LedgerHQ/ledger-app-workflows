@@ -198,13 +198,13 @@ call_step() {
             fi
             ;;
         "icons")
-            COMMAND="${dirName}/check_icons.sh ${APP_DIR} ${REPO_NAME} ${MANIFEST_DIR}"
+            COMMAND="${dirName}/check_icons.sh ${APP_DIR} ${REPO_NAME} ${MANIFEST_DIR} ${TARGET}"
             ;;
         "app_load_params")
             COMMAND="python3 ${DATABASE_DIR}/scripts/app_load_params_check.py --database_path ${DATABASE_DIR}/app-load-params-db.json --app_manifests_path ${MANIFEST_DIR}"
             ;;
         "makefile")
-            COMMAND="${dirName}/check_makefile.sh ${APP_DIR} ${REPO_NAME} ${MANIFEST_DIR}"
+            COMMAND="${dirName}/check_makefile.sh ${APP_DIR} ${REPO_NAME} ${MANIFEST_DIR} ${TARGET}"
             ;;
         "readme")
             COMMAND="${dirName}/check_readme.sh ${APP_DIR} ${REPO_NAME}"

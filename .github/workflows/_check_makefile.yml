@@ -21,10 +21,18 @@ on:
         description: 'The name of the artifact containing the built manifest'
         required: true
         type: string
+      run_for_devices:
+        description: 'The list of device(s) on which the checking will run'
+        required: true
+        type: string
 
 jobs:
   check_makefile:
     name: Check Makefile
+    strategy:
+      fail-fast: false
+      matrix:
+        device: ${{ fromJSON(inputs.run_for_devices) }}
     runs-on: ubuntu-22.04
 
     steps:
@@ -50,5 +58,5 @@ jobs:
 
       - name: Run script
         run: |
-            ./ledger-app-workflows/scripts/check_all.sh -c makefile \
+            ./ledger-app-workflows/scripts/check_all.sh -c makefile -t ${{ matrix.device }} \
               -a ./app-repository -m ${{ inputs.download_manifest_artifact_name }}
