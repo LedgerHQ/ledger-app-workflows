@@ -67,12 +67,15 @@ check_glyph() (
             error=1
         fi
 
-        if ! echo "$content" | grep -q "0.*0.*0.*black"; then
+        # get the color lines
+        color_lines=$(echo "$content" | grep -A3 "Colors: " | tail -n -2)
+
+        if ! echo "$color_lines" | grep -q " #000000 "; then
             log_error "Glyph should have the black color defined"
             error=1
         fi
 
-        if ! echo "$content" | grep -q "255.*255.*255.*white"; then
+        if ! echo "$color_lines" | grep -q " #FFFFFF "; then
             log_error "Glyph should have the white color defined"
             error=1
         fi
