@@ -234,11 +234,16 @@ jobs:
     needs: ragger_tests
     runs-on: ubuntu-22.04
     steps:
+      - name: Remove whitespaces
+        id: whitespace-removal
+        run: |
+          NO_SPACE_TEST_OPTIONS="$(echo "${{ inputs.test_options }}" | tr -d '[:space:]')"
+          echo "test_options=$NO_SPACE_TEST_OPTIONS" >> "$GITHUB_OUTPUT"
       - uses: actions/upload-artifact/merge@v4
         if: ${{ needs.ragger_tests.outputs.snapshot_artifact_uploaded == 'true' }}
         with:
-          name: tests_snapshots${{ inputs.test_options }}
-          pattern: tests_snapshots${{ inputs.test_options }}-*
+          name: tests_snapshots${{ steps.whitespace-removal.outputs.test_options }}
+          pattern: tests_snapshots${{ steps.whitespace-removal.outputs.test_options }}-*
           delete-merged: true
 
     outputs:
