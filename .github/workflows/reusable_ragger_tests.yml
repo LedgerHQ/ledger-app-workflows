@@ -108,9 +108,21 @@ jobs:
       app_branch_name: ${{ inputs.app_branch_name }}
       pytest_directory: ${{ inputs.test_dir }}
 
+  white_space_removal:
+    name: Whitespace removal
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Remove whitespaces
+        id: whitespace-removal
+        run: |
+          NO_SPACE_TEST_OPTIONS="$(echo "${{ inputs.test_options }}" | tr -d '[:space:]')"
+          echo "test_options=$NO_SPACE_TEST_OPTIONS" >> "$GITHUB_OUTPUT"
+    outputs:
+      test_options: ${{ steps.whitespace-removal.outputs.test_options }}
+
   ragger_tests:
     name: Functional tests with Ragger
-    needs: [call_get_app_metadata, call_get_test_metadata]
+    needs: [call_get_app_metadata, call_get_test_metadata, white_space_removal]
     strategy:
       fail-fast: false
       matrix:
@@ -209,14 +221,14 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           # Make the artifact name unique to allow running this job in parallel
-          name: tests_snapshots${{ inputs.test_options }}-${{ matrix.device }}
+          name: tests_snapshots${{ needs.white_space_removal.outputs.test_options }}-${{ matrix.device }}
           path: ${{ needs.call_get_test_metadata.outputs.pytest_directory }}/snapshots-tmp
 
       - name: Upload snapshots on success if needed
         if: ${{ inputs.regenerate_snapshots == true }}
         uses: actions/upload-artifact@v4
         with:
-          name: tests_snapshots${{ inputs.test_options }}-${{ matrix.device }}
+          name: tests_snapshots${{ needs.white_space_removal.outputs.test_options }}-${{ matrix.device }}
           path: ${{ needs.call_get_test_metadata.outputs.pytest_directory }}/snapshots-tmp
 
       - name: Set upload flag
@@ -231,23 +243,18 @@ jobs:
   merge_artifacts_if_needed:
     # Merge matrix output
     name: Merge snapshots artifacts
-    needs: ragger_tests
+    needs: [ragger_tests, white_space_removal]
     runs-on: ubuntu-22.04
     steps:
-      - name: Remove whitespaces
-        id: whitespace-removal
-        run: |
-          NO_SPACE_TEST_OPTIONS="$(echo "${{ inputs.test_options }}" | tr -d '[:space:]')"
-          echo "test_options=$NO_SPACE_TEST_OPTIONS" >> "$GITHUB_OUTPUT"
       - uses: actions/upload-artifact/merge@v4
         if: ${{ needs.ragger_tests.outputs.snapshot_artifact_uploaded == 'true' }}
         with:
-          name: tests_snapshots${{ steps.whitespace-removal.outputs.test_options }}
-          pattern: tests_snapshots${{ steps.whitespace-removal.outputs.test_options }}-*
+          name: tests_snapshots${{ needs.white_space_removal.outputs.test_options }}
+          pattern: tests_snapshots${{ needs.white_space_removal.outputs.test_options }}-*
           delete-merged: true
 
     outputs:
-      snapshot_artifact_name: tests_snapshots${{ inputs.test_options }}
+      snapshot_artifact_name: tests_snapshots${{ needs.white_space_removal.outputs.test_options }}
 
   pr_new_snapshots:
     name: Open a PR with the new snapshots
