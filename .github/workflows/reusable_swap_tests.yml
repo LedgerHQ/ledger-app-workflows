@@ -32,12 +32,6 @@ on:
         required: false
         default: false
         type: boolean
-      swap_test_dir:
-        required: false
-        default: ''
-        description: 'The directory where the swap tests are located. If not provided, the workflow will find it automatically.'
-        type: string
-
 
 jobs:
   build_app:
@@ -107,7 +101,6 @@ jobs:
 
   get_swap_test_dir:
     name: Find swap test directory
-    if: ${{ inputs.swap_test_dir == '' }}
     runs-on: ubuntu-latest
     outputs:
       swap_test_dir: ${{ steps.find_swap_test_dir.outputs.swap_test_dir }}
@@ -149,9 +142,9 @@ jobs:
       - name: Set swap test directories
         id: get_swap_test_dir
         run: |
-          echo "swap_test_dir=${{ (inputs.swap_test_dir != '' && inputs.swap_test_dir) || needs.get_swap_test_dir.outputs.swap_test_dir }}" >> "$GITHUB_OUTPUT"
-          echo "main_app_dir=${{ (inputs.swap_test_dir != '' && inputs.swap_test_dir) || needs.get_swap_test_dir.outputs.swap_test_dir }}/.test_dependencies/main/app-exchange/build" >> "$GITHUB_OUTPUT"
-          echo "lib_app_dir=${{ (inputs.swap_test_dir != '' && inputs.swap_test_dir) || needs.get_swap_test_dir.outputs.swap_test_dir }}/.test_dependencies/libraries/app-ethereum/build" >> "$GITHUB_OUTPUT"
+          echo "swap_test_dir=${{ needs.get_swap_test_dir.outputs.swap_test_dir }}" >> "$GITHUB_OUTPUT"
+          echo "main_app_dir=${{ needs.get_swap_test_dir.outputs.swap_test_dir }}/.test_dependencies/main/app-exchange/build" >> "$GITHUB_OUTPUT"
+          echo "lib_app_dir=${{ needs.get_swap_test_dir.outputs.swap_test_dir }}/.test_dependencies/libraries/app-ethereum/build" >> "$GITHUB_OUTPUT"
       - name: Show swap test directories
         run: |
           echo "Swap test directory: ${{ steps.get_swap_test_dir.outputs.swap_test_dir }}"
