@@ -23,6 +23,11 @@ on:
         required: false
         default: 'ledger-app-builder-lite'
         type: string
+      additional_packages:
+        description: "Additional packages to install (default to none)"
+        required: false
+        default: ''
+        type: string
 
 jobs:
   unit_test:
@@ -32,6 +37,12 @@ jobs:
       image: ghcr.io/ledgerhq/ledger-app-builder/${{ inputs.builder }}:latest
 
     steps:
+      - name: Installing requiered packages
+        run: |
+          if [ -n "${{ inputs.additional_packages }}" ]; then
+            sudo apt-get update && sudo apt-get install -y ${{ inputs.additional_packages }}
+          fi
+
       - name: Clone
         uses: actions/checkout@v4
         with:
@@ -48,7 +59,7 @@ jobs:
       - name: Run unit tests
         run: |
           cd ${{ inputs.test_directory }}
-          make -C build test
+          CTEST_OUTPUT_ON_FAILURE=1 make -C build test
 
       - name: Generate code coverage
         run: |
