@@ -26,6 +26,10 @@ on:
         required: true
         type: string
 
+permissions:
+  contents: read  # Needed to clone the repositories
+  actions: write  # Needed for upload-artifact
+
 jobs:
   scan_build:
     name: Clang Static Analyzer

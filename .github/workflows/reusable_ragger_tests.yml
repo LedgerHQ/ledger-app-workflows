@@ -88,6 +88,12 @@ on:
       secret_test_options:
         description: 'A string of secret options to be given to `pytest`'
         required: false
+
+permissions:
+  contents: write       # Needed for _open_pr_with_new_snapshots.yml
+  actions: write        # Needed for upload-artifact
+  pull-requests: write  # Needed for _open_pr_with_new_snapshots.yml
+
 jobs:
   call_get_app_metadata:
     # This job digests inputs and repository metadata provided by the `ledger_app.toml` manifest

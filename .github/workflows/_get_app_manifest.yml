@@ -30,6 +30,9 @@ on:
         required: true
         type: string
 
+permissions:
+  contents: read  # Needed to clone the repositories
+
 jobs:
   get_app_manifest:
     name: Get application manifest for supported devices

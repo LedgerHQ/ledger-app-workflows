@@ -58,6 +58,9 @@ on:
 env:
   APP_MANIFEST: "ledger_app.toml"
 
+permissions:
+  contents: read  # Needed to clone the repositories
+
 jobs:
   fetch_metadata:
     name: Retrieve application metadata

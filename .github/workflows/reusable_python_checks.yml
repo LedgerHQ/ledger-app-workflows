@@ -34,13 +34,16 @@ on:
         default: ''
         type: string
 
+permissions:
+  contents: read
+
 jobs:
   pylint:
     name: Python Linting with pylint
     if: ${{ inputs.run_linter == 'pylint' }}
     runs-on: ubuntu-latest
     steps:
-      - name: Installing requiered packages
+      - name: Installing required packages
         run: |
           if [ -n "${{ inputs.additional_packages }}" ]; then
             sudo apt-get update && sudo apt-get install -y ${{ inputs.additional_packages }}
@@ -72,7 +75,7 @@ jobs:
     if: ${{ inputs.run_linter == 'flake8' }}
     runs-on: ubuntu-latest
     steps:
-      - name: Installing requiered packages
+      - name: Installing required packages
         run: |
           if [ -n "${{ inputs.additional_packages }}" ]; then
             sudo apt-get update && sudo apt-get install -y ${{ inputs.additional_packages }}
@@ -100,7 +103,7 @@ jobs:
     if: ${{ inputs.run_type_check == true }}
     runs-on: ubuntu-latest
     steps:
-      - name: Installing requiered packages
+      - name: Installing required packages
         run: |
           if [ -n "${{ inputs.additional_packages }}" ]; then
             sudo apt-get update && sudo apt-get install -y ${{ inputs.additional_packages }}

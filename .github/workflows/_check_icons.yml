@@ -26,6 +26,9 @@ on:
         required: true
         type: string
 
+permissions:
+  contents: read  # Needed to clone the repositories
+
 jobs:
   check_icons:
     name: Check icons

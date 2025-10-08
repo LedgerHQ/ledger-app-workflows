@@ -15,6 +15,9 @@ on:
         default: 'h,c,proto'
         type: string
 
+permissions:
+  contents: read
+
 jobs:
   call_get_app_metadata:
     # Call this job to infer the application language (C or Rust)

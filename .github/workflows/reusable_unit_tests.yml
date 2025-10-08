@@ -29,6 +29,10 @@ on:
         default: ''
         type: string
 
+permissions:
+  contents: read
+  actions: write  # For upload-artifact
+
 jobs:
   unit_test:
     name: Unit test
@@ -37,7 +41,7 @@ jobs:
       image: ghcr.io/ledgerhq/ledger-app-builder/${{ inputs.builder }}:latest
 
     steps:
-      - name: Installing requiered packages
+      - name: Installing required packages
         run: |
           if [ -n "${{ inputs.additional_packages }}" ]; then
             apt install --no-install-recommends -y ${{ inputs.additional_packages }}
