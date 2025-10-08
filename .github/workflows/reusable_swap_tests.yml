@@ -33,6 +33,11 @@ on:
         default: false
         type: boolean
 
+permissions:
+  contents: write       # Needed for reusable_ragger_tests.yml
+  actions: write        # Needed for reusable_ragger_tests.yml and reusable_build.yml
+  pull-requests: write  # Needed for reusable_ragger_tests.yml
+
 jobs:
   build_app:
     name: Build app to test using the reusable workflow

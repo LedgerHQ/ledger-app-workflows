@@ -18,6 +18,9 @@ on:
         default: ${{ github.event.repository.name }}
         type: string
 
+permissions:
+  contents: read  # Needed to clone the repositories
+
 jobs:
   check_readme:
     name: Check readme

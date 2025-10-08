@@ -23,6 +23,10 @@ on:
         description: 'A token used as authentication for GIT operations. Useful when including this workflow in a private repository.'
         required: false
 
+permissions:
+  contents: read
+  actions: write  # Needed for _get_app_manifest.yml and _check_*.yml workflows
+
 jobs:
   # We can't simply know the current ledger-app-workflow ref from inside the reusable workflow
   # We use the workaround linked in the following Github issue until a proper API is available at Github API level
