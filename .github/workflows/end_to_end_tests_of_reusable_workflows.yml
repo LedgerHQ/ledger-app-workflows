@@ -116,8 +116,9 @@ jobs:
     needs: build_sideloaded_applications_for_exchange
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/upload-artifact/merge@v4
+      - uses: ./.github/actions/setup-artifacts
         with:
+          action: merge
           name: libraries_binaries
           pattern: libraries_binaries-*
           delete-merged: true

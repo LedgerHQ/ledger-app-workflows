@@ -74,8 +74,9 @@ jobs:
           lcov --directory . -b "$(realpath build/)" --remove coverage.info "*/${{ inputs.test_directory }}/*" -o coverage.info
           genhtml coverage.info -o coverage
 
-      - uses: actions/upload-artifact@v4
+      - uses: ./.github/actions/setup-artifacts
         with:
+          action: upload
           name: code-coverage
           path: ${{ inputs.test_directory }}/coverage
 

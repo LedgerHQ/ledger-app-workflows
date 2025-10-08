@@ -53,8 +53,9 @@ jobs:
           persist-credentials: false
 
       - name: Download new snapshots
-        uses: actions/download-artifact@v4
+        uses: ./.github/actions/setup-artifacts
         with:
+          action: download
           name: ${{ inputs.snapshots_artifact_name }}
           path: ${{ inputs.snapshots_directory }}
 

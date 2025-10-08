@@ -54,8 +54,9 @@ jobs:
           submodules: recursive
 
       - name: Download manifest
-        uses: actions/download-artifact@v4
+        uses: ./.github/actions/setup-artifacts
         with:
+          action: download
           name: ${{ inputs.download_manifest_artifact_name }}
           path: ${{ inputs.download_manifest_artifact_name }}
 

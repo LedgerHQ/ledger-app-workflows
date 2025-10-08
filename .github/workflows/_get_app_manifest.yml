@@ -75,8 +75,9 @@ jobs:
               -m ../manifest_${{ matrix.device }}.json
 
       - name: Upload app manifest
-        uses: actions/upload-artifact@v4
+        uses: ./.github/actions/setup-artifacts
         with:
+          action: upload
           name: ${{ inputs.upload_manifest_artifact_name }}-${{ matrix.device }}
           path: ./manifest_*.json
           if-no-files-found: error
@@ -86,8 +87,9 @@ jobs:
     needs: get_app_manifest
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/upload-artifact/merge@v4
+      - uses: ./.github/actions/setup-artifacts
         with:
+          action: merge
           name: ${{ inputs.upload_manifest_artifact_name }}
           pattern: ${{ inputs.upload_manifest_artifact_name }}-*
           delete-merged: true
