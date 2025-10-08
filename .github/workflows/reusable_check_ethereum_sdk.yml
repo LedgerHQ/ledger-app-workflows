@@ -4,6 +4,9 @@ name: Check SDK submodule version
 on:
   workflow_call:
 
+permissions:
+  contents: read
+
 jobs:
   job_check_SDK:
     name: Check Ethereum plugin SDK submodule is up-to-date

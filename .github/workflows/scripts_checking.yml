@@ -9,6 +9,9 @@ on:
       - develop
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
   shellcheck:
     name: Shellcheck

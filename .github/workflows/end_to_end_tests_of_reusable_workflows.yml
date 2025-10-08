@@ -23,6 +23,10 @@ concurrency:
 # https://github.com/actions/runner/issues/1541
 # https://github.com/orgs/community/discussions/45342
 
+permissions:
+  contents: read
+  actions: write  # For upload-artifact
+
 jobs:
 
   ##################################

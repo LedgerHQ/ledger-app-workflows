@@ -68,6 +68,10 @@ on:
         default: ""
         type: string
 
+permissions:
+  contents: read
+  actions: write  # For upload-artifact
+
 jobs:
   call_get_app_metadata:
     # This job digests inputs and repository metadata provided by the `ledger_app.toml` manifest

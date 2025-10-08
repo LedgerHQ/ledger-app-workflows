@@ -23,6 +23,10 @@ on:
         required: true
         type: string
 
+permissions:
+  contents: write      # Needed to commits/push
+  pull-requests: write # Needed to create/modify PR
+
 jobs:
   commit_new_snapshots:
     name: Commit new snapshots

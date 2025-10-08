@@ -42,6 +42,9 @@ on:
         description: Version of reusable workflow
         value: ${{ jobs.get-version.outputs.version }}
 
+permissions:
+  contents: read # Needed to clone the repositories
+
 jobs:
   get-version:
     name: Get workflow version

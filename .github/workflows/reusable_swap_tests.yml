@@ -35,6 +35,8 @@ on:
         description: 'The directory where the swap tests are located.'
         type: string
 
+permissions:
+  contents: read
 
 jobs:
   build_exchange:
