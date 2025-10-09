@@ -36,7 +36,9 @@ on:
         type: string
 
 permissions:
-  contents: read
+  contents: write
+  actions: write  # For upload-artifact
+  pull-requests: write  # For reusable_ragger_tests.yml
 
 jobs:
   build_exchange:

@@ -25,6 +25,7 @@ on:
 
 permissions:
   contents: read
+  actions: write # Needed for upload-artifact
 
 jobs:
   # We can't simply know the current ledger-app-workflow ref from inside the reusable workflow

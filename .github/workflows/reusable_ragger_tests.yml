@@ -90,7 +90,7 @@ on:
         required: false
 
 permissions:
-  contents: read
+  contents: write
   actions: write  # For upload-artifact
   pull-requests: write  # To create PR
 

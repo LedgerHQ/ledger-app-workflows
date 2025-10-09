@@ -24,8 +24,9 @@ concurrency:
 # https://github.com/orgs/community/discussions/45342
 
 permissions:
-  contents: read
+  contents: write
   actions: write  # For upload-artifact
+  pull-requests: write  # For reusable_ragger_tests.yml
 
 jobs:
 
