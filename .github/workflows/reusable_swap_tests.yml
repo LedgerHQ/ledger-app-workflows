@@ -106,7 +106,7 @@ jobs:
       swap_test_dir: ${{ steps.find_swap_test_dir.outputs.swap_test_dir }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: ${{ inputs.app_repository }}
           ref: ${{ inputs.app_branch_name }}
