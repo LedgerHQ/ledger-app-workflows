@@ -105,13 +105,14 @@ jobs:
         with:
           repository: LedgerHQ/ledger-app-workflows
           ref: ${{ github.ref }}
-          path: ${GITHUB_WORKSPACE}/.ledger-workflows
+          path: ledger-workflows
 
       - name: Clone
         uses: actions/checkout@v4
         with:
           repository: ${{ inputs.app_repository }}
           ref: ${{ inputs.app_branch_name }}
+          path: app-src
           submodules: recursive
           token: ${{ secrets.token && secrets.token || github.token }}
 
@@ -119,6 +120,7 @@ jobs:
         id: "build"
         shell: bash
         run: |
+          cd app-src
           if [ "${{ needs.call_get_app_metadata.outputs.is_rust }}" = "true" ];
           then
               BUILD_DEVICE_NAME="$(echo ${{ matrix.device }} | sed 's/nanosp/nanosplus/')" && \
@@ -135,6 +137,7 @@ jobs:
               echo "binary_path=$binary_path" >> $GITHUB_OUTPUT && \
               echo "binary_path=$binary_path" && \
               echo "Build complete"
+              cd -
           else
               eval "BOLOS_SDK=\$$(echo ${{ matrix.device }} | tr [:lower:] [:upper:])_SDK"
               echo "BOLOS_SDK value will be: ${BOLOS_SDK}"
@@ -149,9 +152,11 @@ jobs:
               echo "binary_path=${{ needs.call_get_app_metadata.outputs.build_directory }}/build/*" >> $GITHUB_OUTPUT
               echo "Build complete"
           fi
+          cd -
 
       - name: Remove build artifacts before upload
         run: |
+          cd app-src
           if [ "${{ needs.call_get_app_metadata.outputs.is_rust }}" = "true" ];
           then
               find ${{ steps.build.outputs.binary_path }} -mindepth 3 -maxdepth 3 -type d -exec rm -rf {} + && \
@@ -159,11 +164,13 @@ jobs:
           else
               find ${{ steps.build.outputs.binary_path }} -mindepth 2 -maxdepth 2 -type d ! -name 'bin' -exec rm -r {} +
           fi
+          cd -
 
       - name: Prepare to upload as lib
         if: ${{ inputs.upload_as_lib_artifact != '' }}
         shell: bash
         run: |
+          cd app-src
           if [ "${{ needs.call_get_app_metadata.outputs.is_rust }}" = "true" ];
           then
             C_DEVICE_NAME="$(echo ${{ matrix.device }} | sed 's/nanosp/nanos2/')" && \
@@ -180,16 +187,18 @@ jobs:
             rm -r ${{ needs.call_get_app_metadata.outputs.build_directory }}/build/* && \
             mv ${{ inputs.upload_as_lib_artifact }}_${DEVICE_NAME}.elf ${{ needs.call_get_app_metadata.outputs.build_directory }}/build/
           fi
+          cd -
 
       - name: Display structure of binary files
         run: |
+          cd app-src
           ls -R ${{ steps.build.outputs.binary_path }}
+          cd -
+          ls -R ${app-src}/${{ steps.build.outputs.binary_path }}
 
       - name: DEBUG Display structure of current dir
         run: |
           ls -al
-          ls -al .ledger-workflows
-          ls -al .ledger-workflows/.github
           echo "Current directory: $(pwd)"
           echo "Home directory: $HOME"
           echo "Workspace: $GITHUB_WORKSPACE"
@@ -198,11 +207,11 @@ jobs:
 
       - name: Upload app binary
         if: ${{ inputs.upload_app_binaries_artifact != '' }}
-        uses: ${GITHUB_WORKSPACE}/.ledger-workflows/.github/actions/setup-artifacts
+        uses: ./ledger-workflows/.github/actions/setup-artifacts
         with:
           action: upload
           name: ${{ inputs.upload_app_binaries_artifact }}-${{ matrix.device }}
-          path: ${{ steps.build.outputs.binary_path }}
+          path: ${app-src}/${{ steps.build.outputs.binary_path }}
           if-no-files-found: error
 
   merge_artifacts:

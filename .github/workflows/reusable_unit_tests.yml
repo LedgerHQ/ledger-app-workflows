@@ -52,7 +52,7 @@ jobs:
         with:
           repository: LedgerHQ/ledger-app-workflows
           ref: ${{ github.ref }}
-          path: ${GITHUB_WORKSPACE}/.ledger-workflows
+          path: .ledger-workflows
 
       - name: Clone
         uses: actions/checkout@v4
@@ -66,11 +66,13 @@ jobs:
         run: |
           cd ${{ inputs.test_directory }}
           cmake -Bbuild -H. && make -C build
+          cd -
 
       - name: Run unit tests
         run: |
           cd ${{ inputs.test_directory }}
           CTEST_OUTPUT_ON_FAILURE=1 make -C build test
+          cd -
 
       - name: Generate code coverage
         run: |
@@ -80,8 +82,9 @@ jobs:
           lcov --directory . -b "$(realpath build/)" --add-tracefile coverage.base --add-tracefile coverage.capture -o coverage.info
           lcov --directory . -b "$(realpath build/)" --remove coverage.info "*/${{ inputs.test_directory }}/*" -o coverage.info
           genhtml coverage.info -o coverage
+          cd -
 
-      - uses: ${GITHUB_WORKSPACE}/.ledger-workflows/.github/actions/setup-artifacts
+      - uses: ./.ledger-workflows/.github/actions/setup-artifacts
         with:
           action: upload
           name: code-coverage

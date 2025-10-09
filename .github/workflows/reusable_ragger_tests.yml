@@ -137,7 +137,7 @@ jobs:
         with:
           repository: LedgerHQ/ledger-app-workflows
           ref: ${{ github.ref }}
-          path: ${GITHUB_WORKSPACE}/.ledger-workflows
+          path: .ledger-workflows
 
       - name: Clone
         uses: actions/checkout@v4
@@ -152,15 +152,15 @@ jobs:
           if [ "${{ needs.call_get_app_metadata.outputs.is_rust }}" = "true" ];
           then
               echo "Set Rust binary path" && \
-              cd ${{ needs.call_get_app_metadata.outputs.build_directory }} && \
+              (cd ${{ needs.call_get_app_metadata.outputs.build_directory }} && \
               binary_path=$(cargo metadata --no-deps --format-version 1 | jq -r '.target_directory')/ && \
-              echo "binary_path=$binary_path" >> $GITHUB_OUTPUT
+              echo "binary_path=$binary_path" >> $GITHUB_OUTPUT)
           else
               echo "binary_path=${{ needs.call_get_app_metadata.outputs.build_directory }}/build/" >> $GITHUB_OUTPUT
           fi
 
       - name: Download app binaries
-        uses: ${GITHUB_WORKSPACE}/.ledger-workflows/.github/actions/setup-artifacts
+        uses: ./.ledger-workflows/.github/actions/setup-artifacts
         with:
           action: download
           name: ${{ inputs.download_app_binaries_artifact }}
@@ -171,7 +171,7 @@ jobs:
 
       - name: Download additional app binaries if required
         if: ${{ inputs.additional_app_binaries_artifact != '' }}
-        uses: ${GITHUB_WORKSPACE}/.ledger-workflows/.github/actions/setup-artifacts
+        uses: ./.ledger-workflows/.github/actions/setup-artifacts
         with:
           action: download
           name: ${{ inputs.additional_app_binaries_artifact }}
@@ -183,7 +183,7 @@ jobs:
 
       - name: Download additional lib binaries if required
         if: ${{ inputs.lib_binaries_artifact != '' }}
-        uses: ${GITHUB_WORKSPACE}/.ledger-workflows/.github/actions/setup-artifacts
+        uses: ./.ledger-workflows/.github/actions/setup-artifacts
         with:
           action: download
           name: ${{ inputs.lib_binaries_artifact }}
@@ -222,7 +222,7 @@ jobs:
 
       - name: Upload snapshots on failure if needed
         if: ${{ failure() && inputs.upload_snapshots_on_failure == true }}
-        uses: ${GITHUB_WORKSPACE}/.ledger-workflows/.github/actions/setup-artifacts
+        uses: ./.ledger-workflows/.github/actions/setup-artifacts
         with:
           action: upload
           # Make the artifact name unique to allow running this job in parallel
@@ -231,7 +231,7 @@ jobs:
 
       - name: Upload snapshots on success if needed
         if: ${{ inputs.regenerate_snapshots == true }}
-        uses: ${GITHUB_WORKSPACE}/.ledger-workflows/.github/actions/setup-artifacts
+        uses: ./.ledger-workflows/.github/actions/setup-artifacts
         with:
           action: upload
           name: tests_snapshots${{ inputs.test_options }}-${{ matrix.device }}
