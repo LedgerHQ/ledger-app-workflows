@@ -137,7 +137,7 @@ jobs:
         with:
           repository: LedgerHQ/ledger-app-workflows
           ref: ${{ github.ref }}
-          path: ${{ github.workspace }}/.ledger-workflows
+          path: ${GITHUB_WORKSPACE}/.ledger-workflows
 
       - name: Clone
         uses: actions/checkout@v4
@@ -160,7 +160,7 @@ jobs:
           fi
 
       - name: Download app binaries
-        uses: ${{ github.workspace }}/.ledger-workflows/.github/actions/setup-artifacts
+        uses: ${GITHUB_WORKSPACE}/.ledger-workflows/.github/actions/setup-artifacts
         with:
           action: download
           name: ${{ inputs.download_app_binaries_artifact }}
@@ -171,7 +171,7 @@ jobs:
 
       - name: Download additional app binaries if required
         if: ${{ inputs.additional_app_binaries_artifact != '' }}
-        uses: ${{ github.workspace }}/.ledger-workflows/.github/actions/setup-artifacts
+        uses: ${GITHUB_WORKSPACE}/.ledger-workflows/.github/actions/setup-artifacts
         with:
           action: download
           name: ${{ inputs.additional_app_binaries_artifact }}
@@ -183,7 +183,7 @@ jobs:
 
       - name: Download additional lib binaries if required
         if: ${{ inputs.lib_binaries_artifact != '' }}
-        uses: ${{ github.workspace }}/.ledger-workflows/.github/actions/setup-artifacts
+        uses: ${GITHUB_WORKSPACE}/.ledger-workflows/.github/actions/setup-artifacts
         with:
           action: download
           name: ${{ inputs.lib_binaries_artifact }}
@@ -222,7 +222,7 @@ jobs:
 
       - name: Upload snapshots on failure if needed
         if: ${{ failure() && inputs.upload_snapshots_on_failure == true }}
-        uses: ${{ github.workspace }}/.ledger-workflows/.github/actions/setup-artifacts
+        uses: ${GITHUB_WORKSPACE}/.ledger-workflows/.github/actions/setup-artifacts
         with:
           action: upload
           # Make the artifact name unique to allow running this job in parallel
@@ -231,7 +231,7 @@ jobs:
 
       - name: Upload snapshots on success if needed
         if: ${{ inputs.regenerate_snapshots == true }}
-        uses: ${{ github.workspace }}/.ledger-workflows/.github/actions/setup-artifacts
+        uses: ${GITHUB_WORKSPACE}/.ledger-workflows/.github/actions/setup-artifacts
         with:
           action: upload
           name: tests_snapshots${{ inputs.test_options }}-${{ matrix.device }}
