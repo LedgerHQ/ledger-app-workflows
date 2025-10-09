@@ -52,7 +52,7 @@ jobs:
         with:
           repository: LedgerHQ/ledger-app-workflows
           ref: ${{ github.ref }}
-          path: .ledger-workflows
+          path: ${{ github.workspace }}/.ledger-workflows
 
       - name: Clone
         uses: actions/checkout@v4
@@ -81,7 +81,7 @@ jobs:
           lcov --directory . -b "$(realpath build/)" --remove coverage.info "*/${{ inputs.test_directory }}/*" -o coverage.info
           genhtml coverage.info -o coverage
 
-      - uses: ./.ledger-workflows/.github/actions/setup-artifacts
+      - uses: ${{ github.workspace }}/.ledger-workflows/.github/actions/setup-artifacts
         with:
           action: upload
           name: code-coverage
