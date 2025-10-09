@@ -105,7 +105,7 @@ jobs:
         with:
           repository: LedgerHQ/ledger-app-workflows
           ref: ${{ github.ref }}
-          path: .ledger-workflows
+          path: ${{ github.workspace }}/.ledger-workflows
 
       - name: Clone
         uses: actions/checkout@v4
@@ -185,9 +185,21 @@ jobs:
         run: |
           ls -R ${{ steps.build.outputs.binary_path }}
 
+      - name: DEBUG Display structure of current dir
+        run: |
+          ls -al
+          ls -al .ledger-workflows
+          ls -al .ledger-workflows/.github
+          echo "Current directory: $(pwd)"
+          echo "Home directory: $HOME"
+          echo "Workspace: $GITHUB_WORKSPACE"
+          echo "Workspace: $${{ github.workspace }}"
+          echo "Runner workspace: $RUNNER_WORKSPACE"
+          ls -al $GITHUB_WORKSPACE
+
       - name: Upload app binary
         if: ${{ inputs.upload_app_binaries_artifact != '' }}
-        uses: ./.ledger-workflows/.github/actions/setup-artifacts
+        uses: ${{ github.workspace }}/.ledger-workflows/.github/actions/setup-artifacts
         with:
           action: upload
           name: ${{ inputs.upload_app_binaries_artifact }}-${{ matrix.device }}
