@@ -100,6 +100,13 @@ jobs:
       image: ghcr.io/ledgerhq/ledger-app-builder/${{ inputs.builder }}:latest
 
     steps:
+      - name: Clone ledger-app-workflows (for actions)
+        uses: actions/checkout@v4
+        with:
+          repository: LedgerHQ/ledger-app-workflows
+          ref: ${{ github.ref }}
+          path: .ledger-workflows
+
       - name: Clone
         uses: actions/checkout@v4
         with:
@@ -180,7 +187,7 @@ jobs:
 
       - name: Upload app binary
         if: ${{ inputs.upload_app_binaries_artifact != '' }}
-        uses: ./.github/actions/setup-artifacts
+        uses: ./.ledger-workflows/.github/actions/setup-artifacts
         with:
           action: upload
           name: ${{ inputs.upload_app_binaries_artifact }}-${{ matrix.device }}
@@ -193,6 +200,12 @@ jobs:
     runs-on: ubuntu-22.04
     if: ${{ inputs.upload_app_binaries_artifact != '' }}
     steps:
+      - name: Clone ledger-app-workflows (for actions)
+        uses: actions/checkout@v4
+        with:
+          repository: LedgerHQ/ledger-app-workflows
+          ref: ${{ github.ref }}
+
       - uses: ./.github/actions/setup-artifacts
         with:
           action: merge

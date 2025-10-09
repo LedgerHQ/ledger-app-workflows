@@ -39,6 +39,13 @@ jobs:
           echo "This workflow is only allowed to run on 'workflow_dispatch' events."
           exit 1
 
+      - name: Clone ledger-app-workflows (for actions)
+        uses: actions/checkout@v4
+        with:
+          repository: LedgerHQ/ledger-app-workflows
+          ref: ${{ github.ref }}
+          path: .ledger-workflows
+
       - name: Checkout code
         uses: actions/checkout@v4
         with:
@@ -53,7 +60,7 @@ jobs:
           persist-credentials: false
 
       - name: Download new snapshots
-        uses: ./.github/actions/setup-artifacts
+        uses: ./.ledger-workflows/.github/actions/setup-artifacts
         with:
           action: download
           name: ${{ inputs.snapshots_artifact_name }}

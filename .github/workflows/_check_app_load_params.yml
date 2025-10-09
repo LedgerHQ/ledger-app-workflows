@@ -36,7 +36,7 @@ jobs:
           ref: main
 
       - name: Download manifest
-        uses: ./.github/actions/setup-artifacts
+        uses: ./ledger-app-workflows/.github/actions/setup-artifacts
         with:
           action: download
           name: ${{ inputs.download_manifest_artifact_name }}

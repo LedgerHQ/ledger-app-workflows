@@ -47,6 +47,13 @@ jobs:
             sudo apt-get update && sudo apt-get install -y ${{ inputs.additional_packages }}
           fi
 
+      - name: Clone ledger-app-workflows (for actions)
+        uses: actions/checkout@v4
+        with:
+          repository: LedgerHQ/ledger-app-workflows
+          ref: ${{ github.ref }}
+          path: .ledger-workflows
+
       - name: Clone
         uses: actions/checkout@v4
         with:
@@ -74,7 +81,7 @@ jobs:
           lcov --directory . -b "$(realpath build/)" --remove coverage.info "*/${{ inputs.test_directory }}/*" -o coverage.info
           genhtml coverage.info -o coverage
 
-      - uses: ./.github/actions/setup-artifacts
+      - uses: ./.ledger-workflows/.github/actions/setup-artifacts
         with:
           action: upload
           name: code-coverage

@@ -132,6 +132,13 @@ jobs:
               exit 1
           fi
 
+      - name: Clone ledger-app-workflows (for actions)
+        uses: actions/checkout@v4
+        with:
+          repository: LedgerHQ/ledger-app-workflows
+          ref: ${{ github.ref }}
+          path: .ledger-workflows
+
       - name: Clone
         uses: actions/checkout@v4
         with:
@@ -153,7 +160,7 @@ jobs:
           fi
 
       - name: Download app binaries
-        uses: ./.github/actions/setup-artifacts
+        uses: ./.ledger-workflows/.github/actions/setup-artifacts
         with:
           action: download
           name: ${{ inputs.download_app_binaries_artifact }}
@@ -164,7 +171,7 @@ jobs:
 
       - name: Download additional app binaries if required
         if: ${{ inputs.additional_app_binaries_artifact != '' }}
-        uses: ./.github/actions/setup-artifacts
+        uses: ./.ledger-workflows/.github/actions/setup-artifacts
         with:
           action: download
           name: ${{ inputs.additional_app_binaries_artifact }}
@@ -176,7 +183,7 @@ jobs:
 
       - name: Download additional lib binaries if required
         if: ${{ inputs.lib_binaries_artifact != '' }}
-        uses: ./.github/actions/setup-artifacts
+        uses: ./.ledger-workflows/.github/actions/setup-artifacts
         with:
           action: download
           name: ${{ inputs.lib_binaries_artifact }}
@@ -215,7 +222,7 @@ jobs:
 
       - name: Upload snapshots on failure if needed
         if: ${{ failure() && inputs.upload_snapshots_on_failure == true }}
-        uses: ./.github/actions/setup-artifacts
+        uses: ./.ledger-workflows/.github/actions/setup-artifacts
         with:
           action: upload
           # Make the artifact name unique to allow running this job in parallel
@@ -224,7 +231,7 @@ jobs:
 
       - name: Upload snapshots on success if needed
         if: ${{ inputs.regenerate_snapshots == true }}
-        uses: ./.github/actions/setup-artifacts
+        uses: ./.ledger-workflows/.github/actions/setup-artifacts
         with:
           action: upload
           name: tests_snapshots${{ inputs.test_options }}-${{ matrix.device }}
@@ -245,6 +252,12 @@ jobs:
     needs: ragger_tests
     runs-on: ubuntu-22.04
     steps:
+      - name: Clone ledger-app-workflows (for actions)
+        uses: actions/checkout@v4
+        with:
+          repository: LedgerHQ/ledger-app-workflows
+          ref: ${{ github.ref }}
+
       - uses: ./.github/actions/setup-artifacts
         if: ${{ needs.ragger_tests.outputs.snapshot_artifact_uploaded == 'true' }}
         with:

@@ -75,7 +75,7 @@ jobs:
               -m ../manifest_${{ matrix.device }}.json
 
       - name: Upload app manifest
-        uses: ./.github/actions/setup-artifacts
+        uses: ./ledger-app-workflows/.github/actions/setup-artifacts
         with:
           action: upload
           name: ${{ inputs.upload_manifest_artifact_name }}-${{ matrix.device }}
@@ -87,7 +87,7 @@ jobs:
     needs: get_app_manifest
     runs-on: ubuntu-22.04
     steps:
-      - uses: ./.github/actions/setup-artifacts
+      - uses: ./ledger-app-workflows/.github/actions/setup-artifacts
         with:
           action: merge
           name: ${{ inputs.upload_manifest_artifact_name }}

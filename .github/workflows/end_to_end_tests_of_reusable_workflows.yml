@@ -117,7 +117,14 @@ jobs:
     needs: build_sideloaded_applications_for_exchange
     runs-on: ubuntu-22.04
     steps:
-      - uses: ./.github/actions/setup-artifacts
+      - name: Clone ledger-app-workflows (for actions)
+        uses: actions/checkout@v4
+        with:
+          repository: LedgerHQ/ledger-app-workflows
+          ref: ${{ github.ref }}
+          path: ledger-app-workflows
+
+      - uses: ./ledger-app-workflows/.github/actions/setup-artifacts
         with:
           action: merge
           name: libraries_binaries
