@@ -18,6 +18,11 @@ on:
 permissions:
   contents: read
 
+env:
+  SOURCE: ${{ inputs.source }}
+  VERSION: ${{ inputs.version }}
+  EXTENSIONS: ${{ inputs.extensions }}
+
 jobs:
   call_get_app_metadata:
     # Call this job to infer the application language (C or Rust)
@@ -55,4 +60,4 @@ jobs:
       - name: Lint check for Rust app
         if: ${{ needs.call_get_app_metadata.outputs.is_rust == 'true'}}
         run: cargo fmt --all -- --check
-        working-directory: ${{ inputs.source }}
+        working-directory: ${{ env.SOURCE }}

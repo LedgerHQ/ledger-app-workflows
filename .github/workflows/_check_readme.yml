@@ -12,14 +12,13 @@ on:
         required: false
         default: ${{ github.repository }}
         type: string
-      repo-name:
-        description: 'The name of the app repository to check. Defaults to the workflow caller repository name'
-        required: false
-        default: ${{ github.event.repository.name }}
-        type: string
 
 permissions:
   contents: read  # Needed to clone the repositories
+
+env:
+  LEDGER_APP_WORKFLOWS_REF: ${{ inputs.ledger-app-workflows_ref }}
+  APP_REPOSITORY: ${{ inputs.app-repository }}
 
 jobs:
   check_readme:

@@ -37,6 +37,14 @@ on:
 permissions:
   contents: read
 
+env:
+  RUN_LINTER: ${{ inputs.run_linter }}
+  RUN_TYPE_CHECK: ${{ inputs.run_type_check }}
+  SRC_DIRECTORY: ${{ inputs.src_directory }}
+  REQ_DIRECTORY: ${{ inputs.req_directory }}
+  SETUP_DIRECTORY: ${{ inputs.setup_directory }}
+  ADDITIONAL_PACKAGES: ${{ inputs.additional_packages }}
+
 jobs:
   pylint:
     name: Python Linting with pylint
@@ -45,8 +53,8 @@ jobs:
     steps:
       - name: Installing required packages
         run: |
-          if [ -n "${{ inputs.additional_packages }}" ]; then
-            sudo apt-get update && sudo apt-get install -y ${{ inputs.additional_packages }}
+          if [ -n "${{ env.ADDITIONAL_PACKAGES }}" ]; then
+            sudo apt-get update && sudo apt-get install -y ${{ env.ADDITIONAL_PACKAGES }}
           fi
 
       - name: Clone
@@ -55,20 +63,20 @@ jobs:
       - name: Installing PIP dependencies
         run: |
           pip install pylint
-          if [ -n "${{ inputs.req_directory }}" ] && [ -f "${{ inputs.req_directory }}/requirements.txt" ]; then
-            pip install -r ${{ inputs.req_directory }}/requirements.txt
+          if [ -n "${{ env.REQ_DIRECTORY }}" ] && [ -f "${{ env.REQ_DIRECTORY }}/requirements.txt" ]; then
+            pip install -r ${{ env.REQ_DIRECTORY }}/requirements.txt
           fi
 
       - name: Lint Python code
         run: |
           ARGS=(-j 0)
-          if [ -n "${{ inputs.setup_directory }}" ]; then
-            cd ${{ inputs.setup_directory }}
+          if [ -n "${{ env.SETUP_DIRECTORY }}" ]; then
+            cd ${{ env.SETUP_DIRECTORY }}
           fi
           if [ -f "./setup.cfg" ]; then
               ARGS+=(--rcfile "./setup.cfg")
           fi
-          pylint "${ARGS[@]}" ${{ inputs.src_directory }}
+          pylint "${ARGS[@]}" ${{ env.SRC_DIRECTORY }}
 
   flake8:
     name: Python Linting with flake8
@@ -77,8 +85,8 @@ jobs:
     steps:
       - name: Installing required packages
         run: |
-          if [ -n "${{ inputs.additional_packages }}" ]; then
-            sudo apt-get update && sudo apt-get install -y ${{ inputs.additional_packages }}
+          if [ -n "${{ env.ADDITIONAL_PACKAGES }}" ]; then
+            sudo apt-get update && sudo apt-get install -y ${{ env.ADDITIONAL_PACKAGES }}
           fi
 
       - name: Clone
@@ -87,16 +95,16 @@ jobs:
       - name: Installing PIP dependencies
         run: |
           pip install flake8 flake8-pyproject
-          if [ -n "${{ inputs.req_directory }}" ] && [ -f "${{ inputs.req_directory }}/requirements.txt" ]; then
-            pip install -r ${{ inputs.req_directory }}/requirements.txt
+          if [ -n "${{ env.REQ_DIRECTORY }}" ] && [ -f "${{ env.REQ_DIRECTORY }}/requirements.txt" ]; then
+            pip install -r ${{ env.REQ_DIRECTORY }}/requirements.txt
           fi
 
       - name: Lint Python code
         run: |
-          if [ -n "${{ inputs.setup_directory }}" ]; then
-            cd ${{ inputs.setup_directory }}
+          if [ -n "${{ env.SETUP_DIRECTORY }}" ]; then
+            cd ${{ env.SETUP_DIRECTORY }}
           fi
-          flake8 ${{ inputs.src_directory }}
+          flake8 ${{ env.SRC_DIRECTORY }}
 
   mypy:
     name: Type checking
@@ -105,8 +113,8 @@ jobs:
     steps:
       - name: Installing required packages
         run: |
-          if [ -n "${{ inputs.additional_packages }}" ]; then
-            sudo apt-get update && sudo apt-get install -y ${{ inputs.additional_packages }}
+          if [ -n "${{ env.ADDITIONAL_PACKAGES }}" ]; then
+            sudo apt-get update && sudo apt-get install -y ${{ env.ADDITIONAL_PACKAGES }}
           fi
 
       - name: Clone
@@ -115,13 +123,13 @@ jobs:
       - name: Installing PIP dependencies
         run: |
           pip install mypy
-          if [ -n "${{ inputs.req_directory }}" ] && [ -f "${{ inputs.req_directory }}/requirements.txt" ]; then
-            pip install -r ${{ inputs.req_directory }}/requirements.txt
+          if [ -n "${{ env.REQ_DIRECTORY }}" ] && [ -f "${{ env.REQ_DIRECTORY }}/requirements.txt" ]; then
+            pip install -r ${{ env.REQ_DIRECTORY }}/requirements.txt
           fi
 
       - name: Mypy type checking
         run: |
-          if [ -n "${{ inputs.setup_directory }}" ]; then
-            cd ${{ inputs.setup_directory }}
+          if [ -n "${{ env.SETUP_DIRECTORY }}" ]; then
+            cd ${{ env.SETUP_DIRECTORY }}
           fi
-          mypy ${{ inputs.src_directory }}
+          mypy ${{ env.SRC_DIRECTORY }}

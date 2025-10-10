@@ -31,6 +31,9 @@ on:
 
 env:
   APP_MANIFEST: "ledger_app.toml"
+  APP_REPOSITORY: ${{ inputs.app_repository }}
+  APP_BRANCH_NAME: ${{ inputs.app_branch_name }}
+  PYTEST_DIRECTORY: ${{ inputs.pytest_directory }}
 
 permissions:
   contents: read  # Needed to clone the repositories
@@ -68,7 +71,7 @@ jobs:
           ledger-manifest --check . "$APP_MANIFEST"
 
           # Read the input directory from caller
-          input_pytest_dir="${{ inputs.pytest_directory }}"
+          input_pytest_dir="${{ env.PYTEST_DIRECTORY }}"
 
           if [ "$input_pytest_dir" != "None" ]; then
               # Use the provided input as-is

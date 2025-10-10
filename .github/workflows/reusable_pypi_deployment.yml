@@ -32,6 +32,12 @@ on:
         description: A token enabling to push a package on pypi.org or test.pypi.org
         required: true
 
+env:
+  PACKAGE_NAME: ${{ inputs.package_name }}
+  PACKAGE_DIRECTORY: ${{ inputs.package_directory }}
+  PUBLISH: ${{ inputs.publish }}
+  RELEASE: ${{ inputs.release }}
+  JFROG_DEPLOYMENT: ${{ inputs.jfrog_deployment }}
 
 jobs:
   package_and_deploy:
@@ -54,11 +60,11 @@ jobs:
           # To be removed when it's fixed
           pip install -U packaging
           pip install --upgrade pip build twine
-          cd ${{ inputs.package_directory }}
+          cd ${{ env.PACKAGE_DIRECTORY }}
           python -m build
           pip install .
           python -m twine check dist/*
-          echo "TAG_VERSION=$(python -c 'from ${{ inputs.package_name }} import __version__; print(__version__)')" >> "$GITHUB_ENV"
+          echo "TAG_VERSION=$(python -c 'from ${{ env.PACKAGE_NAME }} import __version__; print(__version__)')" >> "$GITHUB_ENV"
 
       - name: Display current status
         run: |
@@ -67,7 +73,7 @@ jobs:
       - name: Check version against CHANGELOG
         if: ${{ success() && inputs.publish }}
         run: |
-          cd ${{ inputs.package_directory }}
+          cd ${{ env.PACKAGE_DIRECTORY }}
           CHANGELOG_VERSION=$(grep -Po '(?<=## \[)(\d+\.)+[^\]]' CHANGELOG.md | head -n 1)
           if [ "${{ env.TAG_VERSION }}" == "${CHANGELOG_VERSION}" ]
           then
@@ -78,7 +84,7 @@ jobs:
 
       - name: Publish Python package on pypi.org
         if: ${{ success() && inputs.publish }}
-        run: python -m twine upload ${{ inputs.package_directory }}/dist/*
+        run: python -m twine upload ${{ env.PACKAGE_DIRECTORY }}/dist/*
         env:
           TWINE_USERNAME: __token__
           TWINE_PASSWORD: ${{ secrets.pypi_token  }}
@@ -92,7 +98,7 @@ jobs:
 
       - name: Publish Python package on Ledger Artifactory
         if: ${{ success() && inputs.publish && inputs.jfrog_deployment }}
-        run: python -m twine upload ${{ inputs.package_directory }}/dist/*
+        run: python -m twine upload ${{ env.PACKAGE_DIRECTORY }}/dist/*
         env:
           TWINE_REPOSITORY_URL: https://jfrog.ledgerlabs.net/artifactory/api/pypi/embedded-apps-pypi-prod-green
           TWINE_USERNAME: ${{ steps.jfrog-login.outputs.oidc-user }}
@@ -124,4 +130,4 @@ jobs:
           files: |
             LICENSE
             CHANGELOG.md
-            ${{ inputs.package_directory }}/dist/*
+            ${{ env.PACKAGE_DIRECTORY }}/dist/*
