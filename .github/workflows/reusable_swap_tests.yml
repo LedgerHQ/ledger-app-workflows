@@ -38,6 +38,14 @@ permissions:
   actions: write        # Needed for reusable_ragger_tests.yml and reusable_build.yml
   pull-requests: write  # Needed for reusable_ragger_tests.yml
 
+env:
+  APP_REPOSITORY: ${{ inputs.app_repository }}
+  APP_BRANCH_NAME: ${{ inputs.app_branch_name }}
+  DOWNLOAD_APP_BINARIES_ARTIFACT: ${{ inputs.download_app_binaries_artifact }}
+  EXCHANGE_BUILD_ARTIFACT: ${{ inputs.exchange_build_artifact }}
+  ETHEREUM_BUILD_ARTIFACT: ${{ inputs.ethereum_build_artifact }}
+  REGENERATE_SNAPSHOTS: ${{ inputs.regenerate_snapshots }}
+
 jobs:
   build_app:
     name: Build app to test using the reusable workflow
@@ -81,7 +89,7 @@ jobs:
         id: get_exchange_binaries
         run: |
           if [ "${{ needs.build_exchange.result }}" = "skipped" ]; then
-            echo "exchange_build_artifact=${{ inputs.exchange_build_artifact }}" >> "$GITHUB_OUTPUT"
+            echo "exchange_build_artifact=${EXCHANGE_BUILD_ARTIFACT}" >> "$GITHUB_OUTPUT"
           elif [ "${{ needs.build_exchange.result }}" = "success" ]; then
             echo "exchange_build_artifact=app_exchange_binaries" >> "$GITHUB_OUTPUT"
           else
@@ -92,7 +100,7 @@ jobs:
         id: get_ethereum_binaries
         run: |
           if [ "${{ needs.build_ethereum.result }}" = "skipped" ]; then
-            echo "ethereum_build_artifact=${{ inputs.ethereum_build_artifact }}" >> "$GITHUB_OUTPUT"
+            echo "ethereum_build_artifact=${ETHEREUM_BUILD_ARTIFACT}" >> "$GITHUB_OUTPUT"
           elif [ "${{ needs.build_ethereum.result }}" = "success" ]; then
             echo "ethereum_build_artifact=app_ethereum_binaries" >> "$GITHUB_OUTPUT"
           else

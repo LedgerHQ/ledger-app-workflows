@@ -38,6 +38,13 @@ permissions:
   contents: read
   security-events: write  # Needed for CodeQL analysis upload
 
+env:
+  APP_REPOSITORY: ${{ inputs.app_repository }}
+  APP_BRANCH_NAME: ${{ inputs.app_branch_name }}
+  RUN_FOR_DEVICES: ${{ inputs.run_for_devices }}
+  BUILDER: ${{ inputs.builder }}
+  FLAGS: ${{ inputs.flags }}
+
 jobs:
   call_get_app_metadata:
     # This job digests inputs and repository metadata provided by the `ledger_app.toml` manifest
@@ -63,12 +70,12 @@ jobs:
         id: sdk_list
         shell: bash
         run: |
-          if [ "${{ inputs.run_for_devices }}" = "None" ]; then
+          if [ "${RUN_FOR_DEVICES}" = "None" ]; then
             # Use the compatible devices from metadata
             devices_json='${{ needs.call_get_app_metadata.outputs.compatible_devices }}'
           else
             # Convert space-separated string to JSON array
-            devices_string="${{ inputs.run_for_devices }}"
+            devices_string="${RUN_FOR_DEVICES}"
             devices_json=$(echo "${devices_string}" | jq -R 'split(" ")')
           fi
 
@@ -112,7 +119,7 @@ jobs:
       # CodeQL will create the database during the compilation
       - name: Build
         run: |
-          ${{ inputs.flags }} make BOLOS_SDK=${{ matrix.sdk }}
+           make BOLOS_SDK="${{ matrix.sdk }}" ${FLAGS}
 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v3

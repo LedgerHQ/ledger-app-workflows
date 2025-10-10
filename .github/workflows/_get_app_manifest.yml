@@ -33,6 +33,14 @@ on:
 permissions:
   contents: read  # Needed to clone the repositories
 
+env:
+  WORKFLOWS_REF: ${{ inputs.workflows_ref }}
+  APP_REPOSITORY: ${{ inputs.app_repository }}
+  RUN_FOR_DEVICES: ${{ inputs.run_for_devices }}
+  RELATIVE_APP_DIRECTORY: ${{ inputs.relative_app_directory }}
+  IS_RUST: ${{ inputs.is_rust }}
+  UPLOAD_MANIFEST_ARTIFACT_NAME: ${{ inputs.upload_manifest_artifact_name }}
+
 jobs:
   get_app_manifest:
     name: Get application manifest for supported devices
@@ -63,7 +71,7 @@ jobs:
         if: ${{ inputs.is_rust == 'true'}}
         run: |
             ./ledger-app-workflows/scripts/check_all.sh -r -c manifest -t ${{ matrix.device }} \
-              -a ./app-repository -b ${{ inputs.relative_app_directory }} \
+              -a ./app-repository -b ${RELATIVE_APP_DIRECTORY} \
               -m ../manifest_${{ matrix.device }}.json
 
       - name: Call Makefile dumper script
@@ -71,7 +79,7 @@ jobs:
         run: |
             eval "BOLOS_SDK=\$$(echo ${{ matrix.device }} | tr [:lower:] [:upper:])_SDK" && \
             ./ledger-app-workflows/scripts/check_all.sh -c manifest -t ${{ matrix.device }} \
-              -a ./app-repository -b ${{ inputs.relative_app_directory }} \
+              -a ./app-repository -b ${RELATIVE_APP_DIRECTORY} \
               -m ../manifest_${{ matrix.device }}.json
 
       - name: Upload app manifest

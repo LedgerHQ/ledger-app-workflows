@@ -32,6 +32,12 @@ on:
         description: A token enabling to push a package on pypi.org or test.pypi.org
         required: true
 
+env:
+  PACKAGE_NAME: ${{ inputs.package_name }}
+  PACKAGE_DIRECTORY: ${{ inputs.package_directory }}
+  PUBLISH: ${{ inputs.publish }}
+  RELEASE: ${{ inputs.release }}
+  JFROG_DEPLOYMENT: ${{ inputs.jfrog_deployment }}
 
 jobs:
   package_and_deploy:
@@ -54,31 +60,31 @@ jobs:
           # To be removed when it's fixed
           pip install -U packaging
           pip install --upgrade pip build twine
-          cd ${{ inputs.package_directory }}
+          cd ${PACKAGE_DIRECTORY}
           python -m build
           pip install .
           python -m twine check dist/*
-          echo "TAG_VERSION=$(python -c 'from ${{ inputs.package_name }} import __version__; print(__version__)')" >> "$GITHUB_ENV"
+          echo "TAG_VERSION=$(python -c 'from ${PACKAGE_NAME} import __version__; print(__version__)')" >> "$GITHUB_ENV"
 
       - name: Display current status
         run: |
-          echo "- Tag version: ${{ env.TAG_VERSION }}"
+          echo "- Tag version: ${TAG_VERSION}"
 
       - name: Check version against CHANGELOG
         if: ${{ success() && inputs.publish }}
         run: |
-          cd ${{ inputs.package_directory }}
+          cd ${PACKAGE_DIRECTORY}
           CHANGELOG_VERSION=$(grep -Po '(?<=## \[)(\d+\.)+[^\]]' CHANGELOG.md | head -n 1)
-          if [ "${{ env.TAG_VERSION }}" == "${CHANGELOG_VERSION}" ]
+          if [ "${TAG_VERSION}" == "${CHANGELOG_VERSION}" ]
           then
               exit 0
           fi
-          echo "Tag '${{ env.TAG_VERSION }}' and CHANGELOG '${CHANGELOG_VERSION}' versions mismatch!"
+          echo "Tag '${TAG_VERSION}' and CHANGELOG '${CHANGELOG_VERSION}' versions mismatch!"
           exit 1
 
       - name: Publish Python package on pypi.org
         if: ${{ success() && inputs.publish }}
-        run: python -m twine upload ${{ inputs.package_directory }}/dist/*
+        run: python -m twine upload ${PACKAGE_DIRECTORY}/dist/*
         env:
           TWINE_USERNAME: __token__
           TWINE_PASSWORD: ${{ secrets.pypi_token  }}
@@ -92,7 +98,7 @@ jobs:
 
       - name: Publish Python package on Ledger Artifactory
         if: ${{ success() && inputs.publish && inputs.jfrog_deployment }}
-        run: python -m twine upload ${{ inputs.package_directory }}/dist/*
+        run: python -m twine upload ${PACKAGE_DIRECTORY}/dist/*
         env:
           TWINE_REPOSITORY_URL: https://jfrog.ledgerlabs.net/artifactory/api/pypi/embedded-apps-pypi-prod-green
           TWINE_USERNAME: ${{ steps.jfrog-login.outputs.oidc-user }}
@@ -117,11 +123,11 @@ jobs:
         if: ${{ success() && inputs.publish && inputs.release }}
         uses: softprops/action-gh-release@aec2ec56f94eb8180ceec724245f64ef008b89f5  # v2.4.0
         with:
-          tag_name: "v${{ env.TAG_VERSION }}"
+          tag_name: "v${TAG_VERSION}"
           token: "${{ secrets.GITHUB_TOKEN }}"
           draft: false
           prerelease: false
           files: |
             LICENSE
             CHANGELOG.md
-            ${{ inputs.package_directory }}/dist/*
+            ${PACKAGE_DIRECTORY}/dist/*

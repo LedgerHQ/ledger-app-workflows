@@ -94,6 +94,22 @@ permissions:
   actions: write        # Needed for upload-artifact
   pull-requests: write  # Needed for _open_pr_with_new_snapshots.yml
 
+env:
+  APP_REPOSITORY: ${{ inputs.app_repository }}
+  APP_BRANCH_NAME: ${{ inputs.app_branch_name }}
+  TEST_DIR: ${{ inputs.test_dir }}
+  DOWNLOAD_APP_BINARIES_ARTIFACT: ${{ inputs.download_app_binaries_artifact }}
+  ADDITIONAL_APP_BINARIES_ARTIFACT: ${{ inputs.additional_app_binaries_artifact }}
+  ADDITIONAL_APP_BINARIES_ARTIFACT_DIR: ${{ inputs.additional_app_binaries_artifact_dir }}
+  LIB_BINARIES_ARTIFACT: ${{ inputs.lib_binaries_artifact }}
+  LIB_BINARIES_ARTIFACT_DIR: ${{ inputs.lib_binaries_artifact_dir }}
+  RUN_FOR_DEVICES: ${{ inputs.run_for_devices }}
+  UPLOAD_SNAPSHOTS_ON_FAILURE: ${{ inputs.upload_snapshots_on_failure }}
+  TEST_FILTER: ${{ inputs.test_filter }}
+  TEST_OPTIONS: ${{ inputs.test_options }}
+  REGENERATE_SNAPSHOTS: ${{ inputs.regenerate_snapshots }}
+  CONTAINER_IMAGE: ${{ inputs.container_image }}
+
 jobs:
   call_get_app_metadata:
     # This job digests inputs and repository metadata provided by the `ledger_app.toml` manifest
@@ -170,7 +186,7 @@ jobs:
 
       - name: Display structure of downloaded files
         if: ${{ inputs.additional_app_binaries_artifact != '' }}
-        run: ls -R ${{ inputs.additional_app_binaries_artifact_dir }}
+        run: ls -R ${ADDITIONAL_APP_BINARIES_ARTIFACT_DIR}
 
       - name: Download additional lib binaries if required
         if: ${{ inputs.lib_binaries_artifact != '' }}
@@ -181,7 +197,7 @@ jobs:
 
       - name: Display structure of downloaded files
         if: ${{ inputs.lib_binaries_artifact != '' }}
-        run: ls -R ${{ inputs.lib_binaries_artifact_dir }}
+        run: ls -R ${LIB_BINARIES_ARTIFACT_DIR}
 
       - name: Install tests dependencies
         run: |
@@ -205,10 +221,10 @@ jobs:
           pytest ${{ needs.call_get_test_metadata.outputs.pytest_directory }}/ \
                  --tb=short -v \
                  --device ${{ matrix.device }} \
-                 -k ${{ inputs.test_filter }} \
-                 ${{ inputs.test_options }} \
+                 -k ${TEST_FILTER} \
+                 ${TEST_OPTIONS} \
                  ${{ secrets.secret_test_options }} \
-                 ${{ inputs.regenerate_snapshots == true && '--golden_run' || '' }}
+                 ${{ env.REGENERATE_SNAPSHOTS == true && '--golden_run' || '' }}
 
       # Compute a unique name for this upload
       - name: Compute artifact name

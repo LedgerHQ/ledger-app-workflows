@@ -31,6 +31,9 @@ on:
 
 env:
   APP_MANIFEST: "ledger_app.toml"
+  APP_REPOSITORY: ${{ inputs.app_repository }}
+  APP_BRANCH_NAME: ${{ inputs.app_branch_name }}
+  PYTEST_DIRECTORY: ${{ inputs.pytest_directory }}
 
 permissions:
   contents: read  # Needed to clone the repositories
@@ -67,12 +70,9 @@ jobs:
           echo "Manifest detected."
           ledger-manifest --check . "$APP_MANIFEST"
 
-          # Read the input directory from caller
-          input_pytest_dir="${{ inputs.pytest_directory }}"
-
-          if [ "$input_pytest_dir" != "None" ]; then
+          if [ "${PYTEST_DIRECTORY}" != "None" ]; then
               # Use the provided input as-is
-              pytest_directory="$input_pytest_dir"
+              pytest_directory="${PYTEST_DIRECTORY}"
 
               # Check if it's listed in the manifest
               manifest_json="$(ledger-manifest --output-pytest-directories -j -- "$APP_MANIFEST")"
@@ -80,14 +80,14 @@ jobs:
 
               found=0
               for dir in "${manifest_dirs[@]}"; do
-                  if [ "$dir" = "$input_pytest_dir" ]; then
+                  if [ "$dir" = "${PYTEST_DIRECTORY}" ]; then
                       found=1
                       break
                   fi
               done
 
               if [ "$found" -ne 1 ]; then
-                  >&2 echo "::warning::Provided pytest_directory '$input_pytest_dir' not found in manifest. Proceeding anyway."
+                  >&2 echo "::warning::Provided pytest_directory '${PYTEST_DIRECTORY}' not found in manifest. Proceeding anyway."
               fi
 
           else

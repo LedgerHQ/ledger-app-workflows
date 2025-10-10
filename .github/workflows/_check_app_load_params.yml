@@ -15,6 +15,10 @@ on:
 permissions:
   contents: read  # Needed to clone the repositories
 
+env:
+  WORKFLOWS_REF: ${{ inputs.workflows_ref }}
+  DOWNLOAD_MANIFEST_ARTIFACT_NAME: ${{ inputs.download_manifest_artifact_name }}
+
 jobs:
   check_app_load_params:
     name: Check APP_LOAD_PARAMS

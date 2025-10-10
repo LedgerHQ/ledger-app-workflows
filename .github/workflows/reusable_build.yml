@@ -72,6 +72,18 @@ permissions:
   contents: read
   actions: write  # Needed for upload-artifact
 
+env:
+  APP_REPOSITORY: ${{ inputs.app_repository }}
+  APP_BRANCH_NAME: ${{ inputs.app_branch_name }}
+  FLAGS: ${{ inputs.flags }}
+  USE_CASE: ${{ inputs.use_case }}
+  UPLOAD_APP_BINARIES_ARTIFACT: ${{ inputs.upload_app_binaries_artifact }}
+  UPLOAD_AS_LIB_ARTIFACT: ${{ inputs.upload_as_lib_artifact }}
+  RUN_FOR_DEVICES: ${{ inputs.run_for_devices }}
+  BUILDER: ${{ inputs.builder }}
+  SDK_REFERENCE: ${{ inputs.sdk_reference }}
+  CARGO_LEDGER_BUILD_ARGS: ${{ inputs.cargo_ledger_build_args }}
+
 jobs:
   call_get_app_metadata:
     # This job digests inputs and repository metadata provided by the `ledger_app.toml` manifest
@@ -123,7 +135,7 @@ jobs:
                   cargo +$RUST_NIGHTLY update $crate
                 fi
               done
-              cargo ledger build ${BUILD_DEVICE_NAME} -- ${{inputs.cargo_ledger_build_args}} && \
+              cargo ledger build ${BUILD_DEVICE_NAME} -- ${CARGO_LEDGER_BUILD_ARGS} && \
               binary_path=$(cargo metadata --no-deps --format-version 1 | jq -r '.target_directory')/ && \
               echo "binary_path=$binary_path" >> $GITHUB_OUTPUT && \
               echo "binary_path=$binary_path" && \
@@ -131,10 +143,10 @@ jobs:
           else
               eval "BOLOS_SDK=\$$(echo ${{ matrix.device }} | tr [:lower:] [:upper:])_SDK"
               echo "BOLOS_SDK value will be: ${BOLOS_SDK}"
-              if [ -n "${{ inputs.sdk_reference }}" ];
+              if [ -n "${SDK_REFERENCE}" ];
               then
-                  echo "Checking out reference '${{ inputs.sdk_reference }}'..."
-                  (cd $BOLOS_SDK && git fetch -apt && git checkout ${{ inputs.sdk_reference }})
+                  echo "Checking out reference '${SDK_REFERENCE}'..."
+                  (cd $BOLOS_SDK && git fetch -apt && git checkout ${SDK_REFERENCE})
                   ADDITIONAL_ARGS="TARGET=${{ matrix.device }}"
               fi
               echo "Compiling..."
@@ -165,13 +177,13 @@ jobs:
             echo "RUST_DEVICE_NAME=$RUST_DEVICE_NAME" && \
             ELF_NAME=$(cargo metadata --manifest-path ${{ needs.call_get_app_metadata.outputs.build_directory }}/Cargo.toml --no-deps --format-version 1 | jq -r '.packages[] | select(.metadata.ledger != null) | .name') && \
             echo "ELF_NAME=$ELF_NAME" && \
-            mv ${{ steps.build.outputs.binary_path }}${RUST_DEVICE_NAME}/release/${ELF_NAME} ${{ steps.build.outputs.binary_path }}/${{ inputs.upload_as_lib_artifact }}_${C_DEVICE_NAME}.elf && \
+            mv ${{ steps.build.outputs.binary_path }}${RUST_DEVICE_NAME}/release/${ELF_NAME} ${{ steps.build.outputs.binary_path }}/${UPLOAD_AS_LIB_ARTIFACT}_${C_DEVICE_NAME}.elf && \
             rm -rf ${{ steps.build.outputs.binary_path }}${RUST_DEVICE_NAME}
           else
             DEVICE_NAME="$(echo ${{ matrix.device }} | sed 's/nanosp/nanos2/')" && \
-            find ${{ needs.call_get_app_metadata.outputs.build_directory }}/build/${DEVICE_NAME}/ -type f -name 'app.elf' -exec mv {} ${{ inputs.upload_as_lib_artifact }}_${DEVICE_NAME}.elf \; && \
+            find ${{ needs.call_get_app_metadata.outputs.build_directory }}/build/${DEVICE_NAME}/ -type f -name 'app.elf' -exec mv {} ${UPLOAD_AS_LIB_ARTIFACT}_${DEVICE_NAME}.elf \; && \
             rm -r ${{ needs.call_get_app_metadata.outputs.build_directory }}/build/* && \
-            mv ${{ inputs.upload_as_lib_artifact }}_${DEVICE_NAME}.elf ${{ needs.call_get_app_metadata.outputs.build_directory }}/build/
+            mv ${UPLOAD_AS_LIB_ARTIFACT}_${DEVICE_NAME}.elf ${{ needs.call_get_app_metadata.outputs.build_directory }}/build/
           fi
 
       - name: Display structure of binary files
