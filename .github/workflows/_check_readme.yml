@@ -16,6 +16,10 @@ on:
 permissions:
   contents: read  # Needed to clone the repositories
 
+env:
+  WORKFLOWS_REF: ${{ inputs.workflows_ref }}
+  APP_REPOSITORY: ${{ inputs.app_repository }}
+
 jobs:
   check_readme:
     name: Check readme

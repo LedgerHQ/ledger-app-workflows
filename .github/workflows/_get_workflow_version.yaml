@@ -45,6 +45,10 @@ on:
 permissions:
   contents: read  # Needed to clone the repositories
 
+env:
+  REPOSITORY_NAME: ${{ inputs.repository_name }}
+  FILE_NAME: ${{ inputs.file_name }}
+
 jobs:
   get-version:
     name: Get workflow version

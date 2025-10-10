@@ -30,6 +30,13 @@ permissions:
   contents: read  # Needed to clone the repositories
   actions: write  # Needed for upload-artifact
 
+env:
+  WORKFLOWS_REF: ${{ inputs.workflows_ref }}
+  APP_REPOSITORY: ${{ inputs.app_repository }}
+  RUN_FOR_DEVICES: ${{ inputs.run_for_devices }}
+  RELATIVE_APP_DIRECTORY: ${{ inputs.relative_app_directory }}
+  IS_RUST: ${{ inputs.is_rust }}
+
 jobs:
   scan_build:
     name: Clang Static Analyzer on master
@@ -68,7 +75,7 @@ jobs:
         run: |
             BOLOS_SDK=${GITHUB_WORKSPACE}/sdk && \
             ./ledger-app-workflows/scripts/check_all.sh -c scan -t ${{ matrix.device }} \
-              -a ./app-repository -b ${{ inputs.relative_app_directory }}
+              -a ./app-repository -b ${RELATIVE_APP_DIRECTORY}
 
       - name: Upload scan result
         if: failure() && ${{ inputs.is_rust == 'false'}}

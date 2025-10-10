@@ -29,6 +29,13 @@ on:
 permissions:
   contents: read  # Needed to clone the repositories
 
+env:
+  WORKFLOWS_REF: ${{ inputs.workflows_ref }}
+  APP_REPOSITORY: ${{ inputs.app_repository }}
+  REPO_NAME: ${{ inputs.repo_name }}
+  DOWNLOAD_MANIFEST_ARTIFACT_NAME: ${{ inputs.download_manifest_artifact_name }}
+  RUN_FOR_DEVICES: ${{ inputs.run_for_devices }}
+
 jobs:
   check_makefile:
     name: Check Makefile
@@ -62,4 +69,4 @@ jobs:
       - name: Run script
         run: |
             ./ledger-app-workflows/scripts/check_all.sh -c makefile -t ${{ matrix.device }} \
-              -a ./app-repository -m ${{ inputs.download_manifest_artifact_name }}
+              -a ./app-repository -m ${DOWNLOAD_MANIFEST_ARTIFACT_NAME}
