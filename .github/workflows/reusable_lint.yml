@@ -37,9 +37,12 @@ jobs:
 
       - name: Ensure clang-format is customized
         if: ${{ needs.call_get_app_metadata.outputs.is_rust == 'false'}}
-        uses: andstor/file-existence-action@v3
-        with:
-          files: ".clang-format"
+        run: |
+          if [ ! -f ".clang-format" ]; then
+            echo "⚠️ Warning: .clang-format file not found, using default configuration"
+          else
+            echo "✅ .clang-format file exists"
+          fi
 
       - name: Lint check for C app
         if: ${{ needs.call_get_app_metadata.outputs.is_rust == 'false'}}
