@@ -46,7 +46,7 @@ jobs:
 
       - name: Lint check for C app
         if: ${{ needs.call_get_app_metadata.outputs.is_rust == 'false'}}
-        uses: DoozyX/clang-format-lint-action@v0.18.2
+        uses: DoozyX/clang-format-lint-action@c71d0bf4e21876ebec3e5647491186f8797fde31  # v0.18.2
         with:
           source: ${{ inputs.source }}
           extensions: ${{ inputs.extensions }}
