@@ -35,8 +35,8 @@ jobs:
     name: Get workflow version
     uses: ./.github/workflows/_get_workflow_version.yaml
     with:
-      repository-name: LedgerHQ/ledger-app-workflows
-      file-name: reusable_guidelines_enforcer.yml
+      repository_name: LedgerHQ/ledger-app-workflows
+      file_name: reusable_guidelines_enforcer.yml
     secrets:
       git_token: ${{ secrets.git_token }}
 
@@ -55,8 +55,8 @@ jobs:
     needs: [call_get_workflow_version, call_get_app_metadata]
     uses: ./.github/workflows/_get_app_manifest.yml
     with:
-      app-repository: ${{ inputs.app_repository }}
-      ledger-app-workflows_ref: ${{ needs.call_get_workflow_version.outputs.version }}
+      app_repository: ${{ inputs.app_repository }}
+      workflows_ref: ${{ needs.call_get_workflow_version.outputs.version }}
       run_for_devices: ${{ needs.call_get_app_metadata.outputs.compatible_devices }}
       relative_app_directory: ${{ needs.call_get_app_metadata.outputs.build_directory }}
       is_rust: ${{ needs.call_get_app_metadata.outputs.is_rust }}
@@ -67,9 +67,9 @@ jobs:
     needs: [call_get_app_metadata, call_get_workflow_version, call_get_app_manifest]
     uses: ./.github/workflows/_check_icons.yml
     with:
-      app-repository: ${{ inputs.app_repository }}
+      app_repository: ${{ inputs.app_repository }}
       download_manifest_artifact_name: manifests
-      ledger-app-workflows_ref: ${{ needs.call_get_workflow_version.outputs.version }}
+      workflows_ref: ${{ needs.call_get_workflow_version.outputs.version }}
       run_for_devices: ${{ needs.call_get_app_metadata.outputs.compatible_devices }}
 
   call_check_app_load_params:
@@ -78,16 +78,16 @@ jobs:
     uses: ./.github/workflows/_check_app_load_params.yml
     with:
       download_manifest_artifact_name: manifests
-      ledger-app-workflows_ref: ${{ needs.call_get_workflow_version.outputs.version }}
+      workflows_ref: ${{ needs.call_get_workflow_version.outputs.version }}
 
   call_check_makefile:
     name: Dispatch check
     needs: [call_get_app_metadata, call_get_workflow_version, call_get_app_manifest]
     uses: ./.github/workflows/_check_makefile.yml
     with:
-      app-repository: ${{ inputs.app_repository }}
+      app_repository: ${{ inputs.app_repository }}
       download_manifest_artifact_name: manifests
-      ledger-app-workflows_ref: ${{ needs.call_get_workflow_version.outputs.version }}
+      workflows_ref: ${{ needs.call_get_workflow_version.outputs.version }}
       run_for_devices: ${{ needs.call_get_app_metadata.outputs.compatible_devices }}
 
   call_check_readme:
@@ -95,19 +95,19 @@ jobs:
     needs: call_get_workflow_version
     uses: ./.github/workflows/_check_readme.yml
     with:
-      app-repository: ${{ inputs.app_repository }}
-      ledger-app-workflows_ref: ${{ needs.call_get_workflow_version.outputs.version }}
+      app_repository: ${{ inputs.app_repository }}
+      workflows_ref: ${{ needs.call_get_workflow_version.outputs.version }}
 
   call_clang_static_analyzer:
     name: Dispatch check
     needs: [call_get_app_metadata, call_get_workflow_version]
     uses: ./.github/workflows/_check_clang_static_analyzer.yml
     with:
-      app-repository: ${{ inputs.app_repository }}
+      app_repository: ${{ inputs.app_repository }}
       run_for_devices: ${{ needs.call_get_app_metadata.outputs.compatible_devices }}
       relative_app_directory: ${{ needs.call_get_app_metadata.outputs.build_directory }}
       is_rust: ${{ needs.call_get_app_metadata.outputs.is_rust }}
-      ledger-app-workflows_ref: ${{ needs.call_get_workflow_version.outputs.version }}
+      workflows_ref: ${{ needs.call_get_workflow_version.outputs.version }}
 
   call_clang_static_analyzer_latest_sdk:
     name: Dispatch check
@@ -115,8 +115,8 @@ jobs:
     uses: ./.github/workflows/_check_clang_static_analyzer_latest_sdk.yml
     if: github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'scan_on_latest_sdk')
     with:
-      app-repository: ${{ inputs.app_repository }}
+      app_repository: ${{ inputs.app_repository }}
       run_for_devices: ${{ needs.call_get_app_metadata.outputs.compatible_devices }}
       relative_app_directory: ${{ needs.call_get_app_metadata.outputs.build_directory }}
       is_rust: ${{ needs.call_get_app_metadata.outputs.is_rust }}
-      ledger-app-workflows_ref: ${{ needs.call_get_workflow_version.outputs.version }}
+      workflows_ref: ${{ needs.call_get_workflow_version.outputs.version }}

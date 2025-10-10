@@ -25,11 +25,11 @@
 on:
   workflow_call:
     inputs:
-      repository-name:
+      repository_name:
         description: Name of reusable workflow repository (e.g. "canonical/data-platform-workflows")
         required: true
         type: string
-      file-name:
+      file_name:
         description: Name of reusable workflow file (e.g. "build_charms_with_cache.yaml")
         required: true
         type: string
@@ -54,8 +54,8 @@ jobs:
         id: workflow-version
         uses: canonical/get-workflow-version-action@v1
         with:
-          repository-name: ${{ inputs.repository-name }}
-          file-name: ${{ inputs.file-name }}
+          repository-name: ${{ inputs.repository_name }}
+          file-name: ${{ inputs.file_name }}
           github-token: ${{ secrets.git_token }}
 
     outputs:
