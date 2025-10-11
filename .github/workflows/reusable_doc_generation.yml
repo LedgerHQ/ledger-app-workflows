@@ -1,0 +1,51 @@
+name: Generate Documentation
+
+on:
+  workflow_call:
+    inputs:
+      app_repository:
+        description: 'The GIT repository to test (defaults to `github.repository`)'
+        required: false
+        default: ${{ github.repository }}
+        type: string
+      app_branch_name:
+        description: 'The GIT branch to test (defaults to `github.ref`)'
+        required: false
+        default: ${{ github.ref }}
+        type: string
+      doxy_file:
+        description: 'Doxygen configuration file'
+        required: false
+        default: '.doxygen/Doxyfile'
+        type: string
+
+permissions:
+  contents: read
+  actions: write  # Needed for upload-artifact
+
+env:
+  APP_REPOSITORY: ${{ inputs.app_repository }}
+  APP_BRANCH_NAME: ${{ inputs.app_branch_name }}
+  DOXY_FILE: ${{ inputs.doxy_file }}
+
+jobs:
+  job_generate_doc:
+    name: Generate project documentation
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/ledgerhq/ledger-app-builder/ledger-app-builder-lite:latest
+
+    steps:
+      - name: Clone
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ inputs.app_repository }}
+          ref: ${{ inputs.app_branch_name }}
+
+      - name: HTML documentation
+        run: doxygen ${DOXY_FILE}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: documentation
+          path: doc/html

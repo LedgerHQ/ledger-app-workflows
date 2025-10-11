@@ -1,0 +1,43 @@
+name: Yaml style check
+
+on:
+  workflow_call:
+    inputs:
+      app_repository:
+        description: 'The GIT repository to test (defaults to `github.repository`)'
+        required: false
+        default: ${{ github.repository }}
+        type: string
+      app_branch_name:
+        description: 'The GIT branch to test (defaults to `github.ref`)'
+        required: false
+        default: ${{ github.ref }}
+        type: string
+      file_or_dir:
+        description: 'Files to check'
+        required: false
+        default: '.'
+        type: string
+
+permissions:
+  contents: read
+
+env:
+  APP_REPOSITORY: ${{ inputs.app_repository }}
+  APP_BRANCH_NAME: ${{ inputs.app_branch_name }}
+  FILE_OR_DIR: ${{ inputs.file_or_dir }}
+
+jobs:
+  job_lint:
+    name: YAML check
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Clone
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ inputs.app_repository }}
+          ref: ${{ inputs.app_branch_name }}
+
+      - name: Lint check
+        run: yamllint ${FILE_OR_DIR}
