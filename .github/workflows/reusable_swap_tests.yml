@@ -32,6 +32,10 @@ on:
         required: false
         default: false
         type: boolean
+      swap_test_dir:
+        required: true
+        description: 'The directory where the swap tests are located.'
+        type: string
 
 jobs:
   build_app:
@@ -99,40 +103,8 @@ jobs:
           echo "Exchange build artifact: ${{ steps.get_exchange_binaries.outputs.exchange_build_artifact }}"
           echo "Ethereum build artifact: ${{ steps.get_ethereum_binaries.outputs.ethereum_build_artifact }}"
 
-  get_swap_test_dir:
-    name: Find swap test directory
-    runs-on: ubuntu-latest
-    outputs:
-      swap_test_dir: ${{ steps.find_swap_test_dir.outputs.swap_test_dir }}
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          repository: ${{ inputs.app_repository }}
-          ref: ${{ inputs.app_branch_name }}
-          path: app_coin
-      - name: Install ledgered
-        run: |
-          python3 -m pip install ledgered
-      - name: Find swap test directory
-        id: find_swap_test_dir
-        run: |
-          cd app_coin
-          # Get the swap test directory using ledger-manifest and jq
-          swap_test_dir=$(ledger-manifest --output-pytest-directories -j -- ledger_app.toml | jq -r '.pytest_directories[1]')
-          if [ -z "$swap_test_dir" ]; then
-            echo "Swap test directory not found!" >&2
-            exit 1
-          fi
-          echo "swap_test_dir=$swap_test_dir" >> "$GITHUB_OUTPUT"
-      - name: Show found swap test directory
-        run: |
-          echo "Display found swap test directory"
-          echo "Found swap test directory: ${{ steps.find_swap_test_dir.outputs.swap_test_dir }}"
-
   get_dir_names:
     name: Build artifact destination directories
-    needs: get_swap_test_dir
     runs-on: ubuntu-latest
     outputs:
       swap_test_dir: ${{ steps.get_swap_test_dir.outputs.swap_test_dir }}
@@ -142,9 +114,9 @@ jobs:
       - name: Set swap test directories
         id: get_swap_test_dir
         run: |
-          echo "swap_test_dir=${{ needs.get_swap_test_dir.outputs.swap_test_dir }}" >> "$GITHUB_OUTPUT"
-          echo "main_app_dir=${{ needs.get_swap_test_dir.outputs.swap_test_dir }}/.test_dependencies/main/app-exchange/build" >> "$GITHUB_OUTPUT"
-          echo "lib_app_dir=${{ needs.get_swap_test_dir.outputs.swap_test_dir }}/.test_dependencies/libraries/app-ethereum/build" >> "$GITHUB_OUTPUT"
+          echo "swap_test_dir=${{ inputs.swap_test_dir }}" >> "$GITHUB_OUTPUT"
+          echo "main_app_dir=${{ inputs.swap_test_dir }}/.test_dependencies/main/app-exchange/build" >> "$GITHUB_OUTPUT"
+          echo "lib_app_dir=${{ inputs.swap_test_dir }}/.test_dependencies/libraries/app-ethereum/build" >> "$GITHUB_OUTPUT"
       - name: Show swap test directories
         run: |
           echo "Swap test directory: ${{ steps.get_swap_test_dir.outputs.swap_test_dir }}"
