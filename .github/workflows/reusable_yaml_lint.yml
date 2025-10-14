@@ -1,4 +1,4 @@
-name: Yaml style check
+name: Yaml style checks
 
 on:
   workflow_call:

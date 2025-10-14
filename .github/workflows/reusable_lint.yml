@@ -1,16 +1,19 @@
-name: Code style check
+name: Code style checks
 
 on:
   workflow_call:
     inputs:
       source:
+        description: "The source directory to lint"
         required: true
         type: string
       version:
+        description: "The clang-format version to use"
         required: false
         type: number
         default: 14
       extensions:
+        description: "The file extensions to lint, comma-separated"
         required: false
         default: 'h,c,proto'
         type: string
