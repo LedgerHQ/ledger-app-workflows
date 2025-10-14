@@ -1,4 +1,4 @@
-name: Build the application for all devices and upload the artifact
+name: Analyze the application with CodeQL
 
 on:
   workflow_call:

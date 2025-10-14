@@ -1,4 +1,4 @@
-name: Code style check
+name: Python style checks
 
 on:
   workflow_call:
