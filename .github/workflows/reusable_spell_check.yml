@@ -1,4 +1,4 @@
-name: Misspellings CI
+name: Misspellings checks
 
 on:
   workflow_call:

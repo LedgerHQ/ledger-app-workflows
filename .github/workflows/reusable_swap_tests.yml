@@ -29,6 +29,7 @@ on:
         description: 'If not provided, the workflow will build the Ethereum app.'
         type: string
       regenerate_snapshots:
+        description: 'Whether to regenerate the snapshots used for the tests.'
         required: false
         default: false
         type: boolean

@@ -1,4 +1,4 @@
-name: Build, check and deploy an package on pypi.org or test.pypi.org
+name: Build, check and deploy a package on pypi.org
 
 on:
   workflow_call:
@@ -29,7 +29,7 @@ on:
         default: true
     secrets:
       pypi_token:
-        description: A token enabling to push a package on pypi.org or test.pypi.org
+        description: A token enabling to push a package on pypi.org
         required: true
 
 env:
