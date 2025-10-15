@@ -95,6 +95,9 @@ jobs:
           - name: kaspa
             repo: 'LedgerHQ/app-kaspa'
             branch: 'develop'
+          - name: celo
+            repo: 'LedgerHQ/app-celo-spender'
+            branch: 'develop'
 
     uses: ./.github/workflows/reusable_build.yml
     with:
