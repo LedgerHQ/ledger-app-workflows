@@ -221,7 +221,8 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           # Make the artifact name unique to allow running this job in parallel
-          name: ${{ steps.compute_name.artifact_basename }}-${{ matrix.device }}
+          # Append a ~ at the end to prevent one job's pattern from prefixing another one
+          name: ${{ steps.compute_name.artifact_basename }}~${{ matrix.device }}
           path: ${{ needs.call_get_test_metadata.outputs.pytest_directory }}/snapshots-tmp
 
       - name: Upload snapshots on success if needed
@@ -252,7 +253,8 @@ jobs:
         with:
           # Merge all basename-$device.zip into a single basename.zip
           name: ${{ needs.ragger_tests.outputs.snapshot_artifact_basename }}
-          pattern: ${{ needs.ragger_tests.outputs.snapshot_artifact_basename }}-*
+          # We pattern against the ~ set above to prevent subpatterning
+          pattern: ${{ needs.ragger_tests.outputs.snapshot_artifact_basename }}~*
           delete-merged: true
 
     outputs:
