@@ -24,18 +24,8 @@ jobs:
 
   misspell:
     name: Check misspellings
-    runs-on: ubuntu-22.04
-    steps:
-      - uses: actions/checkout@v4
-      - name: Check misspellings
-        uses: codespell-project/actions-codespell@v1
-        with:
-          builtin: clear,rare
-          check_filenames: true
+    uses: ./.github/workflows/reusable_spell_check.yml
 
   yamllint:
     name: Check yaml files
-    runs-on: ubuntu-22.04
-    steps:
-      - uses: actions/checkout@v4
-      - run: yamllint .
+    uses: ./.github/workflows/reusable_yaml_lint.yml
