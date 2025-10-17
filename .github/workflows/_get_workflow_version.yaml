@@ -25,11 +25,11 @@
 on:
   workflow_call:
     inputs:
-      repository-name:
+      repository_name:
         description: Name of reusable workflow repository (e.g. "canonical/data-platform-workflows")
         required: true
         type: string
-      file-name:
+      file_name:
         description: Name of reusable workflow file (e.g. "build_charms_with_cache.yaml")
         required: true
         type: string
@@ -42,17 +42,40 @@ on:
         description: Version of reusable workflow
         value: ${{ jobs.get-version.outputs.version }}
 
+permissions:
+  contents: read  # Needed to clone the repositories
+
+env:
+  REPOSITORY_NAME: ${{ inputs.repository_name }}
+  FILE_NAME: ${{ inputs.file_name }}
+
 jobs:
+  handle_inputs:
+    name: Handle and validate inputs
+    runs-on: ubuntu-latest
+    outputs:
+      REPOSITORY_NAME: ${{ steps.set_outputs.outputs.REPOSITORY_NAME }}
+      FILE_NAME: ${{ steps.set_outputs.outputs.FILE_NAME }}
+    steps:
+      - name: Handle Inputs
+        id: set_outputs
+        run: |
+          {
+            echo "REPOSITORY_NAME=${REPOSITORY_NAME}"
+            echo "FILE_NAME=${FILE_NAME}"
+          } >> "$GITHUB_OUTPUT"
+
   get-version:
     name: Get workflow version
     runs-on: ubuntu-latest
+    needs: [handle_inputs]
     steps:
       - name: Get workflow version
         id: workflow-version
         uses: canonical/get-workflow-version-action@v1
         with:
-          repository-name: ${{ inputs.repository-name }}
-          file-name: ${{ inputs.file-name }}
+          repository-name: ${{ needs.handle_inputs.outputs.REPOSITORY_NAME }}
+          file-name: ${{ needs.handle_inputs.outputs.FILE_NAME }}
           github-token: ${{ secrets.git_token }}
 
     outputs:

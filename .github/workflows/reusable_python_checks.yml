@@ -1,22 +1,29 @@
-name: Code style check
+name: Python style checks
 
 on:
   workflow_call:
     inputs:
+      app_repository:
+        description: 'The GIT repository to test (defaults to `github.repository`)'
+        required: false
+        default: ${{ github.repository }}
+        type: string
+      app_branch_name:
+        description: 'The GIT branch to test (defaults to `github.ref`)'
+        required: false
+        default: ${{ github.ref }}
+        type: string
       run_linter:
-        description: "Select the Linter to run (pylint or flake8)"
+        description: "Select the Linter to run (pylint, flake8 or yapf)"
         type: string
         required: true
-        default: ''
       run_type_check:
         description: "Whether to run mypy type check (defaults to false)"
         required: true
-        default: false
         type: boolean
       src_directory:
         description: "The directory containing the python sources to check"
         required: true
-        default: ''
         type: string
       req_directory:
         description: "The directory containing the requirements.txt (if any)"
@@ -34,91 +41,154 @@ on:
         default: ''
         type: string
 
+permissions:
+  contents: read
+
+env:
+  APP_REPOSITORY: ${{ inputs.app_repository }}
+  APP_BRANCH_NAME: ${{ inputs.app_branch_name }}
+  RUN_LINTER: ${{ inputs.run_linter }}
+  RUN_TYPE_CHECK: ${{ inputs.run_type_check }}
+  SRC_DIRECTORY: ${{ inputs.src_directory }}
+  REQ_DIRECTORY: ${{ inputs.req_directory }}
+  SETUP_DIRECTORY: ${{ inputs.setup_directory }}
+  ADDITIONAL_PACKAGES: ${{ inputs.additional_packages }}
+
 jobs:
-  pylint:
-    name: Python Linting with pylint
-    if: ${{ inputs.run_linter == 'pylint' }}
+  handle_inputs:
+    name: Handle and validate inputs
     runs-on: ubuntu-latest
+    outputs:
+      APP_REPOSITORY: ${{ steps.set_outputs.outputs.APP_REPOSITORY }}
+      APP_BRANCH_NAME: ${{ steps.set_outputs.outputs.APP_BRANCH_NAME }}
+      RUN_LINTER: ${{ steps.set_outputs.outputs.RUN_LINTER }}
+      RUN_TYPE_CHECK: ${{ steps.set_outputs.outputs.RUN_TYPE_CHECK }}
+      SRC_DIRECTORY: ${{ steps.set_outputs.outputs.SRC_DIRECTORY }}
+      REQ_DIRECTORY: ${{ steps.set_outputs.outputs.REQ_DIRECTORY }}
+      SETUP_DIRECTORY: ${{ steps.set_outputs.outputs.SETUP_DIRECTORY }}
+      ADDITIONAL_PACKAGES: ${{ steps.set_outputs.outputs.ADDITIONAL_PACKAGES }}
     steps:
-      - name: Installing requiered packages
+      - name: Handle Inputs
+        id: set_outputs
         run: |
-          if [ -n "${{ inputs.additional_packages }}" ]; then
-            sudo apt-get update && sudo apt-get install -y ${{ inputs.additional_packages }}
-          fi
+          {
+            echo "APP_REPOSITORY=${APP_REPOSITORY}"
+            echo "APP_BRANCH_NAME=${APP_BRANCH_NAME}"
+            echo "RUN_LINTER=${RUN_LINTER}"
+            echo "RUN_TYPE_CHECK=${RUN_TYPE_CHECK}"
+            echo "SRC_DIRECTORY=${SRC_DIRECTORY}"
+            echo "REQ_DIRECTORY=${REQ_DIRECTORY}"
+            echo "SETUP_DIRECTORY=${SETUP_DIRECTORY}"
+            echo "ADDITIONAL_PACKAGES=${ADDITIONAL_PACKAGES}"
+          } >> "$GITHUB_OUTPUT"
+
+  linter:
+    name: Python Linting with ${{ inputs.run_linter }}
+    runs-on: ubuntu-latest
+    needs: [handle_inputs]
+    steps:
+      - name: Installing required packages
+        if: ${{ needs.handle_inputs.outputs.ADDITIONAL_PACKAGES != '' }}
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ${{ needs.handle_inputs.outputs.ADDITIONAL_PACKAGES }}
 
       - name: Clone
         uses: actions/checkout@v4
+        with:
+          repository: ${{ needs.handle_inputs.outputs.APP_REPOSITORY }}
+          ref: ${{ needs.handle_inputs.outputs.APP_BRANCH_NAME }}
 
-      - name: Installing PIP dependencies
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+          cache: 'pip'
+
+      - name: Installing Python dependencies
         run: |
-          pip install pylint
-          if [ -n "${{ inputs.req_directory }}" ] && [ -f "${{ inputs.req_directory }}/requirements.txt" ]; then
-            pip install -r ${{ inputs.req_directory }}/requirements.txt
+          python -m pip install --upgrade pip
+
+          # Install linter
+          case "${{ needs.handle_inputs.outputs.RUN_LINTER }}" in
+            "pylint") pip install pylint ;;
+            "flake8") pip install flake8 flake8-pyproject ;;
+            "yapf") pip install yapf ;;
+          esac
+
+          # Install project requirements
+          if [ -n "${{ needs.handle_inputs.outputs.REQ_DIRECTORY }}" ] && [ -f "${{ needs.handle_inputs.outputs.REQ_DIRECTORY }}/requirements.txt" ]; then
+            pip install -r ${{ needs.handle_inputs.outputs.REQ_DIRECTORY }}/requirements.txt
           fi
 
-      - name: Lint Python code
+      - name: Set working directory
         run: |
-          ARGS=(-j 0)
-          if [ -n "${{ inputs.setup_directory }}" ]; then
-            cd ${{ inputs.setup_directory }}
+          if [ -n "${{ needs.handle_inputs.outputs.SETUP_DIRECTORY }}" ]; then
+            echo "WORK_DIR=${{ needs.handle_inputs.outputs.SETUP_DIRECTORY }}" >> $GITHUB_ENV
+          else
+            echo "WORK_DIR=." >> $GITHUB_ENV
           fi
-          if [ -f "./setup.cfg" ]; then
-              ARGS+=(--rcfile "./setup.cfg")
-          fi
-          pylint "${ARGS[@]}" ${{ inputs.src_directory }}
 
-  flake8:
-    name: Python Linting with flake8
-    if: ${{ inputs.run_linter == 'flake8' }}
-    runs-on: ubuntu-latest
-    steps:
-      - name: Installing requiered packages
+      - name: Run ${{ needs.handle_inputs.outputs.RUN_LINTER }}
+        working-directory: ${WORK_DIR}
         run: |
-          if [ -n "${{ inputs.additional_packages }}" ]; then
-            sudo apt-get update && sudo apt-get install -y ${{ inputs.additional_packages }}
-          fi
-
-      - name: Clone
-        uses: actions/checkout@v4
-
-      - name: Installing PIP dependencies
-        run: |
-          pip install flake8 flake8-pyproject
-          if [ -n "${{ inputs.req_directory }}" ] && [ -f "${{ inputs.req_directory }}/requirements.txt" ]; then
-            pip install -r ${{ inputs.req_directory }}/requirements.txt
-          fi
-
-      - name: Lint Python code
-        run: |
-          if [ -n "${{ inputs.setup_directory }}" ]; then
-            cd ${{ inputs.setup_directory }}
-          fi
-          flake8 ${{ inputs.src_directory }}
+          case "${{ needs.handle_inputs.outputs.RUN_LINTER }}" in
+            "pylint")
+              ARGS=(-j 0)
+              if [ -f "./setup.cfg" ]; then
+                ARGS+=(--rcfile "./setup.cfg")
+              fi
+              pylint "${ARGS[@]}" ${{ needs.handle_inputs.outputs.SRC_DIRECTORY }}
+              ;;
+            "flake8")
+              flake8 ${{ needs.handle_inputs.outputs.SRC_DIRECTORY }}
+              ;;
+            "yapf")
+              yapf ${{ needs.handle_inputs.outputs.SRC_DIRECTORY }} --recursive -d
+              ;;
+          esac
 
   mypy:
     name: Type checking
     if: ${{ inputs.run_type_check == true }}
     runs-on: ubuntu-latest
+    needs: [handle_inputs]
     steps:
-      - name: Installing requiered packages
+      - name: Installing required packages
+        if: ${{ needs.handle_inputs.outputs.ADDITIONAL_PACKAGES != '' }}
         run: |
-          if [ -n "${{ inputs.additional_packages }}" ]; then
-            sudo apt-get update && sudo apt-get install -y ${{ inputs.additional_packages }}
-          fi
+          sudo apt-get update
+          sudo apt-get install -y ${{ needs.handle_inputs.outputs.ADDITIONAL_PACKAGES }}
 
       - name: Clone
         uses: actions/checkout@v4
+        with:
+          repository: ${{ needs.handle_inputs.outputs.APP_REPOSITORY }}
+          ref: ${{ needs.handle_inputs.outputs.APP_BRANCH_NAME }}
 
-      - name: Installing PIP dependencies
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+          cache: 'pip'
+
+      - name: Installing Python dependencies
         run: |
+          python -m pip install --upgrade pip
           pip install mypy
-          if [ -n "${{ inputs.req_directory }}" ] && [ -f "${{ inputs.req_directory }}/requirements.txt" ]; then
-            pip install -r ${{ inputs.req_directory }}/requirements.txt
+          if [ -n "${{ needs.handle_inputs.outputs.REQ_DIRECTORY }}" ] && [ -f "${{ needs.handle_inputs.outputs.REQ_DIRECTORY }}/requirements.txt" ]; then
+            pip install -r ${{ needs.handle_inputs.outputs.REQ_DIRECTORY }}/requirements.txt
+          fi
+
+      - name: Set working directory
+        run: |
+          if [ -n "${{ needs.handle_inputs.outputs.SETUP_DIRECTORY }}" ]; then
+            echo "WORK_DIR=${{ needs.handle_inputs.outputs.SETUP_DIRECTORY }}" >> $GITHUB_ENV
+          else
+            echo "WORK_DIR=." >> $GITHUB_ENV
           fi
 
       - name: Mypy type checking
+        working-directory: ${WORK_DIR}
         run: |
-          if [ -n "${{ inputs.setup_directory }}" ]; then
-            cd ${{ inputs.setup_directory }}
-          fi
-          mypy ${{ inputs.src_directory }}
+          mypy ${{ needs.handle_inputs.outputs.SRC_DIRECTORY }}

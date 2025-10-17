@@ -1,0 +1,114 @@
+name: ClusterFuzzLite Reusable Fuzzing
+
+on:
+  workflow_call:
+    inputs:
+      exec_mode:
+        description: 'Execution mode: github.event_name ("pull_request", "push", "schedule")'
+        required: true
+        type: string
+      seconds_pr:
+        description: 'Fuzzing duration in seconds for Pull Requests.'
+        required: false
+        type: number
+        default: 300  # 5 minutes for PR
+      seconds_push:
+        description: 'Fuzzing duration in seconds when push on branch.'
+        required: false
+        type: number
+        default: 600  # 10 minutes for push cron
+      seconds_schedule:
+        description: 'Fuzzing duration in seconds for scheduled tasks.'
+        required: false
+        type: number
+        default: 18000  # 5 hours for schedule cron
+
+permissions:
+  contents: read
+
+env:
+  EXEC_MODE: ${{ inputs.exec_mode }}
+  SECONDS_PR: ${{ inputs.seconds_pr }}
+  SECONDS_PUSH: ${{ inputs.seconds_push }}
+  SECONDS_SCHEDULE: ${{ inputs.seconds_schedule }}
+
+jobs:
+  handle_inputs:
+    name: Handle and validate inputs
+    runs-on: ubuntu-latest
+    outputs:
+      EXEC_MODE: ${{ steps.set_outputs.outputs.EXEC_MODE }}
+      SECONDS_PR: ${{ steps.set_outputs.outputs.SECONDS_PR }}
+      SECONDS_PUSH: ${{ steps.set_outputs.outputs.SECONDS_PUSH }}
+      SECONDS_SCHEDULE: ${{ steps.set_outputs.outputs.SECONDS_SCHEDULE }}
+    steps:
+      - name: Handle Inputs
+        id: set_outputs
+        run: |
+          {
+            echo "EXEC_MODE=${EXEC_MODE}"
+            echo "SECONDS_PR=${SECONDS_PR}"
+            echo "SECONDS_PUSH=${SECONDS_PUSH}"
+            echo "SECONDS_SCHEDULE=${SECONDS_SCHEDULE}"
+          } >> "$GITHUB_OUTPUT"
+
+  prepare_matrix:
+    name: Prepare Dynamic Matrix
+    runs-on: ubuntu-latest
+    needs: [handle_inputs]
+    outputs:
+      matrix_json: ${{ steps.set_matrix.outputs.matrix }}
+
+    steps:
+      - name: Set Dynamic Matrix
+        id: set_matrix
+        run: |
+          if [ "${{ needs.handle_inputs.outputs.EXEC_MODE }}" == "pull_request" ]; then
+            MATRIX='[{"sanitizer":"address","mode_cflite":"code-change"},{"sanitizer":"undefined","mode_cflite":"code-change"},{"sanitizer":"memory","mode_cflite":"code-change"}]'
+          else
+            MATRIX='[{"sanitizer":"address","mode_cflite":"batch"},{"sanitizer":"memory","mode_cflite":"batch"},{"sanitizer":"address","mode_cflite":"prune"},{"sanitizer":"coverage","mode_cflite":"coverage"}]'
+          fi
+          echo "matrix=${MATRIX}" >> $GITHUB_OUTPUT
+
+  fuzzing:
+    name: ${{ matrix.mode_cflite }} (${{ matrix.sanitizer }})
+    runs-on: ubuntu-latest
+    needs: [handle_inputs, prepare_matrix]
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJson(needs.prepare_matrix.outputs.matrix_json) }}
+    concurrency:
+      group: ${{ github.workflow }}-${{ needs.handle_inputs.outputs.EXEC_MODE }}-${{ matrix.sanitizer }}-${{ github.ref }}
+      cancel-in-progress: true
+
+    steps:
+      - name: Set Fuzz Seconds
+        id: set_seconds
+        run: |
+          if [ "${{ needs.handle_inputs.outputs.EXEC_MODE }}" == "pull_request" ]; then
+            FUZZ_SECONDS=${{ needs.handle_inputs.outputs.SECONDS_PR }}
+          elif [ "${{ matrix.mode_cflite }}" == "coverage" ]; then
+            FUZZ_SECONDS=${{ needs.handle_inputs.outputs.SECONDS_SCHEDULE }}
+          else
+            FUZZ_SECONDS=${{ needs.handle_inputs.outputs.SECONDS_PUSH }}
+          fi
+          echo "fuzz_seconds=${FUZZ_SECONDS}" >> ${GITHUB_OUTPUT}
+
+      - name: Build Fuzzers (${{ matrix.mode_cflite }}/${{ matrix.sanitizer }})
+        id: build
+        uses: google/clusterfuzzlite/actions/build_fuzzers@v1
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          language: c
+          sanitizer: ${{ matrix.sanitizer }}
+
+      - name: Run Fuzzers (${{ matrix.mode_cflite }}/${{ matrix.sanitizer }})
+        id: run
+        uses: google/clusterfuzzlite/actions/run_fuzzers@v1
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          fuzz-seconds: ${{ steps.set_seconds.outputs.fuzz_seconds }}
+          mode: ${{ matrix.mode_cflite }}
+          sanitizer: ${{ matrix.sanitizer }}
+          output-sarif: ${{ needs.handle_inputs.outputs.EXEC_MODE == 'pull_request' }}

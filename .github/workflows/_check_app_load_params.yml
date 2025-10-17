@@ -3,7 +3,7 @@ name: Check APP_LOAD_PARAMS
 on:
   workflow_call:
     inputs:
-      ledger-app-workflows_ref:
+      workflows_ref:
         description: 'The current reference in use for the ledger-app-workflow repository'
         required: true
         type: string
@@ -12,10 +12,33 @@ on:
         required: true
         type: string
 
+permissions:
+  contents: read  # Needed to clone the repositories
+
+env:
+  WORKFLOWS_REF: ${{ inputs.workflows_ref }}
+  DOWNLOAD_MANIFEST_ARTIFACT_NAME: ${{ inputs.download_manifest_artifact_name }}
+
 jobs:
+  handle_inputs:
+    name: Handle and validate inputs
+    runs-on: ubuntu-latest
+    outputs:
+      WORKFLOWS_REF: ${{ steps.set_outputs.outputs.WORKFLOWS_REF }}
+      DOWNLOAD_MANIFEST_ARTIFACT_NAME: ${{ steps.set_outputs.outputs.DOWNLOAD_MANIFEST_ARTIFACT_NAME }}
+    steps:
+      - name: Handle Inputs
+        id: set_outputs
+        run: |
+          {
+            echo "WORKFLOWS_REF=${WORKFLOWS_REF}"
+            echo "DOWNLOAD_MANIFEST_ARTIFACT_NAME=${DOWNLOAD_MANIFEST_ARTIFACT_NAME}"
+          } >> "$GITHUB_OUTPUT"
+
   check_app_load_params:
     name: Check APP_LOAD_PARAMS
     runs-on: ubuntu-22.04
+    needs: [handle_inputs]
 
     steps:
       - name: Clone ledger-app-workflows repository
@@ -23,7 +46,7 @@ jobs:
         with:
           repository: LedgerHQ/ledger-app-workflows
           path: ./ledger-app-workflows
-          ref: ${{ inputs.ledger-app-workflows_ref }}
+          ref: ${{ needs.handle_inputs.outputs.WORKFLOWS_REF }}
 
       - name: Clone ledger-app-database repository
         uses: actions/checkout@v4
@@ -35,11 +58,11 @@ jobs:
       - name: Download manifest
         uses: actions/download-artifact@v4
         with:
-          name: ${{ inputs.download_manifest_artifact_name }}
-          path: ${{ inputs.download_manifest_artifact_name }}
+          name: ${{ needs.handle_inputs.outputs.DOWNLOAD_MANIFEST_ARTIFACT_NAME }}
+          path: ${{ needs.handle_inputs.outputs.DOWNLOAD_MANIFEST_ARTIFACT_NAME }}
 
       - name: Run script
         run: |
             ./ledger-app-workflows/scripts/check_all.sh \
               -c app_load_params -d ./ledger-app-database \
-              -m ${{ inputs.download_manifest_artifact_name }}
+              -m ${{ needs.handle_inputs.outputs.DOWNLOAD_MANIFEST_ARTIFACT_NAME }}

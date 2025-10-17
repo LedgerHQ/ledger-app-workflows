@@ -1,0 +1,90 @@
+name: Misspellings checks
+
+on:
+  workflow_call:
+    inputs:
+      app_repository:
+        description: 'The GIT repository to test (defaults to `github.repository`)'
+        required: false
+        default: ${{ github.repository }}
+        type: string
+      app_branch_name:
+        description: 'The GIT branch to test (defaults to `github.ref`)'
+        required: false
+        default: ${{ github.ref }}
+        type: string
+      check_filenames:
+        description: 'Whether to check filenames for misspellings'
+        required: false
+        default: true
+        type: boolean
+      ignore_words_list:
+        description: 'Comma-separated list of words to ignore'
+        required: false
+        default: ''
+        type: string
+      ignore_words_file:
+        description: 'Path to a file containing words to ignore (one per line)'
+        required: false
+        default: ''
+        type: string
+      src_path:
+        description: 'Comma-separated list of paths to check for misspellings (defaults to all files)'
+        required: false
+        default: ''
+        type: string
+
+permissions:
+  contents: read
+
+env:
+  APP_REPOSITORY: ${{ inputs.app_repository }}
+  APP_BRANCH_NAME: ${{ inputs.app_branch_name }}
+  CHECK_FILENAMES: ${{ inputs.check_filenames }}
+  IGNORE_WORDS: ${{ inputs.ignore_words_list }}
+  IGNORE_WORDS_FILE: ${{ inputs.ignore_words_file }}
+  SRC_PATH: ${{ inputs.src_path }}
+
+jobs:
+  handle_inputs:
+    name: Handle and validate inputs
+    runs-on: ubuntu-latest
+    outputs:
+      APP_REPOSITORY: ${{ steps.set_outputs.outputs.APP_REPOSITORY }}
+      APP_BRANCH_NAME: ${{ steps.set_outputs.outputs.APP_BRANCH_NAME }}
+      CHECK_FILENAMES: ${{ steps.set_outputs.outputs.CHECK_FILENAMES }}
+      IGNORE_WORDS: ${{ steps.set_outputs.outputs.IGNORE_WORDS }}
+      IGNORE_WORDS_FILE: ${{ steps.set_outputs.outputs.IGNORE_WORDS_FILE }}
+      SRC_PATH: ${{ steps.set_outputs.outputs.SRC_PATH }}
+    steps:
+      - name: Handle Inputs
+        id: set_outputs
+        run: |
+          {
+            echo "APP_REPOSITORY=${APP_REPOSITORY}"
+            echo "APP_BRANCH_NAME=${APP_BRANCH_NAME}"
+            echo "CHECK_FILENAMES=${CHECK_FILENAMES}"
+            echo "IGNORE_WORDS=${IGNORE_WORDS}"
+            echo "IGNORE_WORDS_FILE=${IGNORE_WORDS_FILE}"
+            echo "SRC_PATH=${SRC_PATH}"
+          } >> "$GITHUB_OUTPUT"
+
+  misspell:
+    name: Check misspellings
+    runs-on: ubuntu-latest
+    needs: [handle_inputs]
+    steps:
+      - name: Clone
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ needs.handle_inputs.outputs.APP_REPOSITORY }}
+          ref: ${{ needs.handle_inputs.outputs.APP_BRANCH_NAME }}
+
+      - name: Check misspellings
+        uses: codespell-project/actions-codespell@v2
+        with:
+          builtin: clear,rare
+          check_filenames: ${{ needs.handle_inputs.outputs.CHECK_FILENAMES == 'true' }}
+          ignore_words_list: ${{ needs.handle_inputs.outputs.IGNORE_WORDS }}
+          ignore_words_file: ${{ needs.handle_inputs.outputs.IGNORE_WORDS_FILE }}
+          path: ${{ needs.handle_inputs.outputs.SRC_PATH }}

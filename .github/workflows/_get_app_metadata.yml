@@ -57,18 +57,48 @@ on:
 
 env:
   APP_MANIFEST: "ledger_app.toml"
+  APP_REPOSITORY: ${{ inputs.app_repository }}
+  APP_BRANCH_NAME: ${{ inputs.app_branch_name }}
+  COMPATIBLE_DEVICES: ${{ inputs.compatible_devices }}
+  FLAGS: ${{ inputs.flags }}
+  USE_CASE: ${{ inputs.use_case }}
+
+permissions:
+  contents: read  # Needed to clone the repositories
 
 jobs:
+  handle_inputs:
+    name: Handle and validate inputs
+    runs-on: ubuntu-latest
+    outputs:
+      APP_REPOSITORY: ${{ steps.set_outputs.outputs.APP_REPOSITORY }}
+      APP_BRANCH_NAME: ${{ steps.set_outputs.outputs.APP_BRANCH_NAME }}
+      COMPATIBLE_DEVICES: ${{ steps.set_outputs.outputs.COMPATIBLE_DEVICES }}
+      FLAGS: ${{ steps.set_outputs.outputs.FLAGS }}
+      USE_CASE: ${{ steps.set_outputs.outputs.USE_CASE }}
+    steps:
+      - name: Handle Inputs
+        id: set_outputs
+        run: |
+          {
+            echo "APP_REPOSITORY=${APP_REPOSITORY}"
+            echo "APP_BRANCH_NAME=${APP_BRANCH_NAME}"
+            echo "COMPATIBLE_DEVICES=${COMPATIBLE_DEVICES}"
+            echo "FLAGS=${FLAGS}"
+            echo "USE_CASE=${USE_CASE}"
+          } >> "$GITHUB_OUTPUT"
+
   fetch_metadata:
     name: Retrieve application metadata
     runs-on: ubuntu-22.04
+    needs: [handle_inputs]
 
     steps:
       - name: Clone app repository
         uses: actions/checkout@v4
         with:
-          repository: ${{ inputs.app_repository }}
-          ref: ${{ inputs.app_branch_name }}
+          repository: ${{ needs.handle_inputs.outputs.APP_REPOSITORY }}
+          ref: ${{ needs.handle_inputs.outputs.APP_BRANCH_NAME }}
           submodules: recursive
           token: ${{ secrets.token && secrets.token || github.token }}
 
@@ -79,7 +109,6 @@ jobs:
       - name: Gather application metadata, from inputs or 'ledger_app.toml'
         id: fetch_metadata
         run: |
-          pytest_directory='${{ inputs.pytest_directory }}'
           if [ ! -f "$APP_MANIFEST" ];
           then
               >&2 echo "/!\ No $APP_MANIFEST manifest detected!"
@@ -98,10 +127,10 @@ jobs:
 
           # get device list as a single line json formatted value
           compatible_devices="$(ledger-manifest --output-devices "$APP_MANIFEST" -j | jq -rc '.devices')"
-          if [ '${{ inputs.compatible_devices }}' != 'None' ];
+          if [ "${COMPATIBLE_DEVICES}" != 'None' ];
           then
               # in case classic manifest with devices, the input takes precedence on it
-              compatible_devices='${{ inputs.compatible_devices }}'
+              compatible_devices="${COMPATIBLE_DEVICES}"
           fi
           echo "compatible_devices=${compatible_devices}" | sed 's/+/p/' >> "$GITHUB_OUTPUT"
 
@@ -114,11 +143,11 @@ jobs:
           fi
 
           # Compilation flags
-          if [ -n "${{ inputs.flags }}" ]; then
-              echo "flags=${{ inputs.flags }}" >> "$GITHUB_OUTPUT"
-          elif [ -n "${{ inputs.use_case }}" ]; then
+          if [ -n "${FLAGS}" ]; then
+              echo "flags=${FLAGS}" >> "$GITHUB_OUTPUT"
+          elif [ -n "${USE_CASE}" ]; then
               # if a use case is provided, we use the one from the manifest
-              use_case=${{ inputs.use_case }}
+              use_case=${USE_CASE}
               echo "use_case is set to '${use_case}'"
               echo "flags=$(ledger-manifest "$APP_MANIFEST" --output-use-cases ${use_case})" >> "$GITHUB_OUTPUT"
           else
@@ -127,6 +156,10 @@ jobs:
 
           echo "Inferred metadata:"
           cat "$GITHUB_OUTPUT"
+
+      - name: Print devices and SDKs
+        run: |
+          echo "Matrix compatible_devices: ${{ steps.fetch_metadata.outputs.compatible_devices }}"
 
     outputs:
       is_rust: ${{ steps.fetch_metadata.outputs.is_rust }}

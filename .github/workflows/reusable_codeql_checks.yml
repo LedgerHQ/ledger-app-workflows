@@ -1,4 +1,4 @@
-name: Build the application for all devices and upload the artifact
+name: Analyze the application with CodeQL
 
 on:
   workflow_call:
@@ -34,16 +34,49 @@ on:
         default: ''
         type: string
 
+permissions:
+  contents: read
+  security-events: write  # Needed for CodeQL analysis upload
+
+env:
+  APP_REPOSITORY: ${{ inputs.app_repository }}
+  APP_BRANCH_NAME: ${{ inputs.app_branch_name }}
+  RUN_FOR_DEVICES: ${{ inputs.run_for_devices }}
+  BUILDER: ${{ inputs.builder }}
+  FLAGS: ${{ inputs.flags }}
+
 jobs:
+  handle_inputs:
+    name: Handle and validate inputs
+    runs-on: ubuntu-latest
+    outputs:
+      APP_REPOSITORY: ${{ steps.set_outputs.outputs.APP_REPOSITORY }}
+      APP_BRANCH_NAME: ${{ steps.set_outputs.outputs.APP_BRANCH_NAME }}
+      RUN_FOR_DEVICES: ${{ steps.set_outputs.outputs.RUN_FOR_DEVICES }}
+      BUILDER: ${{ steps.set_outputs.outputs.BUILDER }}
+      FLAGS: ${{ steps.set_outputs.outputs.FLAGS }}
+    steps:
+      - name: Handle inputs
+        id: set_outputs
+        run: |
+          {
+            echo "APP_REPOSITORY=${APP_REPOSITORY}"
+            echo "APP_BRANCH_NAME=${APP_BRANCH_NAME}"
+            echo "RUN_FOR_DEVICES=${RUN_FOR_DEVICES}"
+            echo "BUILDER=${BUILDER}"
+            echo "FLAGS=${FLAGS}"
+          } >> "$GITHUB_OUTPUT"
+
   call_get_app_metadata:
     # This job digests inputs and repository metadata provided by the `ledger_app.toml` manifest
     # file, in order to output relevant compatible devices needed by following jobs.
     name: Retrieve application metadata
     uses: ./.github/workflows/_get_app_metadata.yml
+    needs: [handle_inputs]
     with:
-      app_repository: ${{ inputs.app_repository }}
-      app_branch_name: ${{ inputs.app_branch_name }}
-      compatible_devices: ${{ inputs.run_for_devices }}
+      app_repository: ${{ needs.handle_inputs.outputs.APP_REPOSITORY }}
+      app_branch_name: ${{ needs.handle_inputs.outputs.APP_BRANCH_NAME }}
+      compatible_devices: ${{ needs.handle_inputs.outputs.RUN_FOR_DEVICES }}
     secrets:
       token: ${{ secrets.token }}
 
@@ -59,12 +92,12 @@ jobs:
         id: sdk_list
         shell: bash
         run: |
-          if [ "${{ inputs.run_for_devices }}" = "None" ]; then
+          if [ "${{ needs.handle_inputs.outputs.RUN_FOR_DEVICES }}" = "None" ]; then
             # Use the compatible devices from metadata
-            devices_json='${{ needs.call_get_app_metadata.outputs.compatible_devices }}'
+            devices_json="${{ needs.call_get_app_metadata.outputs.compatible_devices }}"
           else
             # Convert space-separated string to JSON array
-            devices_string="${{ inputs.run_for_devices }}"
+            devices_string="${{ needs.handle_inputs.outputs.RUN_FOR_DEVICES }}"
             devices_json=$(echo "${devices_string}" | jq -R 'split(" ")')
           fi
 
@@ -79,7 +112,7 @@ jobs:
 
   analyse:
     name: Analyse application
-    needs: build_device_matrix
+    needs: [handle_inputs, build_device_matrix]
     strategy:
       fail-fast: false
       matrix:
@@ -88,14 +121,14 @@ jobs:
         language: ['cpp']
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/ledgerhq/ledger-app-builder/${{ inputs.builder }}:latest
+      image: ghcr.io/ledgerhq/ledger-app-builder/${{ needs.handle_inputs.outputs.BUILDER }}:latest
 
     steps:
       - name: Clone
         uses: actions/checkout@v4
         with:
-          repository: ${{ inputs.app_repository }}
-          ref: ${{ inputs.app_branch_name }}
+          repository: ${{ needs.handle_inputs.outputs.APP_REPOSITORY }}
+          ref: ${{ needs.handle_inputs.outputs.APP_BRANCH_NAME }}
           submodules: recursive
           token: ${{ secrets.token && secrets.token || github.token }}
 
@@ -108,7 +141,7 @@ jobs:
       # CodeQL will create the database during the compilation
       - name: Build
         run: |
-          ${{ inputs.flags }} make BOLOS_SDK=${{ matrix.sdk }}
+          ${{ needs.handle_inputs.outputs.FLAGS }} make BOLOS_SDK=${{ matrix.sdk }}
 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v3

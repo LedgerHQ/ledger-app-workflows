@@ -29,18 +29,56 @@ on:
         description: 'If not provided, the workflow will build the Ethereum app.'
         type: string
       regenerate_snapshots:
+        description: 'Whether to regenerate the snapshots used for the tests.'
         required: false
         default: false
         type: boolean
 
+permissions:
+  contents: write       # Needed for reusable_ragger_tests.yml
+  actions: write        # Needed for reusable_ragger_tests.yml and reusable_build.yml
+  pull-requests: write  # Needed for reusable_ragger_tests.yml
+
+env:
+  APP_REPOSITORY: ${{ inputs.app_repository }}
+  APP_BRANCH_NAME: ${{ inputs.app_branch_name }}
+  DOWNLOAD_APP_BINARIES_ARTIFACT: ${{ inputs.download_app_binaries_artifact }}
+  EXCHANGE_BUILD_ARTIFACT: ${{ inputs.exchange_build_artifact }}
+  ETHEREUM_BUILD_ARTIFACT: ${{ inputs.ethereum_build_artifact }}
+  REGENERATE_SNAPSHOTS: ${{ inputs.regenerate_snapshots }}
+
 jobs:
+  handle_inputs:
+    name: Handle and validate inputs
+    runs-on: ubuntu-latest
+    outputs:
+      APP_REPOSITORY: ${{ steps.set_outputs.outputs.APP_REPOSITORY }}
+      APP_BRANCH_NAME: ${{ steps.set_outputs.outputs.APP_BRANCH_NAME }}
+      DOWNLOAD_APP_BINARIES_ARTIFACT: ${{ steps.set_outputs.outputs.DOWNLOAD_APP_BINARIES_ARTIFACT }}
+      EXCHANGE_BUILD_ARTIFACT: ${{ steps.set_outputs.outputs.EXCHANGE_BUILD_ARTIFACT }}
+      ETHEREUM_BUILD_ARTIFACT: ${{ steps.set_outputs.outputs.ETHEREUM_BUILD_ARTIFACT }}
+      REGENERATE_SNAPSHOTS: ${{ steps.set_outputs.outputs.REGENERATE_SNAPSHOTS }}
+    steps:
+      - name: Handle Inputs
+        id: set_outputs
+        run: |
+          {
+            echo "APP_REPOSITORY=${APP_REPOSITORY}"
+            echo "APP_BRANCH_NAME=${APP_BRANCH_NAME}"
+            echo "DOWNLOAD_APP_BINARIES_ARTIFACT=${DOWNLOAD_APP_BINARIES_ARTIFACT}"
+            echo "EXCHANGE_BUILD_ARTIFACT=${EXCHANGE_BUILD_ARTIFACT}"
+            echo "ETHEREUM_BUILD_ARTIFACT=${ETHEREUM_BUILD_ARTIFACT}"
+            echo "REGENERATE_SNAPSHOTS=${REGENERATE_SNAPSHOTS}"
+          } >> "$GITHUB_OUTPUT"
+
   build_app:
     name: Build app to test using the reusable workflow
     if: ${{ inputs.download_app_binaries_artifact == '' }}
     uses: ./.github/workflows/reusable_build.yml
+    needs: [handle_inputs]
     with:
-      app_repository: ${{ inputs.app_repository }}
-      app_branch_name: ${{ inputs.app_branch_name }}
+      app_repository: ${{ needs.handle_inputs.outputs.APP_REPOSITORY }}
+      app_branch_name: ${{ needs.handle_inputs.outputs.APP_BRANCH_NAME }}
       upload_app_binaries_artifact: "app_binaries"
 
   build_exchange:
@@ -76,7 +114,7 @@ jobs:
         id: get_exchange_binaries
         run: |
           if [ "${{ needs.build_exchange.result }}" = "skipped" ]; then
-            echo "exchange_build_artifact=${{ inputs.exchange_build_artifact }}" >> "$GITHUB_OUTPUT"
+            echo "exchange_build_artifact=${EXCHANGE_BUILD_ARTIFACT }}" >> "$GITHUB_OUTPUT"
           elif [ "${{ needs.build_exchange.result }}" = "success" ]; then
             echo "exchange_build_artifact=app_exchange_binaries" >> "$GITHUB_OUTPUT"
           else
@@ -87,7 +125,7 @@ jobs:
         id: get_ethereum_binaries
         run: |
           if [ "${{ needs.build_ethereum.result }}" = "skipped" ]; then
-            echo "ethereum_build_artifact=${{ inputs.ethereum_build_artifact }}" >> "$GITHUB_OUTPUT"
+            echo "ethereum_build_artifact=${ETHEREUM_BUILD_ARTIFACT }}" >> "$GITHUB_OUTPUT"
           elif [ "${{ needs.build_ethereum.result }}" = "success" ]; then
             echo "ethereum_build_artifact=app_ethereum_binaries" >> "$GITHUB_OUTPUT"
           else
@@ -102,14 +140,15 @@ jobs:
   get_swap_test_dir:
     name: Find swap test directory
     runs-on: ubuntu-latest
+    needs: [handle_inputs]
     outputs:
       swap_test_dir: ${{ steps.find_swap_test_dir.outputs.swap_test_dir }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          repository: ${{ inputs.app_repository }}
-          ref: ${{ inputs.app_branch_name }}
+          repository: ${{ needs.handle_inputs.outputs.APP_REPOSITORY }}
+          ref: ${{ needs.handle_inputs.outputs.APP_BRANCH_NAME }}
           path: app_coin
       - name: Install ledgered
         run: |
@@ -155,15 +194,15 @@ jobs:
   # This job runs the swap functional tests using the reusable workflow
   ragger_tests_swap:
     name: Run swap ragger tests using the reusable workflow
-    needs: [get_artifacts_names, get_dir_names]
+    needs: [handle_inputs, get_artifacts_names, get_dir_names]
     uses: ./.github/workflows/reusable_ragger_tests.yml
     with:
-      app_repository: ${{ inputs.app_repository }}
-      app_branch_name: ${{ inputs.app_branch_name }}
-      download_app_binaries_artifact: ${{ inputs.download_app_binaries_artifact != '' && inputs.download_app_binaries_artifact || 'app_binaries' }}
+      app_repository: ${{ needs.handle_inputs.outputs.APP_REPOSITORY }}
+      app_branch_name: ${{ needs.handle_inputs.outputs.APP_BRANCH_NAME }}
+      download_app_binaries_artifact: ${{ needs.handle_inputs.outputs.DOWNLOAD_APP_BINARIES_ARTIFACT != '' && needs.handle_inputs.outputs.DOWNLOAD_APP_BINARIES_ARTIFACT || 'app_binaries' }}
       additional_app_binaries_artifact: ${{ needs.get_artifacts_names.outputs.exchange_build_artifact }}
       additional_app_binaries_artifact_dir: ${{ needs.get_dir_names.outputs.main_app_dir }}
       lib_binaries_artifact: ${{ needs.get_artifacts_names.outputs.ethereum_build_artifact }}
       lib_binaries_artifact_dir: ${{ needs.get_dir_names.outputs.lib_app_dir }}
       test_dir: ${{ needs.get_dir_names.outputs.swap_test_dir }}
-      regenerate_snapshots: ${{ inputs.regenerate_snapshots }}
+      regenerate_snapshots: ${{ needs.handle_inputs.outputs.REGENERATE_SNAPSHOTS == 'true' }}

@@ -68,39 +68,87 @@ on:
         default: ""
         type: string
 
+permissions:
+  contents: read
+  actions: write  # Needed for upload-artifact
+
+env:
+  APP_REPOSITORY: ${{ inputs.app_repository }}
+  APP_BRANCH_NAME: ${{ inputs.app_branch_name }}
+  FLAGS: ${{ inputs.flags }}
+  USE_CASE: ${{ inputs.use_case }}
+  UPLOAD_APP_BINARIES_ARTIFACT: ${{ inputs.upload_app_binaries_artifact }}
+  UPLOAD_AS_LIB_ARTIFACT: ${{ inputs.upload_as_lib_artifact }}
+  RUN_FOR_DEVICES: ${{ inputs.run_for_devices }}
+  BUILDER: ${{ inputs.builder }}
+  SDK_REFERENCE: ${{ inputs.sdk_reference }}
+  CARGO_LEDGER_BUILD_ARGS: ${{ inputs.cargo_ledger_build_args }}
+
 jobs:
+  handle_inputs:
+    name: Handle and validate inputs
+    runs-on: ubuntu-latest
+    outputs:
+      APP_REPOSITORY: ${{ steps.set_outputs.outputs.APP_REPOSITORY }}
+      APP_BRANCH_NAME: ${{ steps.set_outputs.outputs.APP_BRANCH_NAME }}
+      FLAGS: ${{ steps.set_outputs.outputs.FLAGS }}
+      USE_CASE: ${{ steps.set_outputs.outputs.USE_CASE }}
+      UPLOAD_APP_BINARIES_ARTIFACT: ${{ steps.set_outputs.outputs.UPLOAD_APP_BINARIES_ARTIFACT }}
+      UPLOAD_AS_LIB_ARTIFACT: ${{ steps.set_outputs.outputs.UPLOAD_AS_LIB_ARTIFACT }}
+      RUN_FOR_DEVICES: ${{ steps.set_outputs.outputs.RUN_FOR_DEVICES }}
+      BUILDER: ${{ steps.set_outputs.outputs.BUILDER }}
+      SDK_REFERENCE: ${{ steps.set_outputs.outputs.SDK_REFERENCE }}
+      CARGO_LEDGER_BUILD_ARGS: ${{ steps.set_outputs.outputs.CARGO_LEDGER_BUILD }}
+    steps:
+      - name: Handle Inputs
+        id: set_outputs
+        run: |
+          {
+            echo "APP_REPOSITORY=${APP_REPOSITORY}"
+            echo "APP_BRANCH_NAME=${APP_BRANCH_NAME}"
+            echo "FLAGS=${FLAGS}"
+            echo "USE_CASE=${USE_CASE}"
+            echo "UPLOAD_APP_BINARIES_ARTIFACT=${UPLOAD_APP_BINARIES_ARTIFACT}"
+            echo "UPLOAD_AS_LIB_ARTIFACT=${UPLOAD_AS_LIB_ARTIFACT}"
+            echo "RUN_FOR_DEVICES=${RUN_FOR_DEVICES}"
+            echo "BUILDER=${BUILDER}"
+            echo "SDK_REFERENCE=${SDK_REFERENCE}"
+            echo "CARGO_LEDGER_BUILD_ARGS=${CARGO_LEDGER_BUILD_ARGS}"
+          } >> "$GITHUB_OUTPUT"
+
   call_get_app_metadata:
     # This job digests inputs and repository metadata provided by the `ledger_app.toml` manifest
     # file, in order to output relevant directories, compatible devices, and other variables needed
     # by following jobs.
     name: Retrieve application metadata
+    needs: [handle_inputs]
     uses: ./.github/workflows/_get_app_metadata.yml
     with:
-      app_repository: ${{ inputs.app_repository }}
-      app_branch_name: ${{ inputs.app_branch_name }}
-      compatible_devices: ${{ inputs.run_for_devices }}
-      flags: ${{ inputs.flags }}
-      use_case: ${{ inputs.use_case }}
+      app_repository: ${{ needs.handle_inputs.outputs.APP_REPOSITORY }}
+      app_branch_name: ${{ needs.handle_inputs.outputs.APP_BRANCH_NAME }}
+      compatible_devices: ${{ needs.handle_inputs.outputs.RUN_FOR_DEVICES }}
+      flags: ${{ needs.handle_inputs.outputs.FLAGS }}
+      use_case: ${{ needs.handle_inputs.outputs.USE_CASE }}
     secrets:
       token: ${{ secrets.token }}
 
   build:
     name: Build application for all selected devices
-    needs: call_get_app_metadata
+    needs: [handle_inputs, call_get_app_metadata]
     strategy:
       fail-fast: false
       matrix:
         device: ${{ fromJSON(needs.call_get_app_metadata.outputs.compatible_devices) }}
     runs-on: ubuntu-22.04
     container:
-      image: ghcr.io/ledgerhq/ledger-app-builder/${{ inputs.builder }}:latest
+      image: ghcr.io/ledgerhq/ledger-app-builder/${{ needs.handle_inputs.outputs.BUILDER }}:latest
 
     steps:
       - name: Clone
         uses: actions/checkout@v4
         with:
-          repository: ${{ inputs.app_repository }}
-          ref: ${{ inputs.app_branch_name }}
+          repository: ${{ needs.handle_inputs.outputs.APP_REPOSITORY }}
+          ref: ${{ needs.handle_inputs.outputs.APP_BRANCH_NAME }}
           submodules: recursive
           token: ${{ secrets.token && secrets.token || github.token }}
 
@@ -119,7 +167,7 @@ jobs:
                   cargo +$RUST_NIGHTLY update $crate
                 fi
               done
-              cargo ledger build ${BUILD_DEVICE_NAME} -- ${{inputs.cargo_ledger_build_args}} && \
+              cargo ledger build ${BUILD_DEVICE_NAME} -- ${{ needs.handle_inputs.outputs.CARGO_LEDGER_BUILD_ARGS }} && \
               binary_path=$(cargo metadata --no-deps --format-version 1 | jq -r '.target_directory')/ && \
               echo "binary_path=$binary_path" >> $GITHUB_OUTPUT && \
               echo "binary_path=$binary_path" && \
@@ -127,10 +175,10 @@ jobs:
           else
               eval "BOLOS_SDK=\$$(echo ${{ matrix.device }} | tr [:lower:] [:upper:])_SDK"
               echo "BOLOS_SDK value will be: ${BOLOS_SDK}"
-              if [ -n "${{ inputs.sdk_reference }}" ];
+              if [ -n "${{ needs.handle_inputs.outputs.SDK_REFERENCE }}" ];
               then
-                  echo "Checking out reference '${{ inputs.sdk_reference }}'..."
-                  (cd $BOLOS_SDK && git fetch -apt && git checkout ${{ inputs.sdk_reference }})
+                  echo "Checking out reference '${{ needs.handle_inputs.outputs.SDK_REFERENCE }}'..."
+                  (cd $BOLOS_SDK && git fetch -apt && git checkout ${{ needs.handle_inputs.outputs.SDK_REFERENCE }})
                   ADDITIONAL_ARGS="TARGET=${{ matrix.device }}"
               fi
               echo "Compiling..."
@@ -150,7 +198,7 @@ jobs:
           fi
 
       - name: Prepare to upload as lib
-        if: ${{ inputs.upload_as_lib_artifact != '' }}
+        if: ${{ needs.handle_inputs.outputs.UPLOAD_AS_LIB_ARTIFACT != '' }}
         shell: bash
         run: |
           if [ "${{ needs.call_get_app_metadata.outputs.is_rust }}" = "true" ];
@@ -161,13 +209,13 @@ jobs:
             echo "RUST_DEVICE_NAME=$RUST_DEVICE_NAME" && \
             ELF_NAME=$(cargo metadata --manifest-path ${{ needs.call_get_app_metadata.outputs.build_directory }}/Cargo.toml --no-deps --format-version 1 | jq -r '.packages[] | select(.metadata.ledger != null) | .name') && \
             echo "ELF_NAME=$ELF_NAME" && \
-            mv ${{ steps.build.outputs.binary_path }}${RUST_DEVICE_NAME}/release/${ELF_NAME} ${{ steps.build.outputs.binary_path }}/${{ inputs.upload_as_lib_artifact }}_${C_DEVICE_NAME}.elf && \
+            mv ${{ steps.build.outputs.binary_path }}${RUST_DEVICE_NAME}/release/${ELF_NAME} ${{ steps.build.outputs.binary_path }}/${{ needs.handle_inputs.outputs.UPLOAD_AS_LIB_ARTIFACT }}_${C_DEVICE_NAME}.elf && \
             rm -rf ${{ steps.build.outputs.binary_path }}${RUST_DEVICE_NAME}
           else
             DEVICE_NAME="$(echo ${{ matrix.device }} | sed 's/nanosp/nanos2/')" && \
-            find ${{ needs.call_get_app_metadata.outputs.build_directory }}/build/${DEVICE_NAME}/ -type f -name 'app.elf' -exec mv {} ${{ inputs.upload_as_lib_artifact }}_${DEVICE_NAME}.elf \; && \
+            find ${{ needs.call_get_app_metadata.outputs.build_directory }}/build/${DEVICE_NAME}/ -type f -name 'app.elf' -exec mv {} ${{ needs.handle_inputs.outputs.UPLOAD_AS_LIB_ARTIFACT }}_${DEVICE_NAME}.elf \; && \
             rm -r ${{ needs.call_get_app_metadata.outputs.build_directory }}/build/* && \
-            mv ${{ inputs.upload_as_lib_artifact }}_${DEVICE_NAME}.elf ${{ needs.call_get_app_metadata.outputs.build_directory }}/build/
+            mv ${{ needs.handle_inputs.outputs.UPLOAD_AS_LIB_ARTIFACT }}_${DEVICE_NAME}.elf ${{ needs.call_get_app_metadata.outputs.build_directory }}/build/
           fi
 
       - name: Display structure of binary files
@@ -175,21 +223,21 @@ jobs:
           ls -R ${{ steps.build.outputs.binary_path }}
 
       - name: Upload app binary
-        if: ${{ inputs.upload_app_binaries_artifact != '' }}
+        if: ${{ needs.handle_inputs.outputs.UPLOAD_APP_BINARIES_ARTIFACT != '' }}
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ inputs.upload_app_binaries_artifact }}-${{ matrix.device }}
+          name: ${{ needs.handle_inputs.outputs.UPLOAD_APP_BINARIES_ARTIFACT }}-${{ matrix.device }}
           path: ${{ steps.build.outputs.binary_path }}
           if-no-files-found: error
 
   merge_artifacts:
     name: Merge build artifacts
-    needs: build
+    needs: [handle_inputs, build]
     runs-on: ubuntu-22.04
     if: ${{ inputs.upload_app_binaries_artifact != '' }}
     steps:
       - uses: actions/upload-artifact/merge@v4
         with:
-          name: ${{ inputs.upload_app_binaries_artifact }}
-          pattern: ${{ inputs.upload_app_binaries_artifact }}-*
+          name: ${{ needs.handle_inputs.outputs.UPLOAD_APP_BINARIES_ARTIFACT }}
+          pattern: ${{ needs.handle_inputs.outputs.UPLOAD_APP_BINARIES_ARTIFACT }}-*
           delete-merged: true

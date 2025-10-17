@@ -1,0 +1,61 @@
+name: Yaml style checks
+
+on:
+  workflow_call:
+    inputs:
+      app_repository:
+        description: 'The GIT repository to test (defaults to `github.repository`)'
+        required: false
+        default: ${{ github.repository }}
+        type: string
+      app_branch_name:
+        description: 'The GIT branch to test (defaults to `github.ref`)'
+        required: false
+        default: ${{ github.ref }}
+        type: string
+      file_or_dir:
+        description: 'Files to check'
+        required: false
+        default: '.'
+        type: string
+
+permissions:
+  contents: read
+
+env:
+  APP_REPOSITORY: ${{ inputs.app_repository }}
+  APP_BRANCH_NAME: ${{ inputs.app_branch_name }}
+  FILE_OR_DIR: ${{ inputs.file_or_dir }}
+
+jobs:
+  handle_inputs:
+    name: Handle and validate inputs
+    runs-on: ubuntu-latest
+    outputs:
+      APP_REPOSITORY: ${{ steps.set_outputs.outputs.APP_REPOSITORY }}
+      APP_BRANCH_NAME: ${{ steps.set_outputs.outputs.APP_BRANCH_NAME }}
+      FILE_OR_DIR: ${{ steps.set_outputs.outputs.FILE_OR_DIR }}
+    steps:
+      - name: Handle Inputs
+        id: set_outputs
+        run: |
+          {
+            echo "APP_REPOSITORY=${APP_REPOSITORY}"
+            echo "APP_BRANCH_NAME=${APP_BRANCH_NAME}"
+            echo "FILE_OR_DIR=${FILE_OR_DIR}"
+          } >> "$GITHUB_OUTPUT"
+
+  job_lint:
+    name: YAML check
+    runs-on: ubuntu-22.04
+    needs: [handle_inputs]
+
+    steps:
+      - name: Clone
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ needs.handle_inputs.outputs.APP_REPOSITORY }}
+          ref: ${{ needs.handle_inputs.outputs.APP_BRANCH_NAME }}
+
+      - name: Lint check
+        run: yamllint ${{ needs.handle_inputs.outputs.FILE_OR_DIR }}

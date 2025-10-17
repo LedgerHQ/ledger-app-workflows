@@ -3,25 +3,43 @@ name: Check readme
 on:
   workflow_call:
     inputs:
-      ledger-app-workflows_ref:
+      workflows_ref:
         description: 'The current reference in use for the ledger-app-workflow repository'
         required: true
         type: string
-      app-repository:
+      app_repository:
         description: 'The URL of the app repository to check. Defaults to the workflow caller repository URL'
         required: false
         default: ${{ github.repository }}
         type: string
-      repo-name:
-        description: 'The name of the app repository to check. Defaults to the workflow caller repository name'
-        required: false
-        default: ${{ github.event.repository.name }}
-        type: string
+
+permissions:
+  contents: read  # Needed to clone the repositories
+
+env:
+  WORKFLOWS_REF: ${{ inputs.workflows_ref }}
+  APP_REPOSITORY: ${{ inputs.app_repository }}
 
 jobs:
+  handle_inputs:
+    name: Handle and validate inputs
+    runs-on: ubuntu-latest
+    outputs:
+      WORKFLOWS_REF: ${{ steps.set_outputs.outputs.WORKFLOWS_REF }}
+      APP_REPOSITORY: ${{ steps.set_outputs.outputs.APP_REPOSITORY }}
+    steps:
+      - name: Handle Inputs
+        id: set_outputs
+        run: |
+          {
+            echo "WORKFLOWS_REF=${WORKFLOWS_REF}"
+            echo "APP_REPOSITORY=${APP_REPOSITORY}"
+          } >> "$GITHUB_OUTPUT"
+
   check_readme:
     name: Check readme
     runs-on: ubuntu-22.04
+    needs: [handle_inputs]
 
     steps:
       - name: Clone ledger-app-workflows repository
@@ -29,12 +47,12 @@ jobs:
         with:
           repository: LedgerHQ/ledger-app-workflows
           path: ./ledger-app-workflows
-          ref: ${{ inputs.ledger-app-workflows_ref }}
+          ref: ${{ needs.handle_inputs.outputs.WORKFLOWS_REF }}
 
       - name: Clone app repository
         uses: actions/checkout@v4
         with:
-          repository: ${{ inputs.app-repository }}
+          repository: ${{ needs.handle_inputs.outputs.APP_REPOSITORY }}
           path: app-repository
           submodules: recursive
 

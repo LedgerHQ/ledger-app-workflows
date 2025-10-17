@@ -1,21 +1,49 @@
-name: Code style check
+name: Code style checks
 
 on:
   workflow_call:
     inputs:
       source:
+        description: "The source directory to lint"
         required: true
         type: string
       version:
+        description: "The clang-format version to use"
         required: false
         type: number
         default: 14
       extensions:
+        description: "The file extensions to lint, comma-separated"
         required: false
         default: 'h,c,proto'
         type: string
 
+permissions:
+  contents: read
+
+env:
+  SOURCE: ${{ inputs.source }}
+  VERSION: ${{ inputs.version }}
+  EXTENSIONS: ${{ inputs.extensions }}
+
 jobs:
+  handle_inputs:
+    name: Handle and validate inputs
+    runs-on: ubuntu-latest
+    outputs:
+      SOURCE: ${{ steps.set_outputs.outputs.SOURCE }}
+      VERSION: ${{ steps.set_outputs.outputs.VERSION }}
+      EXTENSIONS: ${{ steps.set_outputs.outputs.EXTENSIONS }}
+    steps:
+      - name: Handle Inputs
+        id: set_outputs
+        run: |
+          {
+            echo "SOURCE=${SOURCE}"
+            echo "VERSION=${VERSION}"
+            echo "EXTENSIONS=${EXTENSIONS}"
+          } >> "$GITHUB_OUTPUT"
+
   call_get_app_metadata:
     # Call this job to infer the application language (C or Rust)
     name: Retrieve application metadata
@@ -23,7 +51,7 @@ jobs:
 
   job_lint:
     name: Lint check
-    needs: call_get_app_metadata
+    needs: [handle_inputs, call_get_app_metadata]
     runs-on: ubuntu-22.04
     container:
       image: ghcr.io/ledgerhq/ledger-app-builder/ledger-app-builder:latest
@@ -34,19 +62,22 @@ jobs:
 
       - name: Ensure clang-format is customized
         if: ${{ needs.call_get_app_metadata.outputs.is_rust == 'false'}}
-        uses: andstor/file-existence-action@v3
-        with:
-          files: ".clang-format"
+        run: |
+          if [ ! -f ".clang-format" ]; then
+            echo "⚠️ Warning: .clang-format file not found, using default configuration"
+          else
+            echo "✅ .clang-format file exists"
+          fi
 
       - name: Lint check for C app
         if: ${{ needs.call_get_app_metadata.outputs.is_rust == 'false'}}
-        uses: DoozyX/clang-format-lint-action@v0.18.2
+        uses: DoozyX/clang-format-lint-action@c71d0bf4e21876ebec3e5647491186f8797fde31  # v0.18.2
         with:
-          source: ${{ inputs.source }}
-          extensions: ${{ inputs.extensions }}
-          clangFormatVersion: ${{ inputs.version }}
+          source: ${{ needs.handle_inputs.outputs.SOURCE }}
+          extensions: ${{ needs.handle_inputs.outputs.EXTENSIONS }}
+          clangFormatVersion: ${{ needs.handle_inputs.outputs.VERSION }}
 
       - name: Lint check for Rust app
         if: ${{ needs.call_get_app_metadata.outputs.is_rust == 'true'}}
         run: cargo fmt --all -- --check
-        working-directory: ${{ inputs.source }}
+        working-directory: ${{ needs.handle_inputs.outputs.SOURCE }}
