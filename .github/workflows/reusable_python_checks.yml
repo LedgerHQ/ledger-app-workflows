@@ -3,8 +3,18 @@ name: Code style check
 on:
   workflow_call:
     inputs:
+      app_repository:
+        description: 'The GIT repository to test (defaults to `github.repository`)'
+        required: false
+        default: ${{ github.repository }}
+        type: string
+      app_branch_name:
+        description: 'The GIT branch to test (defaults to `github.ref`)'
+        required: false
+        default: ${{ github.ref }}
+        type: string
       run_linter:
-        description: "Select the Linter to run (pylint or flake8)"
+        description: "Select the Linter to run (pylint, flake8 or yapf)"
         type: string
         required: true
         default: ''
@@ -38,6 +48,8 @@ permissions:
   contents: read
 
 env:
+  APP_REPOSITORY: ${{ inputs.app_repository }}
+  APP_BRANCH_NAME: ${{ inputs.app_branch_name }}
   RUN_LINTER: ${{ inputs.run_linter }}
   RUN_TYPE_CHECK: ${{ inputs.run_type_check }}
   SRC_DIRECTORY: ${{ inputs.src_directory }}
@@ -46,64 +58,66 @@ env:
   ADDITIONAL_PACKAGES: ${{ inputs.additional_packages }}
 
 jobs:
-  pylint:
-    name: Python Linting with pylint
-    if: ${{ inputs.run_linter == 'pylint' }}
+  linter:
+    name: Python Linting with ${{ inputs.run_linter }}
     runs-on: ubuntu-latest
     steps:
       - name: Installing required packages
+        if: ${{ inputs.additional_packages != '' }}
         run: |
           sudo apt-get update
           sudo apt-get install -y ${ADDITIONAL_PACKAGES}
 
       - name: Clone
         uses: actions/checkout@v4
+        with:
+          repository: ${{ inputs.app_repository }}
+          ref: ${{ inputs.app_branch_name }}
 
-      - name: Installing PIP dependencies
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+          cache: 'pip'
+
+      - name: Installing Python dependencies
         run: |
-          pip install pylint
+          python -m pip install --upgrade pip
+
+          # Install linter
+          case "${RUN_LINTER}" in
+            "pylint") pip install pylint ;;
+            "flake8") pip install flake8 flake8-pyproject ;;
+            "yapf") pip install yapf ;;
+          esac
+
+          # Install project requirements
           if [ -n "${REQ_DIRECTORY}" ] && [ -f "${REQ_DIRECTORY}/requirements.txt" ]; then
             pip install -r ${REQ_DIRECTORY}/requirements.txt
           fi
 
-      - name: Lint Python code
-        run: |
-          ARGS=(-j 0)
-          if [ -n "${SETUP_DIRECTORY}" ]; then
-            cd ${SETUP_DIRECTORY}
-          fi
-          if [ -f "./setup.cfg" ]; then
-              ARGS+=(--rcfile "./setup.cfg")
-          fi
-          pylint "${ARGS[@]}" ${SRC_DIRECTORY}
+      - name: Change to setup directory
+        if: ${{ inputs.setup_directory != '' }}
+        run: echo "WORK_DIR=${{ env.SETUP_DIRECTORY }}" >> $GITHUB_ENV
 
-  flake8:
-    name: Python Linting with flake8
-    if: ${{ inputs.run_linter == 'flake8' }}
-    runs-on: ubuntu-latest
-    steps:
-      - name: Installing required packages
+      - name: Run ${{ inputs.run_linter }}
+        working-directory: ${{ env.WORK_DIR || '.' }}
         run: |
-          if [ -n "${ADDITIONAL_PACKAGES}" ]; then
-            sudo apt-get update && sudo apt-get install -y ${ADDITIONAL_PACKAGES}
-          fi
-
-      - name: Clone
-        uses: actions/checkout@v4
-
-      - name: Installing PIP dependencies
-        run: |
-          pip install flake8 flake8-pyproject
-          if [ -n "${REQ_DIRECTORY}" ] && [ -f "${REQ_DIRECTORY}/requirements.txt" ]; then
-            pip install -r ${REQ_DIRECTORY}/requirements.txt
-          fi
-
-      - name: Lint Python code
-        run: |
-          if [ -n "${SETUP_DIRECTORY}" ]; then
-            cd ${SETUP_DIRECTORY}
-          fi
-          flake8 ${SRC_DIRECTORY}
+          case "${RUN_LINTER}" in
+            "pylint")
+              ARGS=(-j 0)
+              if [ -f "./setup.cfg" ]; then
+                ARGS+=(--rcfile "./setup.cfg")
+              fi
+              pylint "${ARGS[@]}" ${SRC_DIRECTORY}
+              ;;
+            "flake8")
+              flake8 ${SRC_DIRECTORY}
+              ;;
+            "yapf")
+              yapf ${SRC_DIRECTORY} --recursive -d
+              ;;
+          esac
 
   mypy:
     name: Type checking
@@ -111,23 +125,36 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Installing required packages
+        if: ${{ inputs.additional_packages != '' }}
         run: |
           sudo apt-get update
           sudo apt-get install -y ${ADDITIONAL_PACKAGES}
 
       - name: Clone
         uses: actions/checkout@v4
+        with:
+          repository: ${{ inputs.app_repository }}
+          ref: ${{ inputs.app_branch_name }}
 
-      - name: Installing PIP dependencies
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+          cache: 'pip'
+
+      - name: Installing Python dependencies
         run: |
+          python -m pip install --upgrade pip
           pip install mypy
           if [ -n "${REQ_DIRECTORY}" ] && [ -f "${REQ_DIRECTORY}/requirements.txt" ]; then
             pip install -r ${REQ_DIRECTORY}/requirements.txt
           fi
 
+      - name: Change to setup directory
+        if: ${{ inputs.setup_directory != '' }}
+        run: echo "WORK_DIR=${{ env.SETUP_DIRECTORY }}" >> $GITHUB_ENV
+
       - name: Mypy type checking
+        working-directory: ${{ env.WORK_DIR || '.' }}
         run: |
-          if [ -n "${SETUP_DIRECTORY}" ]; then
-            cd ${SETUP_DIRECTORY}
-          fi
           mypy ${SRC_DIRECTORY}
