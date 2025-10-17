@@ -34,9 +34,29 @@ env:
   SNAPSHOTS_DIRECTORY: ${{ inputs.snapshots_directory }}
 
 jobs:
+  handle_inputs:
+    name: Handle and validate inputs
+    runs-on: ubuntu-latest
+    outputs:
+      APP_REPOSITORY: ${{ steps.set_outputs.outputs.APP_REPOSITORY }}
+      APP_BRANCH_NAME: ${{ steps.set_outputs.outputs.APP_BRANCH_NAME }}
+      SNAPSHOTS_ARTIFACT_NAME: ${{ steps.set_outputs.outputs.SNAPSHOTS_ARTIFACT_NAME }}
+      SNAPSHOTS_DIRECTORY: ${{ steps.set_outputs.outputs.SNAPSHOTS_DIRECTORY }}
+    steps:
+      - name: Handle Inputs
+        id: set_outputs
+        run: |
+          {
+            echo "APP_REPOSITORY=${APP_REPOSITORY}"
+            echo "APP_BRANCH_NAME=${APP_BRANCH_NAME}"
+            echo "SNAPSHOTS_ARTIFACT_NAME=${SNAPSHOTS_ARTIFACT_NAME}"
+            echo "SNAPSHOTS_DIRECTORY=${SNAPSHOTS_DIRECTORY}"
+          } >> "$GITHUB_OUTPUT"
+
   commit_new_snapshots:
     name: Commit new snapshots
     runs-on: ubuntu-22.04
+    needs: [handle_inputs]
     steps:
       - name: Refuse to run on anything else than workflow dispatch
         if: ${{ github.event_name != 'workflow_dispatch' }}
@@ -48,8 +68,8 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          repository: ${{ inputs.app_repository }}
-          ref: ${{ inputs.app_branch_name }}
+          repository: ${{ needs.handle_inputs.outputs.APP_REPOSITORY }}
+          ref: ${{ needs.handle_inputs.outputs.APP_BRANCH_NAME }}
           submodules: recursive
           # by default the action uses fetch-depth = 1, which creates
           # shallow repositories from which we can't push
@@ -61,8 +81,8 @@ jobs:
       - name: Download new snapshots
         uses: actions/download-artifact@v4
         with:
-          name: ${{ inputs.snapshots_artifact_name }}
-          path: ${{ inputs.snapshots_directory }}
+          name: ${{ needs.handle_inputs.outputs.SNAPSHOTS_ARTIFACT_NAME }}
+          path: ${{ needs.handle_inputs.outputs.SNAPSHOTS_DIRECTORY }}
 
       - name: Check if update is needed
         id: check-changes
@@ -84,7 +104,7 @@ jobs:
           # Set credentials for commit creation
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git add ${{ env.SNAPSHOTS_DIRECTORY }}
+          git add ${SNAPSHOTS_DIRECTORY}
           git status
           git commit -m "[auto-update] Update Ragger snapshots"
 
@@ -105,7 +125,7 @@ jobs:
           body="PR created by a Github workflow\n\n:warning: You <ins>need</ins> to review the generated snapshots :warning:"
           # Create the PR with a placeholder body. Will be consolidated at a later step
           gh pr create \
-            --base "${{ inputs.app_branch_name }}" \
+            --base "${{ needs.handle_inputs.outputs.APP_BRANCH_NAME }}" \
             --head "$branch_name" \
             --label "auto" \
             --title "[auto-update] Update Ragger snapshots" \

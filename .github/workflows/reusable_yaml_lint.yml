@@ -28,16 +28,34 @@ env:
   FILE_OR_DIR: ${{ inputs.file_or_dir }}
 
 jobs:
+  handle_inputs:
+    name: Handle and validate inputs
+    runs-on: ubuntu-latest
+    outputs:
+      APP_REPOSITORY: ${{ steps.set_outputs.outputs.APP_REPOSITORY }}
+      APP_BRANCH_NAME: ${{ steps.set_outputs.outputs.APP_BRANCH_NAME }}
+      FILE_OR_DIR: ${{ steps.set_outputs.outputs.FILE_OR_DIR }}
+    steps:
+      - name: Handle Inputs
+        id: set_outputs
+        run: |
+          {
+            echo "APP_REPOSITORY=${APP_REPOSITORY}"
+            echo "APP_BRANCH_NAME=${APP_BRANCH_NAME}"
+            echo "FILE_OR_DIR=${FILE_OR_DIR}"
+          } >> "$GITHUB_OUTPUT"
+
   job_lint:
     name: YAML check
     runs-on: ubuntu-22.04
+    needs: [handle_inputs]
 
     steps:
       - name: Clone
         uses: actions/checkout@v4
         with:
-          repository: ${{ inputs.app_repository }}
-          ref: ${{ inputs.app_branch_name }}
+          repository: ${{ needs.handle_inputs.outputs.APP_REPOSITORY }}
+          ref: ${{ needs.handle_inputs.outputs.APP_BRANCH_NAME }}
 
       - name: Lint check
-        run: yamllint ${{ env.FILE_OR_DIR }}
+        run: yamllint ${{ needs.handle_inputs.outputs.FILE_OR_DIR }}

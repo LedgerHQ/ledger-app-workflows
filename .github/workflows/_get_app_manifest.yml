@@ -34,7 +34,7 @@ permissions:
   contents: read  # Needed to clone the repositories
 
 env:
-  LEDGER_APP_WORKFLOWS_REF: ${{ inputs.workflows_ref }}
+  WORKFLOWS_REF: ${{ inputs.workflows_ref }}
   APP_REPOSITORY: ${{ inputs.app_repository }}
   RUN_FOR_DEVICES: ${{ inputs.run_for_devices }}
   RELATIVE_APP_DIRECTORY: ${{ inputs.relative_app_directory }}
@@ -42,8 +42,32 @@ env:
   UPLOAD_MANIFEST_ARTIFACT_NAME: ${{ inputs.upload_manifest_artifact_name }}
 
 jobs:
+  handle_inputs:
+    name: Handle and validate inputs
+    runs-on: ubuntu-latest
+    outputs:
+      WORKFLOWS_REF: ${{ steps.set_outputs.outputs.WORKFLOWS_REF }}
+      APP_REPOSITORY: ${{ steps.set_outputs.outputs.APP_REPOSITORY }}
+      RUN_FOR_DEVICES: ${{ steps.set_outputs.outputs.RUN_FOR_DEVICES }}
+      RELATIVE_APP_DIRECTORY: ${{ steps.set_outputs.outputs.RELATIVE_APP_DIRECTORY }}
+      IS_RUST: ${{ steps.set_outputs.outputs.IS_RUST }}
+      UPLOAD_MANIFEST_ARTIFACT_NAME: ${{ steps.set_outputs.outputs.UPLOAD_MANIFEST_ARTIFACT_NAME }}
+    steps:
+      - name: Handle Inputs
+        id: set_outputs
+        run: |
+          {
+            echo "WORKFLOWS_REF=${WORKFLOWS_REF}"
+            echo "APP_REPOSITORY=${APP_REPOSITORY}"
+            echo "RUN_FOR_DEVICES=${RUN_FOR_DEVICES}"
+            echo "RELATIVE_APP_DIRECTORY=${RELATIVE_APP_DIRECTORY}"
+            echo "IS_RUST=${IS_RUST}"
+            echo "UPLOAD_MANIFEST_ARTIFACT_NAME=${UPLOAD_MANIFEST_ARTIFACT_NAME}"
+          } >> "$GITHUB_OUTPUT"
+
   get_app_manifest:
     name: Get application manifest for supported devices
+    needs: [handle_inputs]
     strategy:
       fail-fast: false
       matrix:
@@ -58,12 +82,12 @@ jobs:
         with:
           repository: LedgerHQ/ledger-app-workflows
           path: ./ledger-app-workflows
-          ref: ${{ inputs.workflows_ref }}
+          ref: ${{ needs.handle_inputs.outputs.WORKFLOWS_REF }}
 
       - name: Clone app repository
         uses: actions/checkout@v4
         with:
-          repository: ${{ inputs.app_repository }}
+          repository: ${{ needs.handle_inputs.outputs.APP_REPOSITORY }}
           path: app-repository
           submodules: recursive
 
@@ -71,7 +95,7 @@ jobs:
         if: ${{ inputs.is_rust == 'true'}}
         run: |
             ./ledger-app-workflows/scripts/check_all.sh -r -c manifest -t ${{ matrix.device }} \
-              -a ./app-repository -b ${{ env.RELATIVE_APP_DIRECTORY }} \
+              -a ./app-repository -b ${{ needs.handle_inputs.outputs.RELATIVE_APP_DIRECTORY }} \
               -m ../manifest_${{ matrix.device }}.json
 
       - name: Call Makefile dumper script
@@ -79,23 +103,23 @@ jobs:
         run: |
             eval "BOLOS_SDK=\$$(echo ${{ matrix.device }} | tr [:lower:] [:upper:])_SDK" && \
             ./ledger-app-workflows/scripts/check_all.sh -c manifest -t ${{ matrix.device }} \
-              -a ./app-repository -b ${{ env.RELATIVE_APP_DIRECTORY }} \
+              -a ./app-repository -b ${{ needs.handle_inputs.outputs.RELATIVE_APP_DIRECTORY }} \
               -m ../manifest_${{ matrix.device }}.json
 
       - name: Upload app manifest
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ inputs.upload_manifest_artifact_name }}-${{ matrix.device }}
+          name: ${{ needs.handle_inputs.outputs.UPLOAD_MANIFEST_ARTIFACT_NAME }}-${{ matrix.device }}
           path: ./manifest_*.json
           if-no-files-found: error
 
   merge_artifacts:
     name: Merge build artifacts
-    needs: get_app_manifest
+    needs: [handle_inputs, get_app_manifest]
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/upload-artifact/merge@v4
         with:
-          name: ${{ inputs.upload_manifest_artifact_name }}
-          pattern: ${{ inputs.upload_manifest_artifact_name }}-*
+          name: ${{ needs.handle_inputs.outputs.UPLOAD_MANIFEST_ARTIFACT_NAME }}
+          pattern: ${{ needs.handle_inputs.outputs.UPLOAD_MANIFEST_ARTIFACT_NAME }}-*
           delete-merged: true

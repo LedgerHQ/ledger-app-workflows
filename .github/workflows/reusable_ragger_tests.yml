@@ -67,7 +67,7 @@ on:
       test_filter:
         description: 'Specify an expression which implements a substring match on the test names'
         required: false
-        default: '""'
+        default: ''
         type: string
       test_options:
         description: 'Specify optional parameters to be passed to the running test'
@@ -111,28 +111,69 @@ env:
   CONTAINER_IMAGE: ${{ inputs.container_image }}
 
 jobs:
+  handle_inputs:
+    name: Handle and validate inputs
+    runs-on: ubuntu-latest
+    outputs:
+      APP_REPOSITORY: ${{ steps.set_outputs.outputs.APP_REPOSITORY }}
+      APP_BRANCH_NAME: ${{ steps.set_outputs.outputs.APP_BRANCH_NAME }}
+      TEST_DIR: ${{ steps.set_outputs.outputs.TEST_DIR }}
+      DOWNLOAD_APP_BINARIES_ARTIFACT: ${{ steps.set_outputs.outputs.DOWNLOAD_APP_BINARIES_ARTIFACT }}
+      ADDITIONAL_APP_BINARIES_ARTIFACT: ${{ steps.set_outputs.outputs.ADDITIONAL_APP_BINARIES_ARTIFACT }}
+      ADDITIONAL_APP_BINARIES_ARTIFACT_DIR: ${{ steps.set_outputs.outputs.ADDITIONAL_APP_BINARIES_ARTIFACT_DIR }}
+      LIB_BINARIES_ARTIFACT: ${{ steps.set_outputs.outputs.LIB_BINARIES_ARTIFACT }}
+      LIB_BINARIES_ARTIFACT_DIR: ${{ steps.set_outputs.outputs.LIB_BINARIES_ARTIFACT_DIR }}
+      RUN_FOR_DEVICES: ${{ steps.set_outputs.outputs.RUN_FOR_DEVICES }}
+      UPLOAD_SNAPSHOTS_ON_FAILURE: ${{ steps.set_outputs.outputs.UPLOAD_SNAPSHOTS_ON_FAILURE }}
+      TEST_FILTER: ${{ steps.set_outputs.outputs.TEST_FILTER }}
+      TEST_OPTIONS: ${{ steps.set_outputs.outputs.TEST_OPTIONS }}
+      REGENERATE_SNAPSHOTS: ${{ steps.set_outputs.outputs.REGENERATE_SNAPSHOTS }}
+      CONTAINER_IMAGE: ${{ steps.set_outputs.outputs.CONTAINER_IMAGE }}
+    steps:
+      - name: Handle Inputs
+        id: set_outputs
+        run: |
+          {
+            echo "APP_REPOSITORY=${APP_REPOSITORY}"
+            echo "APP_BRANCH_NAME=${APP_BRANCH_NAME}"
+            echo "TEST_DIR=${TEST_DIR}"
+            echo "DOWNLOAD_APP_BINARIES_ARTIFACT=${DOWNLOAD_APP_BINARIES_ARTIFACT}"
+            echo "ADDITIONAL_APP_BINARIES_ARTIFACT=${ADDITIONAL_APP_BINARIES_ARTIFACT}"
+            echo "ADDITIONAL_APP_BINARIES_ARTIFACT_DIR=${ADDITIONAL_APP_BINARIES_ARTIFACT_DIR}"
+            echo "LIB_BINARIES_ARTIFACT=${LIB_BINARIES_ARTIFACT}"
+            echo "LIB_BINARIES_ARTIFACT_DIR=${LIB_BINARIES_ARTIFACT_DIR}"
+            echo "RUN_FOR_DEVICES=${RUN_FOR_DEVICES}"
+            echo "UPLOAD_SNAPSHOTS_ON_FAILURE=${UPLOAD_SNAPSHOTS_ON_FAILURE}"
+            echo "TEST_FILTER=${TEST_FILTER}"
+            echo "TEST_OPTIONS=${TEST_OPTIONS}"
+            echo "REGENERATE_SNAPSHOTS=${REGENERATE_SNAPSHOTS}"
+            echo "CONTAINER_IMAGE=${CONTAINER_IMAGE}"
+          } >> "$GITHUB_OUTPUT"
+
   call_get_app_metadata:
     # This job digests inputs and repository metadata provided by the `ledger_app.toml` manifest
     # file, in order to output relevant directories, compatible devices, and other variables needed
     # by following jobs.
     name: Retrieve application metadata
     uses: ./.github/workflows/_get_app_metadata.yml
+    needs: [handle_inputs]
     with:
-      app_repository: ${{ inputs.app_repository }}
-      app_branch_name: ${{ inputs.app_branch_name }}
-      compatible_devices: ${{ inputs.run_for_devices }}
+      app_repository: ${{ needs.handle_inputs.outputs.APP_REPOSITORY }}
+      app_branch_name: ${{ needs.handle_inputs.outputs.APP_BRANCH_NAME }}
+      compatible_devices: ${{ needs.handle_inputs.outputs.RUN_FOR_DEVICES }}
 
   call_get_test_metadata:
     name: Retrieve test metadata
     uses: ./.github/workflows/_get_test_metadata.yml
+    needs: [handle_inputs]
     with:
-      app_repository: ${{ inputs.app_repository }}
-      app_branch_name: ${{ inputs.app_branch_name }}
-      pytest_directory: ${{ inputs.test_dir }}
+      app_repository: ${{ needs.handle_inputs.outputs.APP_REPOSITORY }}
+      app_branch_name: ${{ needs.handle_inputs.outputs.APP_BRANCH_NAME }}
+      pytest_directory: ${{ needs.handle_inputs.outputs.TEST_DIR }}
 
   ragger_tests:
     name: Functional tests with Ragger
-    needs: [call_get_app_metadata, call_get_test_metadata]
+    needs: [handle_inputs, call_get_app_metadata, call_get_test_metadata]
     strategy:
       fail-fast: false
       matrix:
@@ -143,7 +184,7 @@ jobs:
     steps:
       - name: Check metadata
         run: |
-          if [ '${{ needs.call_get_test_metadata.outputs.pytest_directory }}' = 'None' ]; then
+          if [ "${{ needs.call_get_test_metadata.outputs.pytest_directory }}" = 'None' ]; then
               >&2 echo "ERROR: This workflow either needs a 'ledger_app.toml' manifest with a 'tests.pytest_directory' section, or be configured with a valid 'test_dir' parameter"
               exit 1
           fi
@@ -151,8 +192,8 @@ jobs:
       - name: Clone
         uses: actions/checkout@v4
         with:
-          repository: ${{ inputs.app_repository }}
-          ref: ${{ inputs.app_branch_name }}
+          repository: ${{ needs.handle_inputs.outputs.APP_REPOSITORY }}
+          ref: ${{ needs.handle_inputs.outputs.APP_BRANCH_NAME }}
           submodules: recursive
 
       - name: Set binary path
@@ -171,33 +212,33 @@ jobs:
       - name: Download app binaries
         uses: actions/download-artifact@v4
         with:
-          name: ${{ inputs.download_app_binaries_artifact }}
+          name: ${{ needs.handle_inputs.outputs.DOWNLOAD_APP_BINARIES_ARTIFACT }}
           path: ${{ steps.set_binary_path.outputs.binary_path }}
 
       - name: Display structure of downloaded files
-        run: ls -R ${{ steps.set_binary_path.outputs.binary_path }}
+        run: ls -1 ${{ steps.set_binary_path.outputs.binary_path }}
 
       - name: Download additional app binaries if required
-        if: ${{ inputs.additional_app_binaries_artifact != '' }}
+        if: ${{ needs.handle_inputs.outputs.ADDITIONAL_APP_BINARIES_ARTIFACT != '' }}
         uses: actions/download-artifact@v4
         with:
-          name: ${{ inputs.additional_app_binaries_artifact }}
-          path: ${{ inputs.additional_app_binaries_artifact_dir }}
+          name: ${{ needs.handle_inputs.outputs.ADDITIONAL_APP_BINARIES_ARTIFACT }}
+          path: ${{ needs.handle_inputs.outputs.ADDITIONAL_APP_BINARIES_ARTIFACT_DIR }}
 
       - name: Display structure of downloaded files
-        if: ${{ inputs.additional_app_binaries_artifact != '' }}
-        run: ls -R ${{ env.ADDITIONAL_APP_BINARIES_ARTIFACT_DIR }}
+        if: ${{ needs.handle_inputs.outputs.ADDITIONAL_APP_BINARIES_ARTIFACT_DIR != '' }}
+        run: ls -1 ${{ needs.handle_inputs.outputs.ADDITIONAL_APP_BINARIES_ARTIFACT_DIR }}
 
       - name: Download additional lib binaries if required
-        if: ${{ inputs.lib_binaries_artifact != '' }}
+        if: ${{ needs.handle_inputs.outputs.LIB_BINARIES_ARTIFACT != '' }}
         uses: actions/download-artifact@v4
         with:
-          name: ${{ inputs.lib_binaries_artifact }}
-          path: ${{ inputs.lib_binaries_artifact_dir }}
+          name: ${{ needs.handle_inputs.outputs.LIB_BINARIES_ARTIFACT }}
+          path: ${{ needs.handle_inputs.outputs.LIB_BINARIES_ARTIFACT_DIR }}
 
       - name: Display structure of downloaded files
-        if: ${{ inputs.lib_binaries_artifact != '' }}
-        run: ls -R ${{ env.LIB_BINARIES_ARTIFACT_DIR }}
+        if: ${{ needs.handle_inputs.outputs.LIB_BINARIES_ARTIFACT != '' }}
+        run: ls -1 ${{ needs.handle_inputs.outputs.LIB_BINARIES_ARTIFACT_DIR }}
 
       - name: Install tests dependencies
         run: |
@@ -209,7 +250,7 @@ jobs:
           fi
 
       - name: Clear legacy snapshots
-        if: ${{ inputs.regenerate_snapshots == true }}
+        if: ${{ needs.handle_inputs.outputs.REGENERATE_SNAPSHOTS == 'true' }}
         run: |
           rm -rf ${{ needs.call_get_test_metadata.outputs.pytest_directory }}/snapshots
 
@@ -218,32 +259,47 @@ jobs:
           CTEST_OUTPUT_ON_FAILURE: 1
           PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION: python
         run: |
-          pytest ${{ needs.call_get_test_metadata.outputs.pytest_directory }}/ \
-                 --tb=short -v \
-                 --device ${{ matrix.device }} \
-                 -k ${{ env.TEST_FILTER }} \
-                 ${{ env.TEST_OPTIONS }} \
-                 ${{ secrets.secret_test_options }} \
-                 ${{ env.REGENERATE_SNAPSHOTS == true && '--golden_run' || '' }}
+          ARGS=(--tb=short -v --device "${{ matrix.device }}")
+          ARGS+=("${{ needs.call_get_test_metadata.outputs.pytest_directory }}/")
+
+          # Add -k only if 'test_filter' is not empty
+          if [ -n "${{ needs.handle_inputs.outputs.TEST_FILTER }}" ]; then
+            ARGS+=(-k "${{ needs.handle_inputs.outputs.TEST_FILTER }}")
+          fi
+
+          # Add additional options
+          if [ -n "${{ needs.handle_inputs.outputs.TEST_OPTIONS }}" ]; then
+            ARGS+=(${{ needs.handle_inputs.outputs.TEST_OPTIONS }})
+          fi
+
+          if [ -n "${{ secrets.secret_test_options }}" ]; then
+            ARGS+=(${{ secrets.secret_test_options }})
+          fi
+
+          if [ "${{ needs.handle_inputs.outputs.REGENERATE_SNAPSHOTS }}" = "true" ]; then
+            ARGS+=(--golden_run)
+          fi
+
+          pytest "${ARGS[@]}"
 
       - name: Upload snapshots on failure if needed
-        if: ${{ failure() && inputs.upload_snapshots_on_failure == true }}
+        if: ${{ failure() && needs.handle_inputs.outputs.UPLOAD_SNAPSHOTS_ON_FAILURE == 'true' }}
         uses: actions/upload-artifact@v4
         with:
           # Make the artifact name unique to allow running this job in parallel
-          name: tests_snapshots${{ inputs.test_options }}-${{ matrix.device }}
+          name: tests_snapshots${{ needs.handle_inputs.outputs.TEST_OPTIONS }}-${{ matrix.device }}
           path: ${{ needs.call_get_test_metadata.outputs.pytest_directory }}/snapshots-tmp
 
       - name: Upload snapshots on success if needed
-        if: ${{ inputs.regenerate_snapshots == true }}
+        if: ${{ needs.handle_inputs.outputs.REGENERATE_SNAPSHOTS == 'true' }}
         uses: actions/upload-artifact@v4
         with:
-          name: tests_snapshots${{ inputs.test_options }}-${{ matrix.device }}
+          name: tests_snapshots${{ needs.handle_inputs.outputs.TEST_OPTIONS }}-${{ matrix.device }}
           path: ${{ needs.call_get_test_metadata.outputs.pytest_directory }}/snapshots-tmp
 
       - name: Set upload flag
         id: upload-flag
-        if: ${{ (failure() && inputs.upload_snapshots_on_failure == true) || ( success() && inputs.regenerate_snapshots == true) }}
+        if: ${{ (failure() && needs.handle_inputs.outputs.UPLOAD_SNAPSHOTS_ON_FAILURE == 'true') || ( success() && needs.handle_inputs.outputs.REGENERATE_SNAPSHOTS == 'true') }}
         run: |
           echo "artifact_uploaded=true" >> "$GITHUB_OUTPUT"
 
@@ -253,26 +309,26 @@ jobs:
   merge_artifacts_if_needed:
     # Merge matrix output
     name: Merge snapshots artifacts
-    needs: ragger_tests
+    needs: [handle_inputs, ragger_tests]
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/upload-artifact/merge@v4
         if: ${{ needs.ragger_tests.outputs.snapshot_artifact_uploaded == 'true' }}
         with:
-          name: tests_snapshots${{ inputs.test_options }}
-          pattern: tests_snapshots${{ inputs.test_options }}-*
+          name: tests_snapshots${{ needs.handle_inputs.outputs.TEST_OPTIONS }}
+          pattern: tests_snapshots${{ needs.handle_inputs.outputs.TEST_OPTIONS }}-*
           delete-merged: true
 
     outputs:
-      snapshot_artifact_name: tests_snapshots${{ inputs.test_options }}
+      snapshot_artifact_name: tests_snapshots${{ needs.handle_inputs.outputs.TEST_OPTIONS }}
 
   pr_new_snapshots:
     name: Open a PR with the new snapshots
-    needs: [merge_artifacts_if_needed, call_get_app_metadata, call_get_test_metadata]
+    needs: [handle_inputs, merge_artifacts_if_needed, call_get_app_metadata, call_get_test_metadata]
     if: ${{ inputs.regenerate_snapshots == true }}
     uses: ./.github/workflows/_open_pr_with_new_snapshots.yml
     with:
-      app_repository: ${{ inputs.app_repository }}
-      app_branch_name: ${{ inputs.app_branch_name }}
+      app_repository: ${{ needs.handle_inputs.outputs.APP_REPOSITORY }}
+      app_branch_name: ${{ needs.handle_inputs.outputs.APP_BRANCH_NAME }}
       snapshots_artifact_name: ${{ needs.merge_artifacts_if_needed.outputs.snapshot_artifact_name }}
       snapshots_directory: ${{ needs.call_get_test_metadata.outputs.pytest_directory }}/snapshots

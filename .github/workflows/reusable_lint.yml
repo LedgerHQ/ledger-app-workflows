@@ -24,6 +24,23 @@ env:
   EXTENSIONS: ${{ inputs.extensions }}
 
 jobs:
+  handle_inputs:
+    name: Handle and validate inputs
+    runs-on: ubuntu-latest
+    outputs:
+      SOURCE: ${{ steps.set_outputs.outputs.SOURCE }}
+      VERSION: ${{ steps.set_outputs.outputs.VERSION }}
+      EXTENSIONS: ${{ steps.set_outputs.outputs.EXTENSIONS }}
+    steps:
+      - name: Handle Inputs
+        id: set_outputs
+        run: |
+          {
+            echo "SOURCE=${SOURCE}"
+            echo "VERSION=${VERSION}"
+            echo "EXTENSIONS=${EXTENSIONS}"
+          } >> "$GITHUB_OUTPUT"
+
   call_get_app_metadata:
     # Call this job to infer the application language (C or Rust)
     name: Retrieve application metadata
@@ -31,7 +48,7 @@ jobs:
 
   job_lint:
     name: Lint check
-    needs: call_get_app_metadata
+    needs: [handle_inputs, call_get_app_metadata]
     runs-on: ubuntu-22.04
     container:
       image: ghcr.io/ledgerhq/ledger-app-builder/ledger-app-builder:latest
@@ -53,11 +70,11 @@ jobs:
         if: ${{ needs.call_get_app_metadata.outputs.is_rust == 'false'}}
         uses: DoozyX/clang-format-lint-action@c71d0bf4e21876ebec3e5647491186f8797fde31  # v0.18.2
         with:
-          source: ${{ inputs.source }}
-          extensions: ${{ inputs.extensions }}
-          clangFormatVersion: ${{ inputs.version }}
+          source: ${{ needs.handle_inputs.outputs.SOURCE }}
+          extensions: ${{ needs.handle_inputs.outputs.EXTENSIONS }}
+          clangFormatVersion: ${{ needs.handle_inputs.outputs.VERSION }}
 
       - name: Lint check for Rust app
         if: ${{ needs.call_get_app_metadata.outputs.is_rust == 'true'}}
         run: cargo fmt --all -- --check
-        working-directory: ${{ env.SOURCE }}
+        working-directory: ${{ needs.handle_inputs.outputs.SOURCE }}

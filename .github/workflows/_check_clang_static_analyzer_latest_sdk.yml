@@ -31,15 +31,37 @@ permissions:
   actions: write  # Needed for upload-artifact
 
 env:
-  LEDGER_APP_WORKFLOWS_REF: ${{ inputs.workflows_ref }}
+  WORKFLOWS_REF: ${{ inputs.workflows_ref }}
   APP_REPOSITORY: ${{ inputs.app_repository }}
   RUN_FOR_DEVICES: ${{ inputs.run_for_devices }}
   RELATIVE_APP_DIRECTORY: ${{ inputs.relative_app_directory }}
   IS_RUST: ${{ inputs.is_rust }}
 
 jobs:
+  handle_inputs:
+    name: Handle and validate inputs
+    runs-on: ubuntu-latest
+    outputs:
+      WORKFLOWS_REF: ${{ steps.set_outputs.outputs.WORKFLOWS_REF }}
+      APP_REPOSITORY: ${{ steps.set_outputs.outputs.APP_REPOSITORY }}
+      RUN_FOR_DEVICES: ${{ steps.set_outputs.outputs.RUN_FOR_DEVICES }}
+      RELATIVE_APP_DIRECTORY: ${{ steps.set_outputs.outputs.RELATIVE_APP_DIRECTORY }}
+      IS_RUST: ${{ steps.set_outputs.outputs.IS_RUST }}
+    steps:
+      - name: Handle Inputs
+        id: set_outputs
+        run: |
+          {
+            echo "WORKFLOWS_REF=${WORKFLOWS_REF}"
+            echo "APP_REPOSITORY=${APP_REPOSITORY}"
+            echo "RUN_FOR_DEVICES=${RUN_FOR_DEVICES}"
+            echo "RELATIVE_APP_DIRECTORY=${RELATIVE_APP_DIRECTORY}"
+            echo "IS_RUST=${IS_RUST}"
+          } >> "$GITHUB_OUTPUT"
+
   scan_build:
     name: Clang Static Analyzer on master
+    needs: [handle_inputs]
     strategy:
       fail-fast: false
       matrix:
@@ -54,12 +76,12 @@ jobs:
         with:
           repository: LedgerHQ/ledger-app-workflows
           path: ./ledger-app-workflows
-          ref: ${{ inputs.workflows_ref }}
+          ref: ${{ needs.handle_inputs.outputs.WORKFLOWS_REF }}
 
       - name: Clone app repository
         uses: actions/checkout@v4
         with:
-          repository: ${{ inputs.app_repository }}
+          repository: ${{ needs.handle_inputs.outputs.APP_REPOSITORY }}
           path: app-repository
           submodules: recursive
 
@@ -71,14 +93,14 @@ jobs:
           ref: master
 
       - name: Build with Clang Static Analyzer
-        if: ${{ inputs.is_rust == 'false'}}
+        if: ${{ needs.handle_inputs.outputs.IS_RUST == 'false'}}
         run: |
             BOLOS_SDK=${GITHUB_WORKSPACE}/sdk && \
             ./ledger-app-workflows/scripts/check_all.sh -c scan -t ${{ matrix.device }} \
-              -a ./app-repository -b ${{ env.RELATIVE_APP_DIRECTORY }}
+              -a ./app-repository -b ${{ needs.handle_inputs.outputs.RELATIVE_APP_DIRECTORY }}
 
       - name: Upload scan result
-        if: failure() && ${{ inputs.is_rust == 'false'}}
+        if: failure() && ${{ needs.handle_inputs.outputs.IS_RUST == 'false'}}
         uses: actions/upload-artifact@v4
         with:
           name: scan-build

@@ -30,15 +30,37 @@ permissions:
   contents: read  # Needed to clone the repositories
 
 env:
-  LEDGER_APP_WORKFLOWS_REF: ${{ inputs.workflows_ref }}
+  WORKFLOWS_REF: ${{ inputs.workflows_ref }}
   APP_REPOSITORY: ${{ inputs.app_repository }}
   REPO_NAME: ${{ inputs.repo_name }}
   DOWNLOAD_MANIFEST_ARTIFACT_NAME: ${{ inputs.download_manifest_artifact_name }}
   RUN_FOR_DEVICES: ${{ inputs.run_for_devices }}
 
 jobs:
+  handle_inputs:
+    name: Handle and validate inputs
+    runs-on: ubuntu-latest
+    outputs:
+      WORKFLOWS_REF: ${{ steps.set_outputs.outputs.WORKFLOWS_REF }}
+      APP_REPOSITORY: ${{ steps.set_outputs.outputs.APP_REPOSITORY }}
+      REPO_NAME: ${{ steps.set_outputs.outputs.REPO_NAME }}
+      DOWNLOAD_MANIFEST_ARTIFACT_NAME: ${{ steps.set_outputs.outputs.DOWNLOAD_MANIFEST_ARTIFACT_NAME }}
+      RUN_FOR_DEVICES: ${{ steps.set_outputs.outputs.RUN_FOR_DEVICES }}
+    steps:
+      - name: Handle Inputs
+        id: set_outputs
+        run: |
+          {
+            echo "WORKFLOWS_REF=${WORKFLOWS_REF}"
+            echo "APP_REPOSITORY=${APP_REPOSITORY}"
+            echo "REPO_NAME=${REPO_NAME}"
+            echo "DOWNLOAD_MANIFEST_ARTIFACT_NAME=${DOWNLOAD_MANIFEST_ARTIFACT_NAME}"
+            echo "RUN_FOR_DEVICES=${RUN_FOR_DEVICES}"
+          } >> "$GITHUB_OUTPUT"
+
   check_makefile:
     name: Check Makefile
+    needs: [handle_inputs]
     strategy:
       fail-fast: false
       matrix:
@@ -51,22 +73,22 @@ jobs:
         with:
           repository: LedgerHQ/ledger-app-workflows
           path: ./ledger-app-workflows
-          ref: ${{ inputs.workflows_ref }}
+          ref: ${{ needs.handle_inputs.outputs.WORKFLOWS_REF }}
 
       - name: Clone app repository
         uses: actions/checkout@v4
         with:
-          repository: ${{ inputs.app_repository }}
+          repository: ${{ needs.handle_inputs.outputs.APP_REPOSITORY }}
           path: app-repository
           submodules: recursive
 
       - name: Download manifest
         uses: actions/download-artifact@v4
         with:
-          name: ${{ inputs.download_manifest_artifact_name }}
-          path: ${{ inputs.download_manifest_artifact_name }}
+          name: ${{ needs.handle_inputs.outputs.DOWNLOAD_MANIFEST_ARTIFACT_NAME }}
+          path: ${{ needs.handle_inputs.outputs.DOWNLOAD_MANIFEST_ARTIFACT_NAME }}
 
       - name: Run script
         run: |
             ./ledger-app-workflows/scripts/check_all.sh -c makefile -t ${{ matrix.device }} \
-              -a ./app-repository -m ${{ env.DOWNLOAD_MANIFEST_ARTIFACT_NAME }}
+              -a ./app-repository -m ${{ needs.handle_inputs.outputs.DOWNLOAD_MANIFEST_ARTIFACT_NAME }}

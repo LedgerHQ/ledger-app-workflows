@@ -39,16 +39,34 @@ permissions:
   contents: read  # Needed to clone the repositories
 
 jobs:
+  handle_inputs:
+    name: Handle and validate inputs
+    runs-on: ubuntu-latest
+    outputs:
+      APP_REPOSITORY: ${{ steps.set_outputs.outputs.APP_REPOSITORY }}
+      APP_BRANCH_NAME: ${{ steps.set_outputs.outputs.APP_BRANCH_NAME }}
+      PYTEST_DIRECTORY: ${{ steps.set_outputs.outputs.PYTEST_DIRECTORY }}
+    steps:
+      - name: Handle Inputs
+        id: set_outputs
+        run: |
+          {
+            echo "APP_REPOSITORY=${APP_REPOSITORY}"
+            echo "APP_BRANCH_NAME=${APP_BRANCH_NAME}"
+            echo "PYTEST_DIRECTORY=${PYTEST_DIRECTORY}"
+          } >> "$GITHUB_OUTPUT"
+
   fetch_metadata:
     name: Retrieve tests metadata
     runs-on: ubuntu-22.04
+    needs: [handle_inputs]
 
     steps:
       - name: Clone app repository
         uses: actions/checkout@v4
         with:
-          repository: ${{ inputs.app_repository }}
-          ref: ${{ inputs.app_branch_name }}
+          repository: ${{ needs.handle_inputs.outputs.APP_REPOSITORY }}
+          ref: ${{ needs.handle_inputs.outputs.APP_BRANCH_NAME }}
           submodules: recursive
           token: ${{ secrets.token && secrets.token || github.token }}
 
@@ -71,7 +89,7 @@ jobs:
           ledger-manifest --check . "$APP_MANIFEST"
 
           # Read the input directory from caller
-          input_pytest_dir="${{ env.PYTEST_DIRECTORY }}"
+          input_pytest_dir="${PYTEST_DIRECTORY}"
 
           if [ "$input_pytest_dir" != "None" ]; then
               # Use the provided input as-is

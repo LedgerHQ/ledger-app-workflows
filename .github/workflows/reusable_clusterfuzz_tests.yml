@@ -33,8 +33,29 @@ env:
   SECONDS_SCHEDULE: ${{ inputs.seconds_schedule }}
 
 jobs:
-  prepare_matrix:
+  handle_inputs:
+    name: Handle and validate inputs
     runs-on: ubuntu-latest
+    outputs:
+      EXEC_MODE: ${{ steps.set_outputs.outputs.EXEC_MODE }}
+      SECONDS_PR: ${{ steps.set_outputs.outputs.SECONDS_PR }}
+      SECONDS_PUSH: ${{ steps.set_outputs.outputs.SECONDS_PUSH }}
+      SECONDS_SCHEDULE: ${{ steps.set_outputs.outputs.SECONDS_SCHEDULE }}
+    steps:
+      - name: Handle Inputs
+        id: set_outputs
+        run: |
+          {
+            echo "EXEC_MODE=${EXEC_MODE}"
+            echo "SECONDS_PR=${SECONDS_PR}"
+            echo "SECONDS_PUSH=${SECONDS_PUSH}"
+            echo "SECONDS_SCHEDULE=${SECONDS_SCHEDULE}"
+          } >> "$GITHUB_OUTPUT"
+
+  prepare_matrix:
+    name: Prepare Dynamic Matrix
+    runs-on: ubuntu-latest
+    needs: [handle_inputs]
     outputs:
       matrix_json: ${{ steps.set_matrix.outputs.matrix }}
 
@@ -42,7 +63,7 @@ jobs:
       - name: Set Dynamic Matrix
         id: set_matrix
         run: |
-          if [ "${{ env.EXEC_MODE }}" == "pull_request" ]; then
+          if [ "${{ needs.handle_inputs.outputs.EXEC_MODE }}" == "pull_request" ]; then
             MATRIX='[{"sanitizer":"address","mode_cflite":"code-change"},{"sanitizer":"undefined","mode_cflite":"code-change"},{"sanitizer":"memory","mode_cflite":"code-change"}]'
           else
             MATRIX='[{"sanitizer":"address","mode_cflite":"batch"},{"sanitizer":"memory","mode_cflite":"batch"},{"sanitizer":"address","mode_cflite":"prune"},{"sanitizer":"coverage","mode_cflite":"coverage"}]'
@@ -52,25 +73,25 @@ jobs:
   fuzzing:
     name: ${{ matrix.mode_cflite }} (${{ matrix.sanitizer }})
     runs-on: ubuntu-latest
-    needs: prepare_matrix
+    needs: [handle_inputs, prepare_matrix]
     strategy:
       fail-fast: false
       matrix:
         include: ${{ fromJson(needs.prepare_matrix.outputs.matrix_json) }}
     concurrency:
-      group: ${{ github.workflow }}-${{ inputs.exec_mode }}-${{ matrix.sanitizer }}-${{ github.ref }}
+      group: ${{ github.workflow }}-${{ needs.handle_inputs.outputs.EXEC_MODE }}-${{ matrix.sanitizer }}-${{ github.ref }}
       cancel-in-progress: true
 
     steps:
       - name: Set Fuzz Seconds
         id: set_seconds
         run: |
-          if [ "${{ env.EXEC_MODE }}" == "pull_request" ]; then
-            FUZZ_SECONDS=${{ env.SECONDS_PR }}
+          if [ "${{ needs.handle_inputs.outputs.EXEC_MODE }}" == "pull_request" ]; then
+            FUZZ_SECONDS=${{ needs.handle_inputs.outputs.SECONDS_PR }}
           elif [ "${{ matrix.mode_cflite }}" == "coverage" ]; then
-            FUZZ_SECONDS=${{ env.SECONDS_SCHEDULE }}
+            FUZZ_SECONDS=${{ needs.handle_inputs.outputs.SECONDS_SCHEDULE }}
           else
-            FUZZ_SECONDS=${{ env.SECONDS_PUSH }}
+            FUZZ_SECONDS=${{ needs.handle_inputs.outputs.SECONDS_PUSH }}
           fi
           echo "fuzz_seconds=${FUZZ_SECONDS}" >> ${GITHUB_OUTPUT}
 
@@ -90,4 +111,4 @@ jobs:
           fuzz-seconds: ${{ steps.set_seconds.outputs.fuzz_seconds }}
           mode: ${{ matrix.mode_cflite }}
           sanitizer: ${{ matrix.sanitizer }}
-          output-sarif: ${{ inputs.exec_mode == 'pull_request' }}
+          output-sarif: ${{ needs.handle_inputs.outputs.EXEC_MODE == 'pull_request' }}

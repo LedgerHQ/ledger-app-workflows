@@ -32,6 +32,21 @@ env:
   RUN_FOR_DEVICES: ${{ inputs.run_for_devices }}
 
 jobs:
+  handle_inputs:
+    name: Handle and validate inputs
+    runs-on: ubuntu-latest
+    outputs:
+      APP_REPOSITORY: ${{ steps.set_outputs.outputs.APP_REPOSITORY }}
+      RUN_FOR_DEVICES: ${{ steps.set_outputs.outputs.RUN_FOR_DEVICES }}
+    steps:
+      - name: Handle Inputs
+        id: set_outputs
+        run: |
+          {
+            echo "APP_REPOSITORY=${APP_REPOSITORY}"
+            echo "RUN_FOR_DEVICES=${RUN_FOR_DEVICES}"
+          } >> "$GITHUB_OUTPUT"
+
   # We can't simply know the current ledger-app-workflow ref from inside the reusable workflow
   # We use the workaround linked in the following Github issue until a proper API is available at Github API level
   # https://github.com/actions/toolkit/issues/1264
@@ -49,17 +64,18 @@ jobs:
     # file, in order to output relevant directories, compatible devices, and other variables needed
     # by following jobs.
     name: Retrieve application metadata
+    needs: [handle_inputs]
     uses: ./.github/workflows/_get_app_metadata.yml
     with:
-      app_repository: ${{ inputs.app_repository }}
-      compatible_devices: ${{ inputs.run_for_devices }}
+      app_repository: ${{ needs.handle_inputs.outputs.APP_REPOSITORY }}
+      compatible_devices: ${{ needs.handle_inputs.outputs.RUN_FOR_DEVICES }}
 
   call_get_app_manifest:
     name: Dump app information
-    needs: [call_get_workflow_version, call_get_app_metadata]
+    needs: [handle_inputs, call_get_workflow_version, call_get_app_metadata]
     uses: ./.github/workflows/_get_app_manifest.yml
     with:
-      app_repository: ${{ inputs.app_repository }}
+      app_repository: ${{ needs.handle_inputs.outputs.APP_REPOSITORY }}
       workflows_ref: ${{ needs.call_get_workflow_version.outputs.version }}
       run_for_devices: ${{ needs.call_get_app_metadata.outputs.compatible_devices }}
       relative_app_directory: ${{ needs.call_get_app_metadata.outputs.build_directory }}
@@ -68,10 +84,10 @@ jobs:
 
   call_check_icons:
     name: Dispatch check
-    needs: [call_get_app_metadata, call_get_workflow_version, call_get_app_manifest]
+    needs: [handle_inputs, call_get_app_metadata, call_get_workflow_version, call_get_app_manifest]
     uses: ./.github/workflows/_check_icons.yml
     with:
-      app_repository: ${{ inputs.app_repository }}
+      app_repository: ${{ needs.handle_inputs.outputs.APP_REPOSITORY }}
       download_manifest_artifact_name: manifests
       workflows_ref: ${{ needs.call_get_workflow_version.outputs.version }}
       run_for_devices: ${{ needs.call_get_app_metadata.outputs.compatible_devices }}
@@ -86,28 +102,28 @@ jobs:
 
   call_check_makefile:
     name: Dispatch check
-    needs: [call_get_app_metadata, call_get_workflow_version, call_get_app_manifest]
+    needs: [handle_inputs, call_get_app_metadata, call_get_workflow_version, call_get_app_manifest]
     uses: ./.github/workflows/_check_makefile.yml
     with:
-      app_repository: ${{ inputs.app_repository }}
+      app_repository: ${{ needs.handle_inputs.outputs.APP_REPOSITORY }}
       download_manifest_artifact_name: manifests
       workflows_ref: ${{ needs.call_get_workflow_version.outputs.version }}
       run_for_devices: ${{ needs.call_get_app_metadata.outputs.compatible_devices }}
 
   call_check_readme:
     name: Dispatch check
-    needs: call_get_workflow_version
+    needs: [handle_inputs, call_get_workflow_version]
     uses: ./.github/workflows/_check_readme.yml
     with:
-      app_repository: ${{ inputs.app_repository }}
+      app_repository: ${{ needs.handle_inputs.outputs.APP_REPOSITORY }}
       workflows_ref: ${{ needs.call_get_workflow_version.outputs.version }}
 
   call_clang_static_analyzer:
     name: Dispatch check
-    needs: [call_get_app_metadata, call_get_workflow_version]
+    needs: [handle_inputs, call_get_app_metadata, call_get_workflow_version]
     uses: ./.github/workflows/_check_clang_static_analyzer.yml
     with:
-      app_repository: ${{ inputs.app_repository }}
+      app_repository: ${{ needs.handle_inputs.outputs.APP_REPOSITORY }}
       run_for_devices: ${{ needs.call_get_app_metadata.outputs.compatible_devices }}
       relative_app_directory: ${{ needs.call_get_app_metadata.outputs.build_directory }}
       is_rust: ${{ needs.call_get_app_metadata.outputs.is_rust }}
@@ -115,11 +131,11 @@ jobs:
 
   call_clang_static_analyzer_latest_sdk:
     name: Dispatch check
-    needs: [call_get_app_metadata, call_get_workflow_version]
+    needs: [handle_inputs, call_get_app_metadata, call_get_workflow_version]
     uses: ./.github/workflows/_check_clang_static_analyzer_latest_sdk.yml
     if: github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'scan_on_latest_sdk')
     with:
-      app_repository: ${{ inputs.app_repository }}
+      app_repository: ${{ needs.handle_inputs.outputs.APP_REPOSITORY }}
       run_for_devices: ${{ needs.call_get_app_metadata.outputs.compatible_devices }}
       relative_app_directory: ${{ needs.call_get_app_metadata.outputs.build_directory }}
       is_rust: ${{ needs.call_get_app_metadata.outputs.is_rust }}
