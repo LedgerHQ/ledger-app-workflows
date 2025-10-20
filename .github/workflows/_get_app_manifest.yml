@@ -70,17 +70,17 @@ jobs:
       - name: Call Cargo metadata dumper script
         if: ${{ inputs.is_rust == 'true'}}
         run: |
-            ./ledger-app-workflows/scripts/check_all.sh -r -c manifest -t ${{ matrix.device }} \
-              -a ./app-repository -b ${RELATIVE_APP_DIRECTORY} \
-              -m ../manifest_${{ matrix.device }}.json
+            ./ledger-app-workflows/scripts/check_all.sh -r -c manifest -t "${{ matrix.device }}" \
+              -a ./app-repository -b "${RELATIVE_APP_DIRECTORY}" \
+              -m "../manifest_${{ matrix.device }}.json"
 
       - name: Call Makefile dumper script
         if: ${{ inputs.is_rust == 'false'}}
         run: |
-            eval "BOLOS_SDK=\$$(echo ${{ matrix.device }} | tr [:lower:] [:upper:])_SDK" && \
-            ./ledger-app-workflows/scripts/check_all.sh -c manifest -t ${{ matrix.device }} \
-              -a ./app-repository -b ${RELATIVE_APP_DIRECTORY} \
-              -m ../manifest_${{ matrix.device }}.json
+            eval "BOLOS_SDK=\$$(echo ${{ matrix.device }} | tr '[:lower:]' '[:upper:]')_SDK" && \
+            ./ledger-app-workflows/scripts/check_all.sh -c manifest -t "${{ matrix.device }}" \
+              -a ./app-repository -b "${RELATIVE_APP_DIRECTORY}" \
+              -m "../manifest_${{ matrix.device }}.json"
 
       - name: Upload app manifest
         uses: actions/upload-artifact@v4

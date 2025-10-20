@@ -43,7 +43,7 @@ jobs:
           ref: ${{ inputs.app_branch_name }}
 
       - name: HTML documentation
-        run: doxygen ${DOXY_FILE}
+        run: doxygen "${DOXY_FILE}"
 
       - uses: actions/upload-artifact@v4
         with:

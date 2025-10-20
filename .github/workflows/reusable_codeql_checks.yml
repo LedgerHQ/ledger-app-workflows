@@ -82,7 +82,7 @@ jobs:
           # Generate SDK environment variables from device names
           sdks_json=$(echo "${devices_json}" | jq -c 'map("$" + (. | ascii_upcase) + "_SDK")')
 
-          echo "sdks_config=${sdks_json}" >> "$GITHUB_OUTPUT"
+          echo "sdks_config=${sdks_json}" >> "${GITHUB_OUTPUT}"
 
       - name: Print devices and SDKs
         run: |

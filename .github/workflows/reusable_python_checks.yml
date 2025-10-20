@@ -17,16 +17,13 @@ on:
         description: "Select the Linter to run (pylint, flake8 or yapf)"
         type: string
         required: true
-        default: ''
       run_type_check:
         description: "Whether to run mypy type check (defaults to false)"
         required: true
-        default: false
         type: boolean
       src_directory:
         description: "The directory containing the python sources to check"
         required: true
-        default: ''
         type: string
       req_directory:
         description: "The directory containing the requirements.txt (if any)"
@@ -93,15 +90,19 @@ jobs:
 
           # Install project requirements
           if [ -n "${REQ_DIRECTORY}" ] && [ -f "${REQ_DIRECTORY}/requirements.txt" ]; then
-            pip install -r ${REQ_DIRECTORY}/requirements.txt
+            pip install -r "${REQ_DIRECTORY}/requirements.txt"
           fi
 
-      - name: Change to setup directory
-        if: ${{ inputs.setup_directory != '' }}
-        run: echo "WORK_DIR=${{ env.SETUP_DIRECTORY }}" >> $GITHUB_ENV
+      - name: Set working directory
+        run: |
+          if [ -n "${SETUP_DIRECTORY}" ]; then
+            echo "WORK_DIR=${SETUP_DIRECTORY}" >> "${GITHUB_ENV}"
+          else
+            echo "WORK_DIR=." >> "${GITHUB_ENV}"
+          fi
 
-      - name: Run ${{ inputs.run_linter }}
-        working-directory: ${{ env.WORK_DIR || '.' }}
+      - name: Run ${{ env.RUN_LINTER }}
+        working-directory: ${{ env.WORK_DIR }}
         run: |
           case "${RUN_LINTER}" in
             "pylint")
@@ -109,13 +110,13 @@ jobs:
               if [ -f "./setup.cfg" ]; then
                 ARGS+=(--rcfile "./setup.cfg")
               fi
-              pylint "${ARGS[@]}" ${SRC_DIRECTORY}
+              pylint "${ARGS[@]}" "${SRC_DIRECTORY}"
               ;;
             "flake8")
-              flake8 ${SRC_DIRECTORY}
+              flake8 "${SRC_DIRECTORY}"
               ;;
             "yapf")
-              yapf ${SRC_DIRECTORY} --recursive -d
+              yapf "${SRC_DIRECTORY}" --recursive -d
               ;;
           esac
 
@@ -147,14 +148,18 @@ jobs:
           python -m pip install --upgrade pip
           pip install mypy
           if [ -n "${REQ_DIRECTORY}" ] && [ -f "${REQ_DIRECTORY}/requirements.txt" ]; then
-            pip install -r ${REQ_DIRECTORY}/requirements.txt
+            pip install -r "${REQ_DIRECTORY}/requirements.txt"
           fi
 
-      - name: Change to setup directory
-        if: ${{ inputs.setup_directory != '' }}
-        run: echo "WORK_DIR=${{ env.SETUP_DIRECTORY }}" >> $GITHUB_ENV
+      - name: Set working directory
+        run: |
+          if [ -n "${SETUP_DIRECTORY}" ]; then
+            echo "WORK_DIR=${SETUP_DIRECTORY}" >> "${GITHUB_ENV}"
+          else
+            echo "WORK_DIR=." >> "${GITHUB_ENV}"
+          fi
 
       - name: Mypy type checking
-        working-directory: ${{ env.WORK_DIR || '.' }}
+        working-directory: ${{ env.WORK_DIR }}
         run: |
-          mypy ${SRC_DIRECTORY}
+          mypy "${SRC_DIRECTORY}"

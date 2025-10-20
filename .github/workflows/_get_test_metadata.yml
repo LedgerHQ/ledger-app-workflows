@@ -104,9 +104,9 @@ jobs:
           fi
 
           # Set output for downstream steps or workflows
-          echo "pytest_directory=${pytest_directory}" >> "$GITHUB_OUTPUT"
+          echo "pytest_directory=${pytest_directory}" >> "${GITHUB_OUTPUT}"
           echo "Inferred test metadata:"
-          cat "$GITHUB_OUTPUT"
+          cat "${GITHUB_OUTPUT}"
 
     outputs:
       pytest_directory: ${{ steps.fetch_metadata.outputs.pytest_directory }}
