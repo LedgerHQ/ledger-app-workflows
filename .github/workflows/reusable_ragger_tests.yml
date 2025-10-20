@@ -67,7 +67,7 @@ on:
       test_filter:
         description: 'Specify an expression which implements a substring match on the test names'
         required: false
-        default: '""'
+        default: ''
         type: string
       test_options:
         description: 'Specify optional parameters to be passed to the running test'
@@ -143,7 +143,7 @@ jobs:
     steps:
       - name: Check metadata
         run: |
-          if [ '${{ needs.call_get_test_metadata.outputs.pytest_directory }}' = 'None' ]; then
+          if [ "${{ needs.call_get_test_metadata.outputs.pytest_directory }}" = 'None' ]; then
               >&2 echo "ERROR: This workflow either needs a 'ledger_app.toml' manifest with a 'tests.pytest_directory' section, or be configured with a valid 'test_dir' parameter"
               exit 1
           fi
@@ -160,12 +160,12 @@ jobs:
         run: |
           if [ "${{ needs.call_get_app_metadata.outputs.is_rust }}" = "true" ];
           then
-              echo "Set Rust binary path" && \
-              cd ${{ needs.call_get_app_metadata.outputs.build_directory }} && \
-              binary_path=$(cargo metadata --no-deps --format-version 1 | jq -r '.target_directory')/ && \
-              echo "binary_path=$binary_path" >> $GITHUB_OUTPUT
+              echo "Set Rust binary path"
+              cd ${{ needs.call_get_app_metadata.outputs.build_directory }}
+              binary_path=$(cargo metadata --no-deps --format-version 1 | jq -r '.target_directory')
+              echo "binary_path=${binary_path}" >> "${GITHUB_OUTPUT}"
           else
-              echo "binary_path=${{ needs.call_get_app_metadata.outputs.build_directory }}/build/" >> $GITHUB_OUTPUT
+              echo "binary_path=${{ needs.call_get_app_metadata.outputs.build_directory }}/build" >> "${GITHUB_OUTPUT}"
           fi
 
       - name: Download app binaries
@@ -175,7 +175,7 @@ jobs:
           path: ${{ steps.set_binary_path.outputs.binary_path }}
 
       - name: Display structure of downloaded files
-        run: ls -R ${{ steps.set_binary_path.outputs.binary_path }}
+        run: ls -1 ${{ steps.set_binary_path.outputs.binary_path }}
 
       - name: Download additional app binaries if required
         if: ${{ inputs.additional_app_binaries_artifact != '' }}
@@ -186,7 +186,7 @@ jobs:
 
       - name: Display structure of downloaded files
         if: ${{ inputs.additional_app_binaries_artifact != '' }}
-        run: ls -R ${ADDITIONAL_APP_BINARIES_ARTIFACT_DIR}
+        run: ls -1 ${ADDITIONAL_APP_BINARIES_ARTIFACT_DIR}
 
       - name: Download additional lib binaries if required
         if: ${{ inputs.lib_binaries_artifact != '' }}
@@ -197,7 +197,7 @@ jobs:
 
       - name: Display structure of downloaded files
         if: ${{ inputs.lib_binaries_artifact != '' }}
-        run: ls -R ${LIB_BINARIES_ARTIFACT_DIR}
+        run: ls -1 ${LIB_BINARIES_ARTIFACT_DIR}
 
       - name: Install tests dependencies
         run: |
@@ -218,13 +218,17 @@ jobs:
           CTEST_OUTPUT_ON_FAILURE: 1
           PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION: python
         run: |
+          if [ -n "${TEST_FILTER}" ]; then
+            FILTER="-k ${TEST_FILTER}"
+          fi
+          if [ "${REGENERATE_SNAPSHOTS}" = "true" ]; then
+            SNAP="--golden_run"
+          fi
           pytest ${{ needs.call_get_test_metadata.outputs.pytest_directory }}/ \
-                 --tb=short -v \
-                 --device ${{ matrix.device }} \
-                 -k ${TEST_FILTER} \
+                 --tb=short -v --device "${{ matrix.device }}" \
+                 ${FILTER} ${SNAP} \
                  ${TEST_OPTIONS} \
-                 ${{ secrets.secret_test_options }} \
-                 ${{ env.REGENERATE_SNAPSHOTS == true && '--golden_run' || '' }}
+                 ${{ secrets.secret_test_options }}
 
       # Compute a unique name for this upload
       - name: Compute artifact name
@@ -278,7 +282,7 @@ jobs:
         id: upload-flag
         if: ${{ (failure() && inputs.upload_snapshots_on_failure == true) || ( success() && inputs.regenerate_snapshots == true) }}
         run: |
-          echo "artifact_uploaded=true" >> "$GITHUB_OUTPUT"
+          echo "artifact_uploaded=true" >> "${GITHUB_OUTPUT}"
 
     outputs:
       snapshot_artifact_uploaded: ${{ steps.upload-flag.outputs.artifact_uploaded }}

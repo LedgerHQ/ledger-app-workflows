@@ -55,16 +55,16 @@ jobs:
           fetch-depth: 0
 
       - name: Build Python package
+        working-directory: ${{ env.PACKAGE_DIRECTORY }}
         run: |
           # Needed to workaround this bug https://github.com/pypa/setuptools/issues/4759
           # To be removed when it's fixed
           pip install -U packaging
           pip install --upgrade pip build twine
-          cd ${PACKAGE_DIRECTORY}
           python -m build
           pip install .
           python -m twine check dist/*
-          echo "TAG_VERSION=$(python -c 'from ${PACKAGE_NAME} import __version__; print(__version__)')" >> "$GITHUB_ENV"
+          echo "TAG_VERSION=$(python -c 'from ${PACKAGE_NAME} import __version__; print(__version__)')" >> "${GITHUB_ENV}"
 
       - name: Display current status
         run: |
@@ -72,8 +72,8 @@ jobs:
 
       - name: Check version against CHANGELOG
         if: ${{ success() && inputs.publish }}
+        working-directory: ${{ env.PACKAGE_DIRECTORY }}
         run: |
-          cd ${PACKAGE_DIRECTORY}
           CHANGELOG_VERSION=$(grep -Po '(?<=## \[)(\d+\.)+[^\]]' CHANGELOG.md | head -n 1)
           if [ "${TAG_VERSION}" == "${CHANGELOG_VERSION}" ]
           then
@@ -84,7 +84,7 @@ jobs:
 
       - name: Publish Python package on pypi.org
         if: ${{ success() && inputs.publish }}
-        run: python -m twine upload ${PACKAGE_DIRECTORY}/dist/*
+        run: python -m twine upload "${PACKAGE_DIRECTORY}/dist/*"
         env:
           TWINE_USERNAME: __token__
           TWINE_PASSWORD: ${{ secrets.pypi_token  }}
@@ -98,7 +98,7 @@ jobs:
 
       - name: Publish Python package on Ledger Artifactory
         if: ${{ success() && inputs.publish && inputs.jfrog_deployment }}
-        run: python -m twine upload ${PACKAGE_DIRECTORY}/dist/*
+        run: python -m twine upload "${PACKAGE_DIRECTORY}/dist/*"
         env:
           TWINE_REPOSITORY_URL: https://jfrog.ledgerlabs.net/artifactory/api/pypi/embedded-apps-pypi-prod-green
           TWINE_USERNAME: ${{ steps.jfrog-login.outputs.oidc-user }}
@@ -130,4 +130,4 @@ jobs:
           files: |
             LICENSE
             CHANGELOG.md
-            ${PACKAGE_DIRECTORY}/dist/*
+            ${{ inputs.package_directory }}/dist/*

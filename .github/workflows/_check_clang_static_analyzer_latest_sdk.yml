@@ -74,11 +74,11 @@ jobs:
         if: ${{ inputs.is_rust == 'false'}}
         run: |
             BOLOS_SDK=${GITHUB_WORKSPACE}/sdk && \
-            ./ledger-app-workflows/scripts/check_all.sh -c scan -t ${{ matrix.device }} \
-              -a ./app-repository -b ${RELATIVE_APP_DIRECTORY}
+            ./ledger-app-workflows/scripts/check_all.sh -c scan -t "${{ matrix.device }}" \
+              -a ./app-repository -b "${RELATIVE_APP_DIRECTORY}"
 
       - name: Upload scan result
-        if: failure() && ${{ inputs.is_rust == 'false'}}
+        if: ${{ failure() && inputs.is_rust == 'false'}}
         uses: actions/upload-artifact@v4
         with:
           name: scan-build

@@ -66,23 +66,23 @@ jobs:
       - name: Check Rust SDK version
         if: ${{ inputs.is_rust == 'true'}}
         run: |
-            ./ledger-app-workflows/scripts/check_rust_sdk.sh ./app-repository/${RELATIVE_APP_DIRECTORY}
+            ./ledger-app-workflows/scripts/check_rust_sdk.sh "./app-repository/${RELATIVE_APP_DIRECTORY}"
 
       - name: Run Clippy
         if: ${{ inputs.is_rust == 'true'}}
         run: |
-            ./ledger-app-workflows/scripts/check_all.sh -r -c scan -t ${{ matrix.device }} \
-              -a ./app-repository -b ${RELATIVE_APP_DIRECTORY}
+            ./ledger-app-workflows/scripts/check_all.sh -r -c scan -t "${{ matrix.device }}" \
+              -a ./app-repository -b "${RELATIVE_APP_DIRECTORY}"
 
       - name: Build with Clang Static Analyzer
         if: ${{ inputs.is_rust == 'false'}}
         run: |
-            eval "BOLOS_SDK=\$$(echo ${{ matrix.device }} | tr [:lower:] [:upper:])_SDK" && \
-            ./ledger-app-workflows/scripts/check_all.sh -c scan -t ${{ matrix.device }} \
-              -a ./app-repository -b ${RELATIVE_APP_DIRECTORY}
+            eval "BOLOS_SDK=\$$(echo ${{ matrix.device }} | tr '[:lower:]' '[:upper:]')_SDK" && \
+            ./ledger-app-workflows/scripts/check_all.sh -c scan -t "${{ matrix.device }}" \
+              -a ./app-repository -b "${RELATIVE_APP_DIRECTORY}"
 
       - name: Upload scan result
-        if: failure() && ${{ inputs.is_rust == 'false'}}
+        if: ${{ failure() && inputs.is_rust == 'false'}}
         uses: actions/upload-artifact@v4
         with:
           name: scan-build
