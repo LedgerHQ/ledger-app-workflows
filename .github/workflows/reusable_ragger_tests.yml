@@ -67,7 +67,7 @@ on:
       test_filter:
         description: 'Specify an expression which implements a substring match on the test names'
         required: false
-        default: ''
+        default: '""'
         type: string
       test_options:
         description: 'Specify optional parameters to be passed to the running test'
@@ -81,6 +81,11 @@ on:
         type: boolean
       container_image:
         description: 'Optional container image to run the ragger_tests job'
+        required: false
+        default: ''
+        type: string
+      capture_file:
+        description: 'Optional file name to capture pytest logs into an artifact'
         required: false
         default: ''
         type: string
@@ -109,6 +114,7 @@ env:
   TEST_OPTIONS: ${{ inputs.test_options }}
   REGENERATE_SNAPSHOTS: ${{ inputs.regenerate_snapshots }}
   CONTAINER_IMAGE: ${{ inputs.container_image }}
+  CAPTURE_FILE: ${{ inputs.capture_file }}
 
 jobs:
   call_get_app_metadata:
@@ -142,11 +148,10 @@ jobs:
 
     steps:
       - name: Check metadata
+        if: ${{ needs.call_get_test_metadata.outputs.pytest_directory == 'None' }}
         run: |
-          if [ "${{ needs.call_get_test_metadata.outputs.pytest_directory }}" = 'None' ]; then
-              >&2 echo "ERROR: This workflow either needs a 'ledger_app.toml' manifest with a 'tests.pytest_directory' section, or be configured with a valid 'test_dir' parameter"
-              exit 1
-          fi
+          echo "ERROR: This workflow either needs a 'ledger_app.toml' manifest with a 'tests.pytest_directory' section, or be configured with a valid 'test_dir' parameter"
+          exit 1
 
       - name: Clone
         uses: actions/checkout@v4
@@ -214,21 +219,46 @@ jobs:
           rm -rf ${{ needs.call_get_test_metadata.outputs.pytest_directory }}/snapshots
 
       - name: Run test
+        id: run_pytest
         env:
           CTEST_OUTPUT_ON_FAILURE: 1
           PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION: python
         run: |
-          if [ -n "${TEST_FILTER}" ]; then
-            FILTER="-k ${TEST_FILTER}"
+          FILTER_ARG=""
+          if [ -n "${TEST_FILTER}" ] && [ "${TEST_FILTER}" != '""' ]; then
+            FILTER_ARG="-k ${TEST_FILTER}"
           fi
+          SNAP_ARG=""
           if [ "${REGENERATE_SNAPSHOTS}" = "true" ]; then
-            SNAP="--golden_run"
+            SNAP_ARG="--golden_run"
           fi
-          pytest ${{ needs.call_get_test_metadata.outputs.pytest_directory }}/ \
-                 --tb=short -v --device "${{ matrix.device }}" \
-                 ${FILTER} ${SNAP} \
-                 ${TEST_OPTIONS} \
-                 ${{ secrets.secret_test_options }}
+
+          echo "FILTER_ARG='${FILTER_ARG}'"
+          echo "SNAP_ARG='${SNAP_ARG}'"
+
+          if [ -n "${CAPTURE_FILE}" ]; then
+            # Capture pytest output to a file
+            pytest "${{ needs.call_get_test_metadata.outputs.pytest_directory }}" \
+                   --tb=short -v --device "${{ matrix.device }}" \
+                   ${FILTER_ARG} \
+                   ${SNAP_ARG} \
+                   ${TEST_OPTIONS} \
+                   ${{ secrets.secret_test_options }} -s 2>&1 | tee pytest_output.log
+          else
+            pytest "${{ needs.call_get_test_metadata.outputs.pytest_directory }}" \
+                   --tb=short -v --device "${{ matrix.device }}" \
+                   ${FILTER_ARG} \
+                   ${SNAP_ARG} \
+                   ${TEST_OPTIONS} \
+                   ${{ secrets.secret_test_options }}
+          fi
+
+      - name: Upload pytest logs
+        if: ${{ inputs.capture_file != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: pytest-logs-${{ matrix.device }}
+          path: pytest_output.log
 
       # Compute a unique name for this upload
       - name: Compute artifact name
@@ -287,6 +317,29 @@ jobs:
     outputs:
       snapshot_artifact_uploaded: ${{ steps.upload-flag.outputs.artifact_uploaded }}
       snapshot_artifact_basename: ${{ steps.compute_name.outputs.artifact_basename }}
+
+  merge_pytest_logs:
+    name: Merge pytest logs
+    needs: ragger_tests
+    runs-on: ubuntu-22.04
+    if: ${{ inputs.capture_file != '' }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: pytest-logs-*
+          path: logs
+          merge-multiple: true
+          delete-merged: true
+
+      - name: Combine logs
+        run: |
+          find logs -name "pytest_output.log" -exec cat {} \; > "${CAPTURE_FILE}.log"
+
+      - name: Upload combined logs
+        uses: actions/upload-artifact@v4
+        with:
+          name: "${{ inputs.capture_file }}"
+          path: "${{ inputs.capture_file }}.log"
 
   merge_artifacts_if_needed:
     # Merge matrix output
