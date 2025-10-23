@@ -29,9 +29,23 @@ on:
         description: 'If not provided, the workflow will build the Ethereum app.'
         type: string
       regenerate_snapshots:
+        description: 'Whether to regenerate the snapshots used for the tests.'
         required: false
         default: false
         type: boolean
+
+permissions:
+  contents: write       # Needed for reusable_ragger_tests.yml
+  actions: write        # Needed for reusable_ragger_tests.yml and reusable_build.yml
+  pull-requests: write  # Needed for reusable_ragger_tests.yml
+
+env:
+  APP_REPOSITORY: ${{ inputs.app_repository }}
+  APP_BRANCH_NAME: ${{ inputs.app_branch_name }}
+  DOWNLOAD_APP_BINARIES_ARTIFACT: ${{ inputs.download_app_binaries_artifact }}
+  EXCHANGE_BUILD_ARTIFACT: ${{ inputs.exchange_build_artifact }}
+  ETHEREUM_BUILD_ARTIFACT: ${{ inputs.ethereum_build_artifact }}
+  REGENERATE_SNAPSHOTS: ${{ inputs.regenerate_snapshots }}
 
 jobs:
   build_app:
@@ -76,9 +90,9 @@ jobs:
         id: get_exchange_binaries
         run: |
           if [ "${{ needs.build_exchange.result }}" = "skipped" ]; then
-            echo "exchange_build_artifact=${{ inputs.exchange_build_artifact }}" >> "$GITHUB_OUTPUT"
+            echo "exchange_build_artifact=${EXCHANGE_BUILD_ARTIFACT}" >> "${GITHUB_OUTPUT}"
           elif [ "${{ needs.build_exchange.result }}" = "success" ]; then
-            echo "exchange_build_artifact=app_exchange_binaries" >> "$GITHUB_OUTPUT"
+            echo "exchange_build_artifact=app_exchange_binaries" >> "${GITHUB_OUTPUT}"
           else
             echo "Not able to retrieve Exchange binaries artifact name" >&2
             exit 1
@@ -87,9 +101,9 @@ jobs:
         id: get_ethereum_binaries
         run: |
           if [ "${{ needs.build_ethereum.result }}" = "skipped" ]; then
-            echo "ethereum_build_artifact=${{ inputs.ethereum_build_artifact }}" >> "$GITHUB_OUTPUT"
+            echo "ethereum_build_artifact=${ETHEREUM_BUILD_ARTIFACT}" >> "${GITHUB_OUTPUT}"
           elif [ "${{ needs.build_ethereum.result }}" = "success" ]; then
-            echo "ethereum_build_artifact=app_ethereum_binaries" >> "$GITHUB_OUTPUT"
+            echo "ethereum_build_artifact=app_ethereum_binaries" >> "${GITHUB_OUTPUT}"
           else
             echo "Not able to retrieve Ethereum binaries artifact name" >&2
             exit 1
@@ -116,15 +130,15 @@ jobs:
           python3 -m pip install ledgered
       - name: Find swap test directory
         id: find_swap_test_dir
+        working-directory: app_coin
         run: |
-          cd app_coin
           # Get the swap test directory using ledger-manifest and jq
           swap_test_dir=$(ledger-manifest --output-pytest-directories -j -- ledger_app.toml | jq -r '.pytest_directories[1]')
-          if [ -z "$swap_test_dir" ]; then
+          if [ -z "${swap_test_dir}" ]; then
             echo "Swap test directory not found!" >&2
             exit 1
           fi
-          echo "swap_test_dir=$swap_test_dir" >> "$GITHUB_OUTPUT"
+          echo "swap_test_dir=${swap_test_dir}" >> "${GITHUB_OUTPUT}"
       - name: Show found swap test directory
         run: |
           echo "Display found swap test directory"
@@ -142,9 +156,11 @@ jobs:
       - name: Set swap test directories
         id: get_swap_test_dir
         run: |
-          echo "swap_test_dir=${{ needs.get_swap_test_dir.outputs.swap_test_dir }}" >> "$GITHUB_OUTPUT"
-          echo "main_app_dir=${{ needs.get_swap_test_dir.outputs.swap_test_dir }}/.test_dependencies/main/app-exchange/build" >> "$GITHUB_OUTPUT"
-          echo "lib_app_dir=${{ needs.get_swap_test_dir.outputs.swap_test_dir }}/.test_dependencies/libraries/app-ethereum/build" >> "$GITHUB_OUTPUT"
+          {
+            echo "swap_test_dir=${{ needs.get_swap_test_dir.outputs.swap_test_dir }}"
+            echo "main_app_dir=${{ needs.get_swap_test_dir.outputs.swap_test_dir }}/.test_dependencies/main/app-exchange/build"
+            echo "lib_app_dir=${{ needs.get_swap_test_dir.outputs.swap_test_dir }}/.test_dependencies/libraries/app-ethereum/build"
+          } >> "${GITHUB_OUTPUT}"
       - name: Show swap test directories
         run: |
           echo "Swap test directory: ${{ steps.get_swap_test_dir.outputs.swap_test_dir }}"

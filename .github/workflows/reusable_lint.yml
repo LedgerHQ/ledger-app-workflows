@@ -1,19 +1,30 @@
-name: Code style check
+name: Code style checks
 
 on:
   workflow_call:
     inputs:
       source:
+        description: "The source directory to lint"
         required: true
         type: string
       version:
+        description: "The clang-format version to use"
         required: false
         type: number
         default: 14
       extensions:
+        description: "The file extensions to lint, comma-separated"
         required: false
         default: 'h,c,proto'
         type: string
+
+permissions:
+  contents: read
+
+env:
+  SOURCE: ${{ inputs.source }}
+  VERSION: ${{ inputs.version }}
+  EXTENSIONS: ${{ inputs.extensions }}
 
 jobs:
   call_get_app_metadata:
@@ -34,13 +45,16 @@ jobs:
 
       - name: Ensure clang-format is customized
         if: ${{ needs.call_get_app_metadata.outputs.is_rust == 'false'}}
-        uses: andstor/file-existence-action@v3
-        with:
-          files: ".clang-format"
+        run: |
+          if [ ! -f ".clang-format" ]; then
+            echo "⚠️ Warning: .clang-format file not found, using default configuration"
+          else
+            echo "✅ .clang-format file exists"
+          fi
 
       - name: Lint check for C app
         if: ${{ needs.call_get_app_metadata.outputs.is_rust == 'false'}}
-        uses: DoozyX/clang-format-lint-action@v0.18.2
+        uses: DoozyX/clang-format-lint-action@c71d0bf4e21876ebec3e5647491186f8797fde31  # v0.18.2
         with:
           source: ${{ inputs.source }}
           extensions: ${{ inputs.extensions }}
@@ -49,4 +63,4 @@ jobs:
       - name: Lint check for Rust app
         if: ${{ needs.call_get_app_metadata.outputs.is_rust == 'true'}}
         run: cargo fmt --all -- --check
-        working-directory: ${{ inputs.source }}
+        working-directory: ${{ env.SOURCE }}

@@ -1,0 +1,93 @@
+name: ClusterFuzzLite Reusable Fuzzing
+
+on:
+  workflow_call:
+    inputs:
+      exec_mode:
+        description: 'Execution mode: github.event_name ("pull_request", "push", "schedule")'
+        required: true
+        type: string
+      seconds_pr:
+        description: 'Fuzzing duration in seconds for Pull Requests.'
+        required: false
+        type: number
+        default: 300  # 5 minutes for PR
+      seconds_push:
+        description: 'Fuzzing duration in seconds when push on branch.'
+        required: false
+        type: number
+        default: 600  # 10 minutes for push cron
+      seconds_schedule:
+        description: 'Fuzzing duration in seconds for scheduled tasks.'
+        required: false
+        type: number
+        default: 18000  # 5 hours for schedule cron
+
+permissions:
+  contents: read
+
+env:
+  EXEC_MODE: ${{ inputs.exec_mode }}
+  SECONDS_PR: ${{ inputs.seconds_pr }}
+  SECONDS_PUSH: ${{ inputs.seconds_push }}
+  SECONDS_SCHEDULE: ${{ inputs.seconds_schedule }}
+
+jobs:
+  prepare_matrix:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix_json: ${{ steps.set_matrix.outputs.matrix }}
+
+    steps:
+      - name: Set Dynamic Matrix
+        id: set_matrix
+        run: |
+          if [ "${EXEC_MODE}" == "pull_request" ]; then
+            MATRIX='[{"sanitizer":"address","mode_cflite":"code-change"},{"sanitizer":"undefined","mode_cflite":"code-change"},{"sanitizer":"memory","mode_cflite":"code-change"}]'
+          else
+            MATRIX='[{"sanitizer":"address","mode_cflite":"batch"},{"sanitizer":"memory","mode_cflite":"batch"},{"sanitizer":"address","mode_cflite":"prune"},{"sanitizer":"coverage","mode_cflite":"coverage"}]'
+          fi
+          echo "matrix=${MATRIX}" >> "${GITHUB_OUTPUT}"
+
+  fuzzing:
+    name: ${{ matrix.mode_cflite }} (${{ matrix.sanitizer }})
+    runs-on: ubuntu-latest
+    needs: prepare_matrix
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJson(needs.prepare_matrix.outputs.matrix_json) }}
+    concurrency:
+      group: ${{ github.workflow }}-${{ inputs.exec_mode }}-${{ matrix.sanitizer }}-${{ github.ref }}
+      cancel-in-progress: true
+
+    steps:
+      - name: Set Fuzz Seconds
+        id: set_seconds
+        run: |
+          if [ "${EXEC_MODE}" == "pull_request" ]; then
+            FUZZ_SECONDS=${SECONDS_PR}
+          elif [ "${{ matrix.mode_cflite }}" == "coverage" ]; then
+            FUZZ_SECONDS=${SECONDS_SCHEDULE}
+          else
+            FUZZ_SECONDS=${SECONDS_PUSH}
+          fi
+          echo "fuzz_seconds=${FUZZ_SECONDS}" >> "${GITHUB_OUTPUT}"
+
+      - name: Build Fuzzers (${{ matrix.mode_cflite }}/${{ matrix.sanitizer }})
+        id: build
+        uses: google/clusterfuzzlite/actions/build_fuzzers@v1
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          language: c
+          sanitizer: ${{ matrix.sanitizer }}
+
+      - name: Run Fuzzers (${{ matrix.mode_cflite }}/${{ matrix.sanitizer }})
+        id: run
+        uses: google/clusterfuzzlite/actions/run_fuzzers@v1
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          fuzz-seconds: ${{ steps.set_seconds.outputs.fuzz_seconds }}
+          mode: ${{ matrix.mode_cflite }}
+          sanitizer: ${{ matrix.sanitizer }}
+          output-sarif: ${{ inputs.exec_mode == 'pull_request' }}

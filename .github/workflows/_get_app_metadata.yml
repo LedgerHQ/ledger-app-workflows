@@ -57,6 +57,14 @@ on:
 
 env:
   APP_MANIFEST: "ledger_app.toml"
+  APP_REPOSITORY: ${{ inputs.app_repository }}
+  APP_BRANCH_NAME: ${{ inputs.app_branch_name }}
+  COMPATIBLE_DEVICES: ${{ inputs.compatible_devices }}
+  FLAGS: ${{ inputs.flags }}
+  USE_CASE: ${{ inputs.use_case }}
+
+permissions:
+  contents: read  # Needed to clone the repositories
 
 jobs:
   fetch_metadata:
@@ -79,7 +87,6 @@ jobs:
       - name: Gather application metadata, from inputs or 'ledger_app.toml'
         id: fetch_metadata
         run: |
-          pytest_directory='${{ inputs.pytest_directory }}'
           if [ ! -f "$APP_MANIFEST" ];
           then
               >&2 echo "/!\ No $APP_MANIFEST manifest detected!"
@@ -94,39 +101,39 @@ jobs:
           ledger-manifest --check . "$APP_MANIFEST"
 
           # build directory
-          echo "build_directory=$(ledger-manifest --output-build-directory "$APP_MANIFEST")" >> "$GITHUB_OUTPUT"
+          echo "build_directory=$(ledger-manifest --output-build-directory "$APP_MANIFEST")" >> "${GITHUB_OUTPUT}"
 
           # get device list as a single line json formatted value
           compatible_devices="$(ledger-manifest --output-devices "$APP_MANIFEST" -j | jq -rc '.devices')"
-          if [ '${{ inputs.compatible_devices }}' != 'None' ];
+          if [ "${COMPATIBLE_DEVICES}" != 'None' ];
           then
               # in case classic manifest with devices, the input takes precedence on it
-              compatible_devices='${{ inputs.compatible_devices }}'
+              compatible_devices="${COMPATIBLE_DEVICES}"
           fi
-          echo "compatible_devices=${compatible_devices}" | sed 's/+/p/' >> "$GITHUB_OUTPUT"
+          echo "compatible_devices=${compatible_devices}" | sed 's/+/p/' >> "${GITHUB_OUTPUT}"
 
           # SDK language
           if [ "$(ledger-manifest --output-sdk "$APP_MANIFEST")" = "rust" ];
           then
-              echo "is_rust=true" >> "$GITHUB_OUTPUT"
+              echo "is_rust=true" >> "${GITHUB_OUTPUT}"
           else
-              echo "is_rust=false" >> "$GITHUB_OUTPUT"
+              echo "is_rust=false" >> "${GITHUB_OUTPUT}"
           fi
 
           # Compilation flags
-          if [ -n "${{ inputs.flags }}" ]; then
-              echo "flags=${{ inputs.flags }}" >> "$GITHUB_OUTPUT"
-          elif [ -n "${{ inputs.use_case }}" ]; then
+          if [ -n "${FLAGS}" ]; then
+              echo "flags=${FLAGS}" >> "${GITHUB_OUTPUT}"
+          elif [ -n "${USE_CASE}" ]; then
               # if a use case is provided, we use the one from the manifest
-              use_case=${{ inputs.use_case }}
+              use_case="${USE_CASE}"
               echo "use_case is set to '${use_case}'"
-              echo "flags=$(ledger-manifest "$APP_MANIFEST" --output-use-cases ${use_case})" >> "$GITHUB_OUTPUT"
+              echo "flags=$(ledger-manifest "$APP_MANIFEST" --output-use-cases "${use_case}")" >> "${GITHUB_OUTPUT}"
           else
-              echo "flags=" >> "$GITHUB_OUTPUT"
+              echo "flags=" >> "${GITHUB_OUTPUT}"
           fi
 
           echo "Inferred metadata:"
-          cat "$GITHUB_OUTPUT"
+          cat "${GITHUB_OUTPUT}"
 
     outputs:
       is_rust: ${{ steps.fetch_metadata.outputs.is_rust }}
