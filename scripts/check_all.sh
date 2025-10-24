@@ -93,15 +93,18 @@ if [[ "${REQUESTED_CHECK}" != app_load_params ]]; then
 fi
 
 # Init verbose options
-make_option=(-j -C "${APP_DIR}/${BUILD_DIR}")
+make_options=(-j -C "${APP_DIR}/${BUILD_DIR}")
 if [[ ${VERBOSE} == false ]]; then
-    make_option+=(-s --no-print-directory)
+    make_options+=(-s --no-print-directory)
     verbose_mode=(-q)
 fi
 
+# Fail build on all warnings
+werror_make_options=(ENABLE_SDK_WERROR=1 -Werror=#pragma-messages)
+
 # Check if TARGET is already setup
 if [[ (-z ${TARGET}) && ("${REQUESTED_CHECK}" =~ (manifest|scan)) ]]; then
-    TARGET=$(make "${make_option[@]}" listinfo 2>/dev/null | grep -w TARGET | cut -d'=' -f2)
+    TARGET=$(make "${make_options[@]}" listinfo 2>/dev/null | grep -w TARGET | cut -d'=' -f2)
 fi
 
 # Check if MANIFEST is given in parameter
@@ -216,7 +219,7 @@ call_step() {
                 if [[ "${IS_RUST}" == true ]]; then
                     COMMAND="(cd ${APP_DIR}/${BUILD_DIR} && cargo +$RUST_NIGHTLY clippy --target ${TARGET/nanosp/nanosplus} -- -Dwarnings)"
                 else
-                    COMMAND="make ${make_option[*]} ENABLE_SDK_WERROR=1 scan-build"
+                    COMMAND="make ${make_options[*]} ${werror_make_options[*]} scan-build"
                 fi
             else
                 log_step "Check ${step} (All targets)"
@@ -227,7 +230,7 @@ call_step() {
                     if [[ "${IS_RUST}" == true ]]; then
                         COMMAND="(cd ${APP_DIR}/${BUILD_DIR} && cargo +$RUST_NIGHTLY clippy --target ${tgt/nanosp/nanosplus} -- -Dwarnings)"
                     else
-                        COMMAND="make ${make_option[*]} ENABLE_SDK_WERROR=1 scan-build"
+                        COMMAND="make ${make_options[*]} ${werror_make_options[*]} scan-build"
                     fi
                     [[ "${VERBOSE}" == true ]] && echo "Running: ${COMMAND}"
                     eval "${COMMAND}"
