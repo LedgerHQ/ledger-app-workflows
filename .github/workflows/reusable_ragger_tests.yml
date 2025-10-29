@@ -219,7 +219,6 @@ jobs:
           rm -rf ${{ needs.call_get_test_metadata.outputs.pytest_directory }}/snapshots
 
       - name: Run test
-        id: run_pytest
         env:
           CTEST_OUTPUT_ON_FAILURE: 1
           PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION: python
@@ -274,11 +273,11 @@ jobs:
               | sed -E 's/_+/_/g'
           }
 
-          safe_test_dir="$(sanitize "${{ inputs.test_dir }}")"
-          safe_test_options="$(sanitize "${{ inputs.test_options }}")"
+          safe_test_dir="$(sanitize "${{ needs.call_get_test_metadata.outputs.pytest_directory }}")"
+          safe_test_options="$(sanitize "${TEST_OPTIONS}")"
 
           # If options are empty, skip the dash
-          if [[ -n "$safe_test_options" ]]; then
+          if [[ -n "${safe_test_options}" ]]; then
             artifact_basename="tests_snapshots_${safe_test_dir}-${safe_test_options}"
           else
             artifact_basename="tests_snapshots_${safe_test_dir}"
@@ -287,8 +286,8 @@ jobs:
           # Truncate to stay safely under the 256-char limit
           artifact_basename="${artifact_basename:0:200}"
 
-          echo "artifact_basename=$artifact_basename"
-          echo "artifact_basename=$artifact_basename" >> "$GITHUB_OUTPUT"
+          echo "artifact_basename=${artifact_basename}"
+          echo "artifact_basename=${artifact_basename}" >> "$GITHUB_OUTPUT"
 
       - name: Upload snapshots on failure if needed
         if: ${{ failure() && inputs.upload_snapshots_on_failure == true }}
