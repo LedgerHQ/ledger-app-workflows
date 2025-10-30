@@ -201,7 +201,7 @@ jobs:
 
       - name: Upload app binary
         if: ${{ inputs.upload_app_binaries_artifact != '' }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: ${{ inputs.upload_app_binaries_artifact }}-${{ matrix.device }}
           path: ${{ steps.build.outputs.binary_path }}
@@ -213,7 +213,7 @@ jobs:
     runs-on: ubuntu-22.04
     if: ${{ inputs.upload_app_binaries_artifact != '' }}
     steps:
-      - uses: actions/upload-artifact/merge@v4
+      - uses: actions/upload-artifact/merge@v5
         with:
           name: ${{ inputs.upload_app_binaries_artifact }}
           pattern: ${{ inputs.upload_app_binaries_artifact }}-*
