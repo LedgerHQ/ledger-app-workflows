@@ -222,34 +222,37 @@ jobs:
         env:
           CTEST_OUTPUT_ON_FAILURE: 1
           PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION: python
+        shell: bash
         run: |
-          FILTER_ARG=""
+          PYTEST_ARGS=("${{ needs.call_get_test_metadata.outputs.pytest_directory }}")
+          PYTEST_ARGS+=(--tb=short -v --device "${{ matrix.device }}")
+
           if [ -n "${TEST_FILTER}" ] && [ "${TEST_FILTER}" != '""' ]; then
-            FILTER_ARG="-k ${TEST_FILTER}"
-          fi
-          SNAP_ARG=""
-          if [ "${REGENERATE_SNAPSHOTS}" = "true" ]; then
-            SNAP_ARG="--golden_run"
+            # Remove leading and trailing quotes from the filter if they exist
+            TRIMMED_FILTER="${TEST_FILTER%\"}"
+            TRIMMED_FILTER="${TRIMMED_FILTER#\"}"
+            PYTEST_ARGS+=(-k "${TRIMMED_FILTER}")
           fi
 
-          echo "FILTER_ARG='${FILTER_ARG}'"
-          echo "SNAP_ARG='${SNAP_ARG}'"
+          if [ "${REGENERATE_SNAPSHOTS}" = "true" ]; then
+            PYTEST_ARGS+=(--golden_run)
+          fi
+
+          if [ -n "${TEST_OPTIONS}" ]; then
+            PYTEST_ARGS+=(${TEST_OPTIONS})
+          fi
+
+          if [ -n "${{ secrets.secret_test_options }}" ]; then
+            PYTEST_ARGS+=(${{ secrets.secret_test_options }})
+          fi
+
+          echo "Running pytest with arguments: ${PYTEST_ARGS[*]}"
 
           if [ -n "${CAPTURE_FILE}" ]; then
             # Capture pytest output to a file
-            pytest "${{ needs.call_get_test_metadata.outputs.pytest_directory }}" \
-                   --tb=short -v --device "${{ matrix.device }}" \
-                   ${FILTER_ARG} \
-                   ${SNAP_ARG} \
-                   ${TEST_OPTIONS} \
-                   ${{ secrets.secret_test_options }} -s 2>&1 | tee pytest_output.log
+            pytest "${PYTEST_ARGS[@]}" -s 2>&1 | tee pytest_output.log
           else
-            pytest "${{ needs.call_get_test_metadata.outputs.pytest_directory }}" \
-                   --tb=short -v --device "${{ matrix.device }}" \
-                   ${FILTER_ARG} \
-                   ${SNAP_ARG} \
-                   ${TEST_OPTIONS} \
-                   ${{ secrets.secret_test_options }}
+            pytest "${PYTEST_ARGS[@]}"
           fi
 
       - name: Upload pytest logs
