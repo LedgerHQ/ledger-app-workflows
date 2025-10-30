@@ -84,10 +84,38 @@ on:
         required: false
         default: ''
         type: string
+      capture_file:
+        description: 'Optional file name to capture pytest logs into an artifact'
+        required: false
+        default: ''
+        type: string
     secrets:
       secret_test_options:
         description: 'A string of secret options to be given to `pytest`'
         required: false
+
+permissions:
+  contents: write       # Needed for _open_pr_with_new_snapshots.yml
+  actions: write        # Needed for upload-artifact
+  pull-requests: write  # Needed for _open_pr_with_new_snapshots.yml
+
+env:
+  APP_REPOSITORY: ${{ inputs.app_repository }}
+  APP_BRANCH_NAME: ${{ inputs.app_branch_name }}
+  TEST_DIR: ${{ inputs.test_dir }}
+  DOWNLOAD_APP_BINARIES_ARTIFACT: ${{ inputs.download_app_binaries_artifact }}
+  ADDITIONAL_APP_BINARIES_ARTIFACT: ${{ inputs.additional_app_binaries_artifact }}
+  ADDITIONAL_APP_BINARIES_ARTIFACT_DIR: ${{ inputs.additional_app_binaries_artifact_dir }}
+  LIB_BINARIES_ARTIFACT: ${{ inputs.lib_binaries_artifact }}
+  LIB_BINARIES_ARTIFACT_DIR: ${{ inputs.lib_binaries_artifact_dir }}
+  RUN_FOR_DEVICES: ${{ inputs.run_for_devices }}
+  UPLOAD_SNAPSHOTS_ON_FAILURE: ${{ inputs.upload_snapshots_on_failure }}
+  TEST_FILTER: ${{ inputs.test_filter }}
+  TEST_OPTIONS: ${{ inputs.test_options }}
+  REGENERATE_SNAPSHOTS: ${{ inputs.regenerate_snapshots }}
+  CONTAINER_IMAGE: ${{ inputs.container_image }}
+  CAPTURE_FILE: ${{ inputs.capture_file }}
+
 jobs:
   call_get_app_metadata:
     # This job digests inputs and repository metadata provided by the `ledger_app.toml` manifest
@@ -120,11 +148,10 @@ jobs:
 
     steps:
       - name: Check metadata
+        if: ${{ needs.call_get_test_metadata.outputs.pytest_directory == 'None' }}
         run: |
-          if [ '${{ needs.call_get_test_metadata.outputs.pytest_directory }}' = 'None' ]; then
-              >&2 echo "ERROR: This workflow either needs a 'ledger_app.toml' manifest with a 'tests.pytest_directory' section, or be configured with a valid 'test_dir' parameter"
-              exit 1
-          fi
+          echo "ERROR: This workflow either needs a 'ledger_app.toml' manifest with a 'tests.pytest_directory' section, or be configured with a valid 'test_dir' parameter"
+          exit 1
 
       - name: Clone
         uses: actions/checkout@v4
@@ -138,12 +165,12 @@ jobs:
         run: |
           if [ "${{ needs.call_get_app_metadata.outputs.is_rust }}" = "true" ];
           then
-              echo "Set Rust binary path" && \
-              cd ${{ needs.call_get_app_metadata.outputs.build_directory }} && \
-              binary_path=$(cargo metadata --no-deps --format-version 1 | jq -r '.target_directory')/ && \
-              echo "binary_path=$binary_path" >> $GITHUB_OUTPUT
+              echo "Set Rust binary path"
+              cd ${{ needs.call_get_app_metadata.outputs.build_directory }}
+              binary_path=$(cargo metadata --no-deps --format-version 1 | jq -r '.target_directory')
+              echo "binary_path=${binary_path}" >> "${GITHUB_OUTPUT}"
           else
-              echo "binary_path=${{ needs.call_get_app_metadata.outputs.build_directory }}/build/" >> $GITHUB_OUTPUT
+              echo "binary_path=${{ needs.call_get_app_metadata.outputs.build_directory }}/build" >> "${GITHUB_OUTPUT}"
           fi
 
       - name: Download app binaries
@@ -153,7 +180,7 @@ jobs:
           path: ${{ steps.set_binary_path.outputs.binary_path }}
 
       - name: Display structure of downloaded files
-        run: ls -R ${{ steps.set_binary_path.outputs.binary_path }}
+        run: ls -1 ${{ steps.set_binary_path.outputs.binary_path }}
 
       - name: Download additional app binaries if required
         if: ${{ inputs.additional_app_binaries_artifact != '' }}
@@ -164,7 +191,7 @@ jobs:
 
       - name: Display structure of downloaded files
         if: ${{ inputs.additional_app_binaries_artifact != '' }}
-        run: ls -R ${{ inputs.additional_app_binaries_artifact_dir }}
+        run: ls -1 ${ADDITIONAL_APP_BINARIES_ARTIFACT_DIR}
 
       - name: Download additional lib binaries if required
         if: ${{ inputs.lib_binaries_artifact != '' }}
@@ -175,7 +202,7 @@ jobs:
 
       - name: Display structure of downloaded files
         if: ${{ inputs.lib_binaries_artifact != '' }}
-        run: ls -R ${{ inputs.lib_binaries_artifact_dir }}
+        run: ls -1 ${LIB_BINARIES_ARTIFACT_DIR}
 
       - name: Install tests dependencies
         run: |
@@ -196,13 +223,41 @@ jobs:
           CTEST_OUTPUT_ON_FAILURE: 1
           PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION: python
         run: |
-          pytest ${{ needs.call_get_test_metadata.outputs.pytest_directory }}/ \
-                 --tb=short -v \
-                 --device ${{ matrix.device }} \
-                 -k ${{ inputs.test_filter }} \
-                 ${{ inputs.test_options }} \
-                 ${{ secrets.secret_test_options }} \
-                 ${{ inputs.regenerate_snapshots == true && '--golden_run' || '' }}
+          FILTER_ARG=""
+          if [ -n "${TEST_FILTER}" ] && [ "${TEST_FILTER}" != '""' ]; then
+            FILTER_ARG="-k ${TEST_FILTER}"
+          fi
+          SNAP_ARG=""
+          if [ "${REGENERATE_SNAPSHOTS}" = "true" ]; then
+            SNAP_ARG="--golden_run"
+          fi
+
+          echo "FILTER_ARG='${FILTER_ARG}'"
+          echo "SNAP_ARG='${SNAP_ARG}'"
+
+          if [ -n "${CAPTURE_FILE}" ]; then
+            # Capture pytest output to a file
+            pytest "${{ needs.call_get_test_metadata.outputs.pytest_directory }}" \
+                   --tb=short -v --device "${{ matrix.device }}" \
+                   ${FILTER_ARG} \
+                   ${SNAP_ARG} \
+                   ${TEST_OPTIONS} \
+                   ${{ secrets.secret_test_options }} -s 2>&1 | tee pytest_output.log
+          else
+            pytest "${{ needs.call_get_test_metadata.outputs.pytest_directory }}" \
+                   --tb=short -v --device "${{ matrix.device }}" \
+                   ${FILTER_ARG} \
+                   ${SNAP_ARG} \
+                   ${TEST_OPTIONS} \
+                   ${{ secrets.secret_test_options }}
+          fi
+
+      - name: Upload pytest logs
+        if: ${{ inputs.capture_file != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: pytest-logs-${{ matrix.device }}
+          path: pytest_output.log
 
       # Compute a unique name for this upload
       - name: Compute artifact name
@@ -218,11 +273,11 @@ jobs:
               | sed -E 's/_+/_/g'
           }
 
-          safe_test_dir="$(sanitize "${{ inputs.test_dir }}")"
-          safe_test_options="$(sanitize "${{ inputs.test_options }}")"
+          safe_test_dir="$(sanitize "${{ needs.call_get_test_metadata.outputs.pytest_directory }}")"
+          safe_test_options="$(sanitize "${TEST_OPTIONS}")"
 
           # If options are empty, skip the dash
-          if [[ -n "$safe_test_options" ]]; then
+          if [[ -n "${safe_test_options}" ]]; then
             artifact_basename="tests_snapshots_${safe_test_dir}-${safe_test_options}"
           else
             artifact_basename="tests_snapshots_${safe_test_dir}"
@@ -231,8 +286,8 @@ jobs:
           # Truncate to stay safely under the 256-char limit
           artifact_basename="${artifact_basename:0:200}"
 
-          echo "artifact_basename=$artifact_basename"
-          echo "artifact_basename=$artifact_basename" >> "$GITHUB_OUTPUT"
+          echo "artifact_basename=${artifact_basename}"
+          echo "artifact_basename=${artifact_basename}" >> "$GITHUB_OUTPUT"
 
       - name: Upload snapshots on failure if needed
         if: ${{ failure() && inputs.upload_snapshots_on_failure == true }}
@@ -256,11 +311,34 @@ jobs:
         id: upload-flag
         if: ${{ (failure() && inputs.upload_snapshots_on_failure == true) || ( success() && inputs.regenerate_snapshots == true) }}
         run: |
-          echo "artifact_uploaded=true" >> "$GITHUB_OUTPUT"
+          echo "artifact_uploaded=true" >> "${GITHUB_OUTPUT}"
 
     outputs:
       snapshot_artifact_uploaded: ${{ steps.upload-flag.outputs.artifact_uploaded }}
       snapshot_artifact_basename: ${{ steps.compute_name.outputs.artifact_basename }}
+
+  merge_pytest_logs:
+    name: Merge pytest logs
+    needs: ragger_tests
+    runs-on: ubuntu-22.04
+    if: ${{ inputs.capture_file != '' }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: pytest-logs-*
+          path: logs
+          merge-multiple: true
+          delete-merged: true
+
+      - name: Combine logs
+        run: |
+          find logs -name "pytest_output.log" -exec cat {} \; > "${CAPTURE_FILE}.log"
+
+      - name: Upload combined logs
+        uses: actions/upload-artifact@v4
+        with:
+          name: "${{ inputs.capture_file }}"
+          path: "${{ inputs.capture_file }}.log"
 
   merge_artifacts_if_needed:
     # Merge matrix output

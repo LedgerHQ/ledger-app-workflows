@@ -3,16 +3,16 @@ name: Check icons
 on:
   workflow_call:
     inputs:
-      ledger-app-workflows_ref:
+      workflows_ref:
         description: 'The current reference in use for the ledger-app-workflow repository'
         required: true
         type: string
-      app-repository:
+      app_repository:
         description: 'The URL of the app repository to check. Defaults to the workflow caller repository URL'
         required: false
         default: ${{ github.repository }}
         type: string
-      repo-name:
+      repo_name:
         description: 'The name of the app repository to check. Defaults to the workflow caller repository name'
         required: false
         default: ${{ github.event.repository.name }}
@@ -25,6 +25,16 @@ on:
         description: 'The list of device(s) on which the checking will run'
         required: true
         type: string
+
+permissions:
+  contents: read  # Needed to clone the repositories
+
+env:
+  WORKFLOWS_REF: ${{ inputs.workflows_ref }}
+  APP_REPOSITORY: ${{ inputs.app_repository }}
+  REPO_NAME: ${{ inputs.repo_name }}
+  DOWNLOAD_MANIFEST_ARTIFACT_NAME: ${{ inputs.download_manifest_artifact_name }}
+  RUN_FOR_DEVICES: ${{ inputs.run_for_devices }}
 
 jobs:
   check_icons:
@@ -41,12 +51,12 @@ jobs:
         with:
           repository: LedgerHQ/ledger-app-workflows
           path: ./ledger-app-workflows
-          ref: ${{ inputs.ledger-app-workflows_ref }}
+          ref: ${{ inputs.workflows_ref }}
 
       - name: Clone app repository
         uses: actions/checkout@v4
         with:
-          repository: ${{ inputs.app-repository }}
+          repository: ${{ inputs.app_repository }}
           path: app-repository
           submodules: recursive
 
@@ -58,5 +68,5 @@ jobs:
 
       - name: Run script
         run: |
-            ./ledger-app-workflows/scripts/check_all.sh -c icons -t ${{ matrix.device }} \
-              -a ./app-repository -m ${{ inputs.download_manifest_artifact_name }}
+            ./ledger-app-workflows/scripts/check_all.sh -c icons -t "${{ matrix.device }}" \
+              -a ./app-repository -m "${DOWNLOAD_MANIFEST_ARTIFACT_NAME}"

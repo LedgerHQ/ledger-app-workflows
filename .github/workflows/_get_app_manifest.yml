@@ -3,11 +3,11 @@ name: Get app manifest
 on:
   workflow_call:
     inputs:
-      ledger-app-workflows_ref:
+      workflows_ref:
         description: 'The current reference in use for the ledger-app-workflow repository'
         required: true
         type: string
-      app-repository:
+      app_repository:
         description: 'The URL of the app repository to check. Defaults to the workflow caller repository URL'
         required: false
         default: ${{ github.repository }}
@@ -30,6 +30,17 @@ on:
         required: true
         type: string
 
+permissions:
+  contents: read  # Needed to clone the repositories
+
+env:
+  WORKFLOWS_REF: ${{ inputs.workflows_ref }}
+  APP_REPOSITORY: ${{ inputs.app_repository }}
+  RUN_FOR_DEVICES: ${{ inputs.run_for_devices }}
+  RELATIVE_APP_DIRECTORY: ${{ inputs.relative_app_directory }}
+  IS_RUST: ${{ inputs.is_rust }}
+  UPLOAD_MANIFEST_ARTIFACT_NAME: ${{ inputs.upload_manifest_artifact_name }}
+
 jobs:
   get_app_manifest:
     name: Get application manifest for supported devices
@@ -47,29 +58,29 @@ jobs:
         with:
           repository: LedgerHQ/ledger-app-workflows
           path: ./ledger-app-workflows
-          ref: ${{ inputs.ledger-app-workflows_ref }}
+          ref: ${{ inputs.workflows_ref }}
 
       - name: Clone app repository
         uses: actions/checkout@v4
         with:
-          repository: ${{ inputs.app-repository }}
+          repository: ${{ inputs.app_repository }}
           path: app-repository
           submodules: recursive
 
       - name: Call Cargo metadata dumper script
         if: ${{ inputs.is_rust == 'true'}}
         run: |
-            ./ledger-app-workflows/scripts/check_all.sh -r -c manifest -t ${{ matrix.device }} \
-              -a ./app-repository -b ${{ inputs.relative_app_directory }} \
-              -m ../manifest_${{ matrix.device }}.json
+            ./ledger-app-workflows/scripts/check_all.sh -r -c manifest -t "${{ matrix.device }}" \
+              -a ./app-repository -b "${RELATIVE_APP_DIRECTORY}" \
+              -m "../manifest_${{ matrix.device }}.json"
 
       - name: Call Makefile dumper script
         if: ${{ inputs.is_rust == 'false'}}
         run: |
-            eval "BOLOS_SDK=\$$(echo ${{ matrix.device }} | tr [:lower:] [:upper:])_SDK" && \
-            ./ledger-app-workflows/scripts/check_all.sh -c manifest -t ${{ matrix.device }} \
-              -a ./app-repository -b ${{ inputs.relative_app_directory }} \
-              -m ../manifest_${{ matrix.device }}.json
+            eval "BOLOS_SDK=\$$(echo ${{ matrix.device }} | tr '[:lower:]' '[:upper:]')_SDK" && \
+            ./ledger-app-workflows/scripts/check_all.sh -c manifest -t "${{ matrix.device }}" \
+              -a ./app-repository -b "${RELATIVE_APP_DIRECTORY}" \
+              -m "../manifest_${{ matrix.device }}.json"
 
       - name: Upload app manifest
         uses: actions/upload-artifact@v4

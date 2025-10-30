@@ -1,0 +1,21 @@
+version: 2
+updates:
+  # Workflows in .github/workflows/
+  - package-ecosystem: "github-actions"
+    directory: "/.github/workflows/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "07:00"
+    open-pull-requests-limit: 5
+    groups:
+      github-actions-workflows:
+        patterns:
+          - "actions/*"
+        update-types:
+          - "minor"
+          - "patch"
+    labels:
+      - "dependencies"
+      - "github-actions"
+      - "auto-merge"

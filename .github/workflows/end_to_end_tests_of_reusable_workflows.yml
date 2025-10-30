@@ -23,6 +23,11 @@ concurrency:
 # https://github.com/actions/runner/issues/1541
 # https://github.com/orgs/community/discussions/45342
 
+permissions:
+  contents: write       # Needed for child workflows
+  actions: write        # Needed for child workflows
+  pull-requests: write  # Needed for child workflows
+
 jobs:
 
   ##################################

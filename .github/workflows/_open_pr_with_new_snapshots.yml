@@ -23,6 +23,16 @@ on:
         required: true
         type: string
 
+permissions:
+  contents: write       # Needed to commits/push
+  pull-requests: write  # Needed to create/modify PR
+
+env:
+  APP_REPOSITORY: ${{ inputs.app_repository }}
+  APP_BRANCH_NAME: ${{ inputs.app_branch_name }}
+  SNAPSHOTS_ARTIFACT_NAME: ${{ inputs.snapshots_artifact_name }}
+  SNAPSHOTS_DIRECTORY: ${{ inputs.snapshots_directory }}
+
 jobs:
   commit_new_snapshots:
     name: Commit new snapshots
@@ -60,10 +70,10 @@ jobs:
           git status
           if [ -n "$(git status --porcelain)" ]; then
               echo "Changes detected"
-              echo "changes_detected=true" >> "$GITHUB_OUTPUT"
+              echo "changes_detected=true" >> "${GITHUB_OUTPUT}"
           else
               echo "No changes detected"
-              echo "changes_detected=false" >> "$GITHUB_OUTPUT"
+              echo "changes_detected=false" >> "${GITHUB_OUTPUT}"
           fi
 
       - name: Commit changes, create branch and open a PR
@@ -74,7 +84,7 @@ jobs:
           # Set credentials for commit creation
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git add ${{ inputs.snapshots_directory }}
+          git add "${SNAPSHOTS_DIRECTORY}"
           git status
           git commit -m "[auto-update] Update Ragger snapshots"
 
@@ -82,21 +92,21 @@ jobs:
           id=$(git rev-parse --short HEAD)
           echo "ID: $id"
           branch_name="auto/update_snapshots-$id"
-          echo "Branch Name: $branch_name"
-          git checkout -b $branch_name
-          git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git > /dev/null 2>&1
-          git push -u origin $branch_name
+          echo "Branch Name: ${branch_name}"
+          git checkout -b "${branch_name}"
+          git remote set-url origin "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" > /dev/null 2>&1
+          git push -u origin "${branch_name}"
 
           # Create 'auto' label if missing
-          if [ -z $(gh label list --search auto) ]; then
+          if [ -z "$(gh label list --search auto)" ]; then
             gh label create 'auto' --color 'b4a8d1' --description 'Automatically created'
           fi
 
           body="PR created by a Github workflow\n\n:warning: You <ins>need</ins> to review the generated snapshots :warning:"
           # Create the PR with a placeholder body. Will be consolidated at a later step
           gh pr create \
-            --base "${{ inputs.app_branch_name }}" \
+            --base "${APP_BRANCH_NAME}" \
             --head "$branch_name" \
             --label "auto" \
             --title "[auto-update] Update Ragger snapshots" \
-            --body "$(printf "$body")"
+            --body "$(printf "%s" "$body")"
