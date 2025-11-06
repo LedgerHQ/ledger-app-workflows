@@ -27,6 +27,8 @@ permissions:
   contents: write       # Needed for child workflows
   actions: write        # Needed for child workflows
   pull-requests: write  # Needed for child workflows
+  attestations: write   # Needed for child workflows
+  id-token: write       # Needed for child workflows
 
 jobs:
 
@@ -238,3 +240,21 @@ jobs:
       app_repository: LedgerHQ/app-boilerplate-rust
       app_branch_name: main
       download_app_binaries_artifact: "rust_boilerplate_binaries"
+
+  ####################################
+  ######### Ragger deployment ########
+  ####################################
+
+  deploy_ragger:
+    name: Test ragger deployment
+    uses: ./.github/workflows/reusable_pypi_deployment.yml
+    with:
+      repository_name: LedgerHQ/ragger
+      branch_name: master
+      package_name: ragger
+      dry_run: true
+      publish: false
+      release: false
+      jfrog_deployment: false
+    secrets:
+      pypi_token: "1234" # Dummy invalid token for testing purposes only
