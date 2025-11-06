@@ -64,7 +64,7 @@ jobs:
           python -m build
           pip install .
           python -m twine check dist/*
-          echo "TAG_VERSION=$(python -c 'from ${PACKAGE_NAME} import __version__; print(__version__)')" >> "${GITHUB_ENV}"
+          echo "TAG_VERSION=$(python -c "from ${PACKAGE_NAME} import __version__; print(__version__)")" >> "${GITHUB_ENV}"
 
       - name: Display current status
         run: |
@@ -87,7 +87,7 @@ jobs:
         run: python -m twine upload "${PACKAGE_DIRECTORY}/dist/*"
         env:
           TWINE_USERNAME: __token__
-          TWINE_PASSWORD: ${{ secrets.pypi_token  }}
+          TWINE_PASSWORD: ${{ secrets.pypi_token }}
           TWINE_NON_INTERACTIVE: 1
 
       - name: Login to Ledger Artifactory
