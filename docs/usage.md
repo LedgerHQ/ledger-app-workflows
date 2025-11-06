@@ -205,6 +205,7 @@ In order to deploy a package, this workflow can use the following input paramete
 | branch_name                          | ❌       | `github.ref`              | The GIT branch to deploy |
 | package_name                         | ✅       |                           | The name of the package |
 | package_directory                    | ❌       | `.`                       | The directory where the Python package lies |
+| dry_run                              | ❌       | `false`                   | Whether to run all pre-publishing steps but skips the actual publishing |
 | publish                              | ✅       | `true`                    | Whether the package should be published |
 | release                              | ❌       | `true`                    | Whether the package should be packaged as a release |
 | jfrog_deployment                     | ❌       | `false`                   | If the Python package should be pushed on `Ledger Jfrog` |
