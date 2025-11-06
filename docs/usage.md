@@ -201,6 +201,8 @@ In order to deploy a package, this workflow can use the following input paramete
 
 | Parameter                            | Required | Default value             | Comment                                 |
 | ------------------------------------ | -------- | ------------------------- | --------------------------------------- |
+| repository_name                      | ❌       | `github.repository`       | The GIT repository to deploy |
+| branch_name                          | ❌       | `github.ref`              | The GIT branch to deploy |
 | package_name                         | ✅       |                           | The name of the package |
 | package_directory                    | ❌       | `.`                       | The directory where the Python package lies |
 | publish                              | ✅       | `true`                    | Whether the package should be published |
