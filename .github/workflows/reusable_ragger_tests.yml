@@ -262,9 +262,16 @@ jobs:
           name: pytest-logs-${{ matrix.device }}
           path: pytest_output.log
 
+      - name: Set upload flag
+        id: upload-flag
+        if: ${{ (failure() && inputs.upload_snapshots_on_failure == true) || ( success() && inputs.regenerate_snapshots == true) }}
+        run: |
+          echo "artifact_uploaded=true" >> "${GITHUB_OUTPUT}"
+
       # Compute a unique name for this upload
       - name: Compute artifact name
         id: compute_name
+        if: ${{ steps.upload-flag.outputs.artifact_uploaded == 'true' }}
         shell: bash
         run: |
           sanitize() {
@@ -292,29 +299,14 @@ jobs:
           echo "artifact_basename=${artifact_basename}"
           echo "artifact_basename=${artifact_basename}" >> "$GITHUB_OUTPUT"
 
-      - name: Upload snapshots on failure if needed
-        if: ${{ failure() && inputs.upload_snapshots_on_failure == true }}
+      - name: Upload snapshots if needed
+        if: ${{ steps.upload-flag.outputs.artifact_uploaded == 'true' }}
         uses: actions/upload-artifact@v4
         with:
           # Make the artifact name unique to allow running this job in parallel
           # Append a ~ at the end to prevent one job's pattern from prefixing another one
           name: ${{ steps.compute_name.outputs.artifact_basename }}~${{ matrix.device }}
           path: ${{ needs.call_get_test_metadata.outputs.pytest_directory }}/snapshots-tmp
-
-      - name: Upload snapshots on success if needed
-        if: ${{ inputs.regenerate_snapshots == true }}
-        uses: actions/upload-artifact@v4
-        with:
-          # Make the artifact name unique to allow running this job in parallel
-          # Append a ~ at the end to prevent one job's pattern from prefixing another one
-          name: ${{ steps.compute_name.outputs.artifact_basename }}~${{ matrix.device }}
-          path: ${{ needs.call_get_test_metadata.outputs.pytest_directory }}/snapshots-tmp
-
-      - name: Set upload flag
-        id: upload-flag
-        if: ${{ (failure() && inputs.upload_snapshots_on_failure == true) || ( success() && inputs.regenerate_snapshots == true) }}
-        run: |
-          echo "artifact_uploaded=true" >> "${GITHUB_OUTPUT}"
 
     outputs:
       snapshot_artifact_uploaded: ${{ steps.upload-flag.outputs.artifact_uploaded }}
