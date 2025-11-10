@@ -78,7 +78,7 @@ jobs:
           ref: ${{ inputs.app_branch_name }}
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: ${{ inputs.python_version }}
           cache: 'pip'
@@ -144,7 +144,7 @@ jobs:
           ref: ${{ inputs.app_branch_name }}
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: ${{ inputs.python_version }}
           cache: 'pip'
