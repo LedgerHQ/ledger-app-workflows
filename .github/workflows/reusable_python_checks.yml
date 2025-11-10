@@ -40,6 +40,11 @@ on:
         required: false
         default: ''
         type: string
+      python_version:
+        description: "Python version to use (defaults to '3.x')"
+        required: false
+        default: '3.x'
+        type: string
 
 permissions:
   contents: read
@@ -53,6 +58,7 @@ env:
   REQ_DIRECTORY: ${{ inputs.req_directory }}
   SETUP_DIRECTORY: ${{ inputs.setup_directory }}
   ADDITIONAL_PACKAGES: ${{ inputs.additional_packages }}
+  PYTHON_VERSION: ${{ inputs.python_version }}
 
 jobs:
   linter:
@@ -74,7 +80,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.x'
+          python-version: ${{ inputs.python_version }}
           cache: 'pip'
 
       - name: Installing Python dependencies
@@ -140,7 +146,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.x'
+          python-version: ${{ inputs.python_version }}
           cache: 'pip'
 
       - name: Installing Python dependencies
