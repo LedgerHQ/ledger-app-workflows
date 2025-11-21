@@ -41,9 +41,9 @@ on:
         default: ''
         type: string
       python_version:
-        description: "Python version to use (defaults to '3.x')"
+        description: "Python version to use (defaults to '3.12')"
         required: false
-        default: '3.x'
+        default: '3.12'
         type: string
 
 permissions:
