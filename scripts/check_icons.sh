@@ -10,31 +10,38 @@ check_geometry() (
     error=0
     file="$1"
     device="$2"
+    type="$3"
 
-    case "$device" in
-        nanos)
+    case "$device:$type" in
+        nanos:icon | nanos:glyph)
             geometry="16x16"
             ;;
-        nanox | nanos2)
+        nanox:icon | nanos2:icon | nanox:glyph | nanos2:glyph)
             geometry="14x14"
             ;;
-        stax | apex | apex_m | apex_p)
+        stax:icon | apex:icon | apex_m:icon | apex_p:icon)
             geometry="32x32"
             ;;
-        flex)
+        apex:glyph | apex_m:glyph | apex_p:glyph)
+            geometry="48x48"
+            ;;
+        stax:glyph | flex:glyph)
+            geometry="64x64"
+            ;;
+        flex:icon)
             geometry="40x40"
             ;;
         *)
-            log_error "Device '$device' not recognized"
+            log_error "Combinaison device='$device' and type='$type' not recognized"
             return 1
             ;;
     esac
 
     if ! identify -verbose "$file" | grep -q "Geometry: $geometry"; then
-        log_error "Icon '$file' used for '$device' should have a '$geometry' geometry"
+        log_error "'$type' '$file' used for '$device' should have a '$geometry' geometry"
         error=1
     else
-        log_success "Icon '$file' used for '$device' has a correct '$geometry' geometry"
+        log_success "'$type' '$file' used for '$device' has a correct '$geometry' geometry"
     fi
 
     return "$error"
@@ -147,7 +154,7 @@ check_icon() (
         check_is_not_boilerplate_icon "$file" || error=1
     fi
 
-    check_geometry "$file" "$device" || error=1
+    check_geometry "$file" "$device" "icon" || error=1
 
     check_glyph "$file" || error=1
 
@@ -229,7 +236,8 @@ main() (
                 error=1
                 continue
             fi
-            check_glyph "$repo/$build_directory/$file" || error=1
+            check_glyph "$img_file" || error=1
+            check_geometry "$img_file" "$device" "glyph" || error=1
         fi
     done < <(echo "$all_glyph_files_no_duplicates")
 
