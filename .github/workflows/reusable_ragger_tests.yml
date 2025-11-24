@@ -257,7 +257,7 @@ jobs:
 
       - name: Upload pytest logs
         if: ${{ inputs.capture_file != '' }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: pytest-logs-${{ matrix.device }}
           path: pytest_output.log
@@ -301,7 +301,7 @@ jobs:
 
       - name: Upload snapshots if needed
         if: ${{ steps.upload-flag.outputs.artifact_uploaded == 'true' }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           # Make the artifact name unique to allow running this job in parallel
           # Append a ~ at the end to prevent one job's pattern from prefixing another one
@@ -330,7 +330,7 @@ jobs:
           find logs -name "pytest_output.log" -exec cat {} \; > "${CAPTURE_FILE}.log"
 
       - name: Upload combined logs
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: "${{ inputs.capture_file }}"
           path: "${{ inputs.capture_file }}.log"
@@ -341,7 +341,7 @@ jobs:
     needs: ragger_tests
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/upload-artifact/merge@v4
+      - uses: actions/upload-artifact/merge@v5
         if: ${{ needs.ragger_tests.outputs.snapshot_artifact_uploaded == 'true' }}
         with:
           # Merge all basename-$device.zip into a single basename.zip
