@@ -109,4 +109,4 @@ jobs:
             --head "$branch_name" \
             --label "auto" \
             --title "[auto-update] Update Ragger snapshots" \
-            --body "$(printf "%s" "$body")"
+            --body "$(echo -e "$body")"
