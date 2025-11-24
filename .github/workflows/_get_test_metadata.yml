@@ -76,7 +76,7 @@ jobs:
 
               # Check if it's listed in the manifest
               manifest_json="$(ledger-manifest --output-pytest-directories -j -- "$APP_MANIFEST")"
-              mapfile -t manifest_dirs < <(echo "$manifest_json" | jq -r '.pytest_directories[]')
+              mapfile -t manifest_dirs < <(echo "$manifest_json" | jq -r '.pytest_directories[].directory')
 
               found=0
               for dir in "${manifest_dirs[@]}"; do

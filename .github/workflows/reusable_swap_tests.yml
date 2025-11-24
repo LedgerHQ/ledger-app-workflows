@@ -133,7 +133,7 @@ jobs:
         working-directory: app_coin
         run: |
           # Get the swap test directory using ledger-manifest and jq
-          swap_test_dir=$(ledger-manifest --output-pytest-directories -j -- ledger_app.toml | jq -r '.pytest_directories[1]')
+          swap_test_dir=$(ledger-manifest --output-pytest-directories -j -- ledger_app.toml | jq -r '.pytest_directories[] | select(.name == "swap") | .directory')
           if [ -z "${swap_test_dir}" ]; then
             echo "Swap test directory not found!" >&2
             exit 1
