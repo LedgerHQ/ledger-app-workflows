@@ -147,10 +147,10 @@ jobs:
           then
               BUILD_DEVICE_NAME="$(echo "${{ matrix.device }}" | sed 's/nanosp/nanosplus/')"
               # Update the Rust SDK crates
-              all_crates=$(cargo "+$RUST_NIGHTLY" tree --depth 2 --prefix none | awk '{print $1}' | sort -u)
-              for crate in "include_gif" "ledger_secure_sdk_sys" "ledger_device_sdk"; do
+              all_crates=$(cargo tree --depth 2 --prefix none | awk '{print $1}' | sort -u)
+              for crate in "ledger_device_sdk"; do
                 if echo "$all_crates" | grep -q "^$crate$"; then
-                  cargo "+$RUST_NIGHTLY" update "${crate}"
+                  cargo update "${crate}"
                 fi
               done
               cargo ledger build "${BUILD_DEVICE_NAME}" -- ${CARGO_LEDGER_BUILD_ARGS}
