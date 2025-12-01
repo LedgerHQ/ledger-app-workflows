@@ -323,7 +323,6 @@ jobs:
           pattern: pytest-logs-*
           path: logs
           merge-multiple: true
-          delete-merged: true
 
       - name: Combine logs
         run: |
