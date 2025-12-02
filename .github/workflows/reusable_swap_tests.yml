@@ -21,6 +21,11 @@ on:
         required: false
         default: ''
         type: string
+      use_case:
+        description: 'The use case to build the application for (e.g., use_test_keys). Only applies if download_app_binaries_artifact is not provided.'
+        required: false
+        default: ''
+        type: string
       exchange_branch_name:
         description: 'The GIT branch to build the Exchange app from (defaults to develop)'
         required: false
@@ -90,6 +95,7 @@ jobs:
       app_repository: ${{ inputs.app_repository }}
       app_branch_name: ${{ inputs.app_branch_name }}
       upload_app_binaries_artifact: ${{ needs.compute_artifact_names.outputs.app_binaries_artifact }}
+      use_case: ${{ inputs.use_case }}
 
   build_exchange:
     name: Build Exchange app using the reusable workflow
