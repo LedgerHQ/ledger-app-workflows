@@ -48,14 +48,32 @@ env:
   REGENERATE_SNAPSHOTS: ${{ inputs.regenerate_snapshots }}
 
 jobs:
+  # Use a matrix safe artifact name
+  compute_artifact_name:
+    name: Compute matrix-safe artifact name
+    runs-on: ubuntu-latest
+    outputs:
+      app_binaries_artifact: ${{ steps.compute_name.outputs.artifact_name }}
+    steps:
+      - name: Compute artifact name
+        id: compute_name
+        run: |
+          # Replace / with - to make artifact name safe for matrix strategies
+          repo_safe="$(echo "${APP_REPOSITORY}" | tr '/' '-')"
+          branch_safe="$(echo "${APP_BRANCH_NAME}" | tr '/' '-')"
+          artifact_name="app_binaries-${repo_safe}-${branch_safe}"
+          echo "artifact_name=${artifact_name}" >> "${GITHUB_OUTPUT}"
+          echo "Computed artifact name: ${artifact_name}"
+
   build_app:
     name: Build app to test using the reusable workflow
+    needs: compute_artifact_name
     if: ${{ inputs.download_app_binaries_artifact == '' }}
     uses: ./.github/workflows/reusable_build.yml
     with:
       app_repository: ${{ inputs.app_repository }}
       app_branch_name: ${{ inputs.app_branch_name }}
-      upload_app_binaries_artifact: "app_binaries"
+      upload_app_binaries_artifact: ${{ needs.compute_artifact_name.outputs.app_binaries_artifact }}
 
   build_exchange:
     name: Build Exchange app using the reusable workflow
@@ -171,12 +189,12 @@ jobs:
   # This job runs the swap functional tests using the reusable workflow
   ragger_tests_swap:
     name: Run swap ragger tests using the reusable workflow
-    needs: [get_artifacts_names, get_dir_names]
+    needs: [compute_artifact_name, get_artifacts_names, get_dir_names]
     uses: ./.github/workflows/reusable_ragger_tests.yml
     with:
       app_repository: ${{ inputs.app_repository }}
       app_branch_name: ${{ inputs.app_branch_name }}
-      download_app_binaries_artifact: ${{ inputs.download_app_binaries_artifact != '' && inputs.download_app_binaries_artifact || 'app_binaries' }}
+      download_app_binaries_artifact: ${{ inputs.download_app_binaries_artifact != '' && inputs.download_app_binaries_artifact || needs.compute_artifact_name.outputs.app_binaries_artifact }}
       additional_app_binaries_artifact: ${{ needs.get_artifacts_names.outputs.exchange_build_artifact }}
       additional_app_binaries_artifact_dir: ${{ needs.get_dir_names.outputs.main_app_dir }}
       lib_binaries_artifact: ${{ needs.get_artifacts_names.outputs.ethereum_build_artifact }}
