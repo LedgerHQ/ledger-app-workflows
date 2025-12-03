@@ -22,19 +22,26 @@ on:
         default: ''
         type: string
       use_case:
-        description: 'The use case to build the application for (e.g., use_test_keys). Only applies if download_app_binaries_artifact is not provided.'
+        description: |
+          The use case to build the application for (e.g., use_test_keys).
+          Only applies if download_app_binaries_artifact is not provided.
+          If not set, the application will be built with default flags.
         required: false
         default: ''
         type: string
-      exchange_branch_name:
-        description: 'The GIT branch to build the Exchange app from (defaults to develop)'
+      exchange_binaries_artifact:
+        description: |
+          The name of the artifact containing pre-built Exchange app binaries.
+          If not provided, the workflow will build Exchange from LedgerHQ/app-exchange@develop.
         required: false
-        default: 'develop'
+        default: ''
         type: string
-      ethereum_branch_name:
-        description: 'The GIT branch to build the Ethereum app from (defaults to develop)'
+      ethereum_binaries_artifact:
+        description: |
+          The name of the artifact containing pre-built Ethereum app binaries.
+          If not provided, the workflow will build Ethereum from LedgerHQ/app-ethereum@develop.
         required: false
-        default: 'develop'
+        default: ''
         type: string
       regenerate_snapshots:
         description: 'Whether to regenerate the snapshots used for the tests.'
@@ -51,8 +58,8 @@ env:
   APP_REPOSITORY: ${{ inputs.app_repository }}
   APP_BRANCH_NAME: ${{ inputs.app_branch_name }}
   DOWNLOAD_APP_BINARIES_ARTIFACT: ${{ inputs.download_app_binaries_artifact }}
-  EXCHANGE_BRANCH_NAME: ${{ inputs.exchange_branch_name }}
-  ETHEREUM_BRANCH_NAME: ${{ inputs.ethereum_branch_name }}
+  EXCHANGE_BINARIES_ARTIFACT: ${{ inputs.exchange_binaries_artifact }}
+  ETHEREUM_BINARIES_ARTIFACT: ${{ inputs.ethereum_binaries_artifact }}
   REGENERATE_SNAPSHOTS: ${{ inputs.regenerate_snapshots }}
 
 jobs:
@@ -67,24 +74,31 @@ jobs:
       - name: Compute artifact names
         id: compute_names
         run: |
-          # Replace / with - to make artifact names safe for matrix strategies
+          # Compute app artifact name (matrix-safe)
           repo_safe="$(echo "${APP_REPOSITORY}" | tr '/' '-')"
           branch_safe="$(echo "${APP_BRANCH_NAME}" | tr '/' '-')"
           app_artifact_name="app_binaries-${repo_safe}-${branch_safe}"
           echo "app_artifact_name=${app_artifact_name}" >> "${GITHUB_OUTPUT}"
           echo "Computed app artifact name: ${app_artifact_name}"
 
-          exchange_branch_safe="$(echo "${EXCHANGE_BRANCH_NAME}" | tr '/' '-')"
-          # Include app repo/branch to make exchange artifact unique per matrix cell
-          exchange_artifact_name="app_exchange_binaries-${exchange_branch_safe}-${repo_safe}-${branch_safe}"
+          # Use provided artifact names or build defaults for Exchange/Ethereum
+          if [ -n "${EXCHANGE_BINARIES_ARTIFACT}" ]; then
+            exchange_artifact_name="${EXCHANGE_BINARIES_ARTIFACT}"
+            echo "Using provided Exchange artifact: ${exchange_artifact_name}"
+          else
+            exchange_artifact_name="app_exchange_binaries-develop-${repo_safe}-${branch_safe}"
+            echo "Will build Exchange with artifact name: ${exchange_artifact_name}"
+          fi
           echo "exchange_artifact_name=${exchange_artifact_name}" >> "${GITHUB_OUTPUT}"
-          echo "Computed exchange artifact name: ${exchange_artifact_name}"
 
-          ethereum_branch_safe="$(echo "${ETHEREUM_BRANCH_NAME}" | tr '/' '-')"
-          # Include app repo/branch to make ethereum artifact unique per matrix cell
-          ethereum_artifact_name="app_ethereum_binaries-${ethereum_branch_safe}-${repo_safe}-${branch_safe}"
+          if [ -n "${ETHEREUM_BINARIES_ARTIFACT}" ]; then
+            ethereum_artifact_name="${ETHEREUM_BINARIES_ARTIFACT}"
+            echo "Using provided Ethereum artifact: ${ethereum_artifact_name}"
+          else
+            ethereum_artifact_name="app_ethereum_binaries-develop-${repo_safe}-${branch_safe}"
+            echo "Will build Ethereum with artifact name: ${ethereum_artifact_name}"
+          fi
           echo "ethereum_artifact_name=${ethereum_artifact_name}" >> "${GITHUB_OUTPUT}"
-          echo "Computed ethereum artifact name: ${ethereum_artifact_name}"
 
   build_app:
     name: Build app to test using the reusable workflow
@@ -100,20 +114,22 @@ jobs:
   build_exchange:
     name: Build Exchange app using the reusable workflow
     needs: compute_artifact_names
+    if: ${{ inputs.exchange_binaries_artifact == '' }}
     uses: ./.github/workflows/reusable_build.yml
     with:
       app_repository: 'LedgerHQ/app-exchange'
-      app_branch_name: ${{ inputs.exchange_branch_name }}
+      app_branch_name: 'develop'
       upload_app_binaries_artifact: ${{ needs.compute_artifact_names.outputs.exchange_binaries_artifact }}
       use_case: 'use_test_keys'
 
   build_ethereum:
     name: Build Ethereum app using the reusable workflow
     needs: compute_artifact_names
+    if: ${{ inputs.ethereum_binaries_artifact == '' }}
     uses: ./.github/workflows/reusable_build.yml
     with:
       app_repository: 'LedgerHQ/app-ethereum'
-      app_branch_name: ${{ inputs.ethereum_branch_name }}
+      app_branch_name: 'develop'
       upload_app_binaries_artifact: ${{ needs.compute_artifact_names.outputs.ethereum_binaries_artifact }}
       use_case: 'use_test_keys'
 
