@@ -1,3 +1,4 @@
+---
 name: Run Swap Functional tests
 
 on:
@@ -14,19 +15,33 @@ on:
         default: ${{ github.ref }}
         type: string
       download_app_binaries_artifact:
+        description: |
+          The name of the artifact containing pre-built app binaries.
+          If not provided, the workflow will build the app from app_repository/app_branch_name.
         required: false
         default: ''
-        description: 'If not provided, the workflow will build the app to test.'
         type: string
-      exchange_build_artifact:
+      use_case:
+        description: |
+          The use case to build the application for (e.g., use_test_keys).
+          Only applies if download_app_binaries_artifact is not provided.
+          If not set, the application will be built with default flags.
         required: false
         default: ''
-        description: 'If not provided, the workflow will build the Exchange app.'
         type: string
-      ethereum_build_artifact:
+      exchange_binaries_artifact:
+        description: |
+          The name of the artifact containing pre-built Exchange app binaries.
+          If not provided, the workflow will build Exchange from LedgerHQ/app-exchange@develop.
         required: false
         default: ''
-        description: 'If not provided, the workflow will build the Ethereum app.'
+        type: string
+      ethereum_binaries_artifact:
+        description: |
+          The name of the artifact containing pre-built Ethereum app binaries.
+          If not provided, the workflow will build Ethereum from LedgerHQ/app-ethereum@develop.
+        required: false
+        default: ''
         type: string
       regenerate_snapshots:
         description: 'Whether to regenerate the snapshots used for the tests.'
@@ -43,161 +58,144 @@ env:
   APP_REPOSITORY: ${{ inputs.app_repository }}
   APP_BRANCH_NAME: ${{ inputs.app_branch_name }}
   DOWNLOAD_APP_BINARIES_ARTIFACT: ${{ inputs.download_app_binaries_artifact }}
-  EXCHANGE_BUILD_ARTIFACT: ${{ inputs.exchange_build_artifact }}
-  ETHEREUM_BUILD_ARTIFACT: ${{ inputs.ethereum_build_artifact }}
+  EXCHANGE_BINARIES_ARTIFACT: ${{ inputs.exchange_binaries_artifact }}
+  ETHEREUM_BINARIES_ARTIFACT: ${{ inputs.ethereum_binaries_artifact }}
   REGENERATE_SNAPSHOTS: ${{ inputs.regenerate_snapshots }}
 
 jobs:
-  # Use a matrix safe artifact name
-  compute_artifact_name:
-    name: Compute matrix-safe artifact name
+  compute_artifact_names:
+    name: Compute matrix-safe artifact names
     runs-on: ubuntu-latest
     outputs:
-      app_binaries_artifact: ${{ steps.compute_name.outputs.artifact_name }}
+      app_binaries_artifact: ${{ steps.compute_names.outputs.app_artifact_name }}
+      exchange_binaries_artifact: ${{ steps.compute_names.outputs.exchange_artifact_name }}
+      ethereum_binaries_artifact: ${{ steps.compute_names.outputs.ethereum_artifact_name }}
     steps:
-      - name: Compute artifact name
-        id: compute_name
+      - name: Compute artifact names
+        id: compute_names
         run: |
-          # Replace / with - to make artifact name safe for matrix strategies
+          # Compute app artifact name (matrix-safe)
           repo_safe="$(echo "${APP_REPOSITORY}" | tr '/' '-')"
           branch_safe="$(echo "${APP_BRANCH_NAME}" | tr '/' '-')"
-          artifact_name="app_binaries-${repo_safe}-${branch_safe}"
-          echo "artifact_name=${artifact_name}" >> "${GITHUB_OUTPUT}"
-          echo "Computed artifact name: ${artifact_name}"
+          app_artifact_name="app_binaries-${repo_safe}-${branch_safe}"
+          echo "app_artifact_name=${app_artifact_name}" >> "${GITHUB_OUTPUT}"
+          echo "Computed app artifact name: ${app_artifact_name}"
+
+          # Use provided artifact names or build defaults for Exchange/Ethereum
+          if [ -n "${EXCHANGE_BINARIES_ARTIFACT}" ]; then
+            exchange_artifact_name="${EXCHANGE_BINARIES_ARTIFACT}"
+            echo "Using provided Exchange artifact: ${exchange_artifact_name}"
+          else
+            exchange_artifact_name="app_exchange_binaries-develop-${repo_safe}-${branch_safe}"
+            echo "Will build Exchange with artifact name: ${exchange_artifact_name}"
+          fi
+          echo "exchange_artifact_name=${exchange_artifact_name}" >> "${GITHUB_OUTPUT}"
+
+          if [ -n "${ETHEREUM_BINARIES_ARTIFACT}" ]; then
+            ethereum_artifact_name="${ETHEREUM_BINARIES_ARTIFACT}"
+            echo "Using provided Ethereum artifact: ${ethereum_artifact_name}"
+          else
+            ethereum_artifact_name="app_ethereum_binaries-develop-${repo_safe}-${branch_safe}"
+            echo "Will build Ethereum with artifact name: ${ethereum_artifact_name}"
+          fi
+          echo "ethereum_artifact_name=${ethereum_artifact_name}" >> "${GITHUB_OUTPUT}"
 
   build_app:
     name: Build app to test using the reusable workflow
-    needs: compute_artifact_name
+    needs: compute_artifact_names
     if: ${{ inputs.download_app_binaries_artifact == '' }}
     uses: ./.github/workflows/reusable_build.yml
     with:
       app_repository: ${{ inputs.app_repository }}
       app_branch_name: ${{ inputs.app_branch_name }}
-      upload_app_binaries_artifact: ${{ needs.compute_artifact_name.outputs.app_binaries_artifact }}
+      upload_app_binaries_artifact: ${{ needs.compute_artifact_names.outputs.app_binaries_artifact }}
+      use_case: ${{ inputs.use_case }}
 
   build_exchange:
     name: Build Exchange app using the reusable workflow
-    if: ${{ inputs.exchange_build_artifact == '' }}
+    needs: compute_artifact_names
+    if: ${{ inputs.exchange_binaries_artifact == '' }}
     uses: ./.github/workflows/reusable_build.yml
     with:
       app_repository: 'LedgerHQ/app-exchange'
       app_branch_name: 'develop'
-      upload_app_binaries_artifact: "app_exchange_binaries"
+      upload_app_binaries_artifact: ${{ needs.compute_artifact_names.outputs.exchange_binaries_artifact }}
       use_case: 'use_test_keys'
 
   build_ethereum:
     name: Build Ethereum app using the reusable workflow
-    if: ${{ inputs.ethereum_build_artifact == '' }}
+    needs: compute_artifact_names
+    if: ${{ inputs.ethereum_binaries_artifact == '' }}
     uses: ./.github/workflows/reusable_build.yml
     with:
       app_repository: 'LedgerHQ/app-ethereum'
       app_branch_name: 'develop'
-      upload_app_binaries_artifact: "app_ethereum_binaries"
+      upload_app_binaries_artifact: ${{ needs.compute_artifact_names.outputs.ethereum_binaries_artifact }}
       use_case: 'use_test_keys'
 
-  get_artifacts_names:
-    name: Retrieve artifact names
-    needs: [build_exchange, build_ethereum]
-    if: ${{ always() }}
-    outputs:
-      exchange_build_artifact: ${{ steps.get_exchange_binaries.outputs.exchange_build_artifact }}
-      ethereum_build_artifact: ${{ steps.get_ethereum_binaries.outputs.ethereum_build_artifact }}
-    runs-on: ubuntu-latest
-    steps:
-      - name: Get Exchange binaries artifact name
-        id: get_exchange_binaries
-        run: |
-          if [ "${{ needs.build_exchange.result }}" = "skipped" ]; then
-            echo "exchange_build_artifact=${EXCHANGE_BUILD_ARTIFACT}" >> "${GITHUB_OUTPUT}"
-          elif [ "${{ needs.build_exchange.result }}" = "success" ]; then
-            echo "exchange_build_artifact=app_exchange_binaries" >> "${GITHUB_OUTPUT}"
-          else
-            echo "Not able to retrieve Exchange binaries artifact name" >&2
-            exit 1
-          fi
-      - name: Get Ethereum binaries artifact name
-        id: get_ethereum_binaries
-        run: |
-          if [ "${{ needs.build_ethereum.result }}" = "skipped" ]; then
-            echo "ethereum_build_artifact=${ETHEREUM_BUILD_ARTIFACT}" >> "${GITHUB_OUTPUT}"
-          elif [ "${{ needs.build_ethereum.result }}" = "success" ]; then
-            echo "ethereum_build_artifact=app_ethereum_binaries" >> "${GITHUB_OUTPUT}"
-          else
-            echo "Not able to retrieve Ethereum binaries artifact name" >&2
-            exit 1
-          fi
-      - name: Show artifact names
-        run: |
-          echo "Exchange build artifact: ${{ steps.get_exchange_binaries.outputs.exchange_build_artifact }}"
-          echo "Ethereum build artifact: ${{ steps.get_ethereum_binaries.outputs.ethereum_build_artifact }}"
-
-  get_swap_test_dir:
-    name: Find swap test directory
+  get_swap_test_metadata:
+    name: Retrieve swap test metadata
     runs-on: ubuntu-latest
     outputs:
-      swap_test_dir: ${{ steps.find_swap_test_dir.outputs.swap_test_dir }}
+      swap_test_dir: ${{ steps.compute_directories.outputs.swap_test_dir }}
+      main_app_dir: ${{ steps.compute_directories.outputs.main_app_dir }}
+      lib_app_dir: ${{ steps.compute_directories.outputs.lib_app_dir }}
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
         with:
           repository: ${{ inputs.app_repository }}
           ref: ${{ inputs.app_branch_name }}
           path: app_coin
+
       - name: Install ledgered
-        run: |
-          python3 -m pip install ledgered
-      - name: Find swap test directory
-        id: find_swap_test_dir
+        run: python3 -m pip install ledgered
+
+      - name: Find swap test directory and compute artifact paths
+        id: compute_directories
         working-directory: app_coin
         run: |
-          # Get the swap test directory using ledger-manifest and jq
+          # Get the swap test directory using ledger-manifest
           swap_test_dir=$(ledger-manifest --output-pytest-directories -j -- ledger_app.toml | jq -r '.pytest_directories[] | select(.name == "swap") | .directory')
           if [ -z "${swap_test_dir}" ]; then
-            echo "Swap test directory not found!" >&2
+            echo "Swap test directory not found in ledger_app.toml!" >&2
             exit 1
           fi
-          echo "swap_test_dir=${swap_test_dir}" >> "${GITHUB_OUTPUT}"
-      - name: Show found swap test directory
-        run: |
-          echo "Display found swap test directory"
-          echo "Found swap test directory: ${{ steps.find_swap_test_dir.outputs.swap_test_dir }}"
 
-  get_dir_names:
-    name: Build artifact destination directories
-    needs: get_swap_test_dir
-    runs-on: ubuntu-latest
-    outputs:
-      swap_test_dir: ${{ steps.get_swap_test_dir.outputs.swap_test_dir }}
-      main_app_dir: ${{ steps.get_swap_test_dir.outputs.main_app_dir }}
-      lib_app_dir: ${{ steps.get_swap_test_dir.outputs.lib_app_dir }}
-    steps:
-      - name: Set swap test directories
-        id: get_swap_test_dir
-        run: |
+          # Compute artifact destination directories
+          main_app_dir="${swap_test_dir}/.test_dependencies/main/app-exchange/build"
+          lib_app_dir="${swap_test_dir}/.test_dependencies/libraries/app-ethereum/build"
+
+          # Output all paths
           {
-            echo "swap_test_dir=${{ needs.get_swap_test_dir.outputs.swap_test_dir }}"
-            echo "main_app_dir=${{ needs.get_swap_test_dir.outputs.swap_test_dir }}/.test_dependencies/main/app-exchange/build"
-            echo "lib_app_dir=${{ needs.get_swap_test_dir.outputs.swap_test_dir }}/.test_dependencies/libraries/app-ethereum/build"
+            echo "swap_test_dir=${swap_test_dir}"
+            echo "main_app_dir=${main_app_dir}"
+            echo "lib_app_dir=${lib_app_dir}"
           } >> "${GITHUB_OUTPUT}"
-      - name: Show swap test directories
-        run: |
-          echo "Swap test directory: ${{ steps.get_swap_test_dir.outputs.swap_test_dir }}"
-          echo "Main app directory: ${{ steps.get_swap_test_dir.outputs.main_app_dir }}"
-          echo "Lib app directory: ${{ steps.get_swap_test_dir.outputs.lib_app_dir }}"
+
+          echo "Swap test directory: ${swap_test_dir}"
+          echo "Exchange artifacts will be placed in: ${main_app_dir}"
+          echo "Ethereum artifacts will be placed in: ${lib_app_dir}"
 
 
   # This job runs the swap functional tests using the reusable workflow
   ragger_tests_swap:
-    name: Run swap ragger tests using the reusable workflow
-    needs: [compute_artifact_name, get_artifacts_names, get_dir_names]
+    name: Run swap functional tests
+    needs: [compute_artifact_names, build_app, build_exchange, build_ethereum, get_swap_test_metadata]
+    # build_app may be skipped if download_app_binaries_artifact is provided
+    # Always run unless a dependency failed or was cancelled
+    if: |
+      always() &&
+      !contains(needs.*.result, 'failure') &&
+      !contains(needs.*.result, 'cancelled')
     uses: ./.github/workflows/reusable_ragger_tests.yml
     with:
       app_repository: ${{ inputs.app_repository }}
       app_branch_name: ${{ inputs.app_branch_name }}
-      download_app_binaries_artifact: ${{ inputs.download_app_binaries_artifact != '' && inputs.download_app_binaries_artifact || needs.compute_artifact_name.outputs.app_binaries_artifact }}
-      additional_app_binaries_artifact: ${{ needs.get_artifacts_names.outputs.exchange_build_artifact }}
-      additional_app_binaries_artifact_dir: ${{ needs.get_dir_names.outputs.main_app_dir }}
-      lib_binaries_artifact: ${{ needs.get_artifacts_names.outputs.ethereum_build_artifact }}
-      lib_binaries_artifact_dir: ${{ needs.get_dir_names.outputs.lib_app_dir }}
-      test_dir: ${{ needs.get_dir_names.outputs.swap_test_dir }}
+      download_app_binaries_artifact: ${{ inputs.download_app_binaries_artifact != '' && inputs.download_app_binaries_artifact || needs.compute_artifact_names.outputs.app_binaries_artifact }}
+      additional_app_binaries_artifact: ${{ needs.compute_artifact_names.outputs.exchange_binaries_artifact }}
+      additional_app_binaries_artifact_dir: ${{ needs.get_swap_test_metadata.outputs.main_app_dir }}
+      lib_binaries_artifact: ${{ needs.compute_artifact_names.outputs.ethereum_binaries_artifact }}
+      lib_binaries_artifact_dir: ${{ needs.get_swap_test_metadata.outputs.lib_app_dir }}
+      test_dir: ${{ needs.get_swap_test_metadata.outputs.swap_test_dir }}
       regenerate_snapshots: ${{ inputs.regenerate_snapshots }}
