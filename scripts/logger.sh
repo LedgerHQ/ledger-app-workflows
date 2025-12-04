@@ -49,3 +49,27 @@ log_success () {
 log_info () {
     echo "$1"
 }
+
+#===============================================================================
+#
+#     GitHub Actions helper functions
+#
+#===============================================================================
+
+# Check if running in GitHub Actions
+is_github_actions() {
+    [[ "${GITHUB_ACTIONS}" == "true" ]]
+}
+
+# Echo GitHub Actions group commands only if in CI
+gh_group() {
+    if is_github_actions; then
+        echo "::group::$1"
+    fi
+}
+
+gh_endgroup() {
+    if is_github_actions; then
+        echo "::endgroup::"
+    fi
+}

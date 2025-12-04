@@ -2,7 +2,7 @@
 
 set -e
 
-# shellcheck source=scripts/logger.sh
+# shellcheck source=/dev/null
 source "$(dirname "$0")/logger.sh"
 
 
@@ -168,76 +168,82 @@ main() (
     if [[ -n "${target}" ]]; then
         manifests_list="${manifests_dir}/manifest_${target}.json"
     else
-        manifests_list=$(find "$manifests_dir" -type f -name "*.json")
+        manifests_list=$(find "${manifests_dir}" -type f -name "*.json")
     fi
     while IFS= read -r manifest; do
-        log_info "Checking manifest $manifest"
+        gh_group "  Checking manifest ${manifest}"
+        log_info "Checking manifest ${manifest}"
 
-        build_directory="$(cat "$manifest" | jq ".BUILD_DIRECTORY" | sed 's/"//g')"
+        build_directory="$(cat "${manifest}" | jq ".BUILD_DIRECTORY" | sed 's/"//g')"
         # Remove leading './' if present
-        build_directory=$(echo "$build_directory" | sed 's,^./,,g')
-        log_info "Build directory is $build_directory"
+        build_directory=$(echo "${build_directory}" | sed 's,^./,,g')
+        log_info "Build directory is ${build_directory}"
 
         # Parse all variants of each manifest to grab all icons and glyphs
-        variants_list=$(cat "$manifest" | jq ".VARIANTS | keys[]")
+        variants_list=$(cat "${manifest}" | jq ".VARIANTS | keys[]")
         while IFS= read -r variant; do
-            log_info "Checking variant $variant"
+            log_info "Checking variant ${variant}"
 
             # Get the icon and the device used for this variant, we'll check later
-            device="$(cat "$manifest" | jq ".VARIANTS.$variant.TARGET" | sed 's/"//g')"
-            icon="$(cat "$manifest" | jq ".VARIANTS.$variant.ICONNAME" | sed 's/"//g')"
+            device="$(cat "${manifest}" | jq ".VARIANTS.${variant}.TARGET" | sed 's/"//g')"
+            icon="$(cat "${manifest}" | jq ".VARIANTS.${variant}.ICONNAME" | sed 's/"//g')"
             # If the icon path is absolute, convert it to a relative path from build_directory
-            icon=$(echo "$icon" | sed "s,^/.*/$build_directory/,,g")
+            icon=$(echo "${icon}" | sed "s,^/.*/${build_directory}/,,g")
             # Store the couple icon/device as key of an associative array to auto remove duplicates from variants
-            icons_and_devices["$icon;$device"]=1
+            icons_and_devices["${icon};${device}"]=1
 
             # Get the glyphs used for this variant, we'll check later otherwise we would check many times each file
-            glyphs="$(cat "$manifest" | jq ".VARIANTS.$variant.GLYPH_FILES" | sed 's/"//g')"
+            glyphs="$(cat "${manifest}" | jq ".VARIANTS.${variant}.GLYPH_FILES" | sed 's/"//g')"
             for glyph in $glyphs; do
                 # If the glyph path is absolute, convert it to a relative path from build_directory
                 # It can be the case for Stax where the ICONNAME is put in the GLYPH_FILES
-                glyph=$(echo "$glyph" | sed "s,^/.*/$build_directory/,,g")
-                all_glyph_files+="$glyph "
+                glyph=$(echo "${glyph}" | sed "s,^/.*/${build_directory}/,,g")
+                all_glyph_files+="${glyph} "
             done
         done < <(echo "$variants_list")
+        gh_endgroup
 
     done < <(echo "$manifests_list")
 
     log_info "All manifests checked"
 
+    gh_group "  Checking icons"
     # Check each icon
     for icon_and_device in "${!icons_and_devices[@]}"; do
-        icon="$(echo "$icon_and_device" | cut -d';' -f1)"
-        device="$(echo "$icon_and_device" | cut -d';' -f2)"
-        img_file="$repo/$build_directory/$icon"
-        if ! [[ -f "$img_file" ]]; then
-            log_error "Icon file '$img_file' Doesn't exist!"
+        icon="$(echo "${icon_and_device}" | cut -d';' -f1)"
+        device="$(echo "${icon_and_device}" | cut -d';' -f2)"
+        img_file="${repo}/${build_directory}/${icon}"
+        if ! [[ -f "${img_file}" ]]; then
+            log_error "Icon file '${img_file}' Doesn't exist!"
             error=1
             continue
         fi
-        check_icon "$repo_name" "$device" "$img_file" || error=1
+        check_icon "${repo_name}" "${device}" "${img_file}" || error=1
     done
+    gh_endgroup
 
+    gh_group "  Checking glyphs"
     # As we scanned for all devices and all variants, we can have a lot of duplicates for glyphs. Filter out duplicates and empty lines
-    all_glyph_files_no_duplicates="$(echo "$all_glyph_files" | tr ' ' '\n' | sort -u | grep .)"
+    all_glyph_files_no_duplicates="$(echo "${all_glyph_files}" | tr ' ' '\n' | sort -u | grep .)"
     while IFS= read -r file; do
         # Skip SDK glyphs
         if [[ "$file" != "/opt/"*"-secure-sdk/"* ]]; then
-            img_file="$repo/$build_directory/$file"
-            if ! [[ -f "$img_file" ]]; then
-                log_error "Glyph file '$img_file' Doesn't exist!"
+            img_file="${repo}/${build_directory}/${file}"
+            if ! [[ -f "${img_file}" ]]; then
+                log_error "Glyph file '${img_file}' Doesn't exist!"
                 error=1
                 continue
             fi
-            check_glyph "$repo/$build_directory/$file" || error=1
+            check_glyph "${repo}/${build_directory}/${file}" || error=1
         fi
-    done < <(echo "$all_glyph_files_no_duplicates")
+    done < <(echo "${all_glyph_files_no_duplicates}")
+    gh_endgroup
 
-    if [[ "$error" -eq 1 ]]; then
+    if [[ "${error}" -eq 1 ]]; then
         log_error_no_header "At least one error has been found. Please refer to the documentation for how to design graphical elements"
         log_error_no_header "https://developers.ledger.com/docs/embedded-app/design-requirements/"
     fi
-    return "$error"
+    return "${error}"
 )
 
 main "$@"

@@ -177,6 +177,7 @@ call_step() {
                 log_step "Get ${step} (All targets)"
                 ALL_TARGETS=$(ledger-manifest --output-devices ledger_app.toml | tail -n +2 | awk -F" " '{print $2}' | sed 's/[2+]/p/')
                 for tgt in ${ALL_TARGETS}; do
+                    gh_group "  Processing target ${tgt}"
                     log_bold "********* Processing target: ${tgt}"
                     eval BOLOS_SDK="$(echo "\$${tgt}" | tr '[:lower:]' '[:upper:]')_SDK"
                     if [[ "${IS_RUST}" == true ]]; then
@@ -187,6 +188,7 @@ call_step() {
                     [[ "${VERBOSE}" == true ]] && echo "Running: ${COMMAND}"
                     eval "${COMMAND}"
                     err=$?
+                    gh_endgroup
                     if [[ ${err} -ne 0 ]]; then
                         log_error "Check ${step} failed for target ${tgt}"
                         echo -n "|:x:" >> "${FILE_STATUS}"
@@ -222,6 +224,7 @@ call_step() {
                 log_step "Check ${step} (All targets)"
                 ALL_TARGETS=$(ledger-manifest --output-devices ledger_app.toml | tail -n +2 | awk -F" " '{print $2}' | sed 's/[2+]/p/')
                 for tgt in ${ALL_TARGETS}; do
+                    gh_group "  Processing target ${tgt}"
                     log_bold "********* Processing target: ${tgt}"
                     eval BOLOS_SDK="$(echo "\$${tgt}" | tr '[:lower:]' '[:upper:]')_SDK"
                     if [[ "${IS_RUST}" == true ]]; then
@@ -232,6 +235,7 @@ call_step() {
                     [[ "${VERBOSE}" == true ]] && echo "Running: ${COMMAND}"
                     eval "${COMMAND}"
                     err=$?
+                    gh_endgroup
                     if [[ ${err} -ne 0 ]]; then
                         log_error "Check ${step} failed for target ${tgt}"
                         echo -n "|:x:" >> "${FILE_STATUS}"
@@ -252,8 +256,11 @@ call_step() {
     fi
 
     [[ "${VERBOSE}" == true ]] && echo "Running: ${COMMAND}"
+    # Groups are managed inside the dedicated scripts for icons and glyphs
+    [[ "${step}" != icons ]] && gh_group "  Step ${step}"
     eval "${COMMAND}"
     err=$?
+    [[ "${step}" != icons ]] && gh_endgroup
     if [[ ${err} -ne 0 ]]; then
         log_error "Check ${step} failed"
         echo -n "|:x:" >> "${FILE_STATUS}"
