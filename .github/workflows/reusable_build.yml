@@ -136,7 +136,8 @@ jobs:
           echo "Using BOLOS_SDK: ${BOLOS_SDK}"
           echo "Checking out reference '${SDK_REFERENCE}'..."
           git fetch -apt && git checkout ${SDK_REFERENCE}
-          echo "ADDITIONAL_ARGS=TARGET=${{ matrix.device }}" >> "${GITHUB_ENV}"
+          DEVICE=${{ matrix.device }}
+          echo "ADDITIONAL_ARGS=TARGET=${DEVICE/sp/s2}" >> "${GITHUB_ENV}"
 
       - name: Build application
         id: "build"
