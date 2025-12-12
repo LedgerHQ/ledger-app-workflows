@@ -1,0 +1,51 @@
+name: Shellcheck CI
+
+on:
+  workflow_call:
+    inputs:
+      app_repository:
+        description: 'The GIT repository to test (defaults to `github.repository`)'
+        required: false
+        default: ${{ github.repository }}
+        type: string
+      app_branch_name:
+        description: 'The GIT branch to test (defaults to `github.ref`)'
+        required: false
+        default: ${{ github.ref }}
+        type: string
+      file_or_dir:
+        description: 'Files to check'
+        required: false
+        default: '.'
+        type: string
+      shellcheck_opts:
+        description: 'Options to passed to shellcheck'
+        required: false
+        default: ''
+        type: string
+
+permissions:
+  contents: read
+
+env:
+  APP_REPOSITORY: ${{ inputs.app_repository }}
+  APP_BRANCH_NAME: ${{ inputs.app_branch_name }}
+  FILE_OR_DIR: ${{ inputs.file_or_dir }}
+
+jobs:
+  shellcheck:
+    name: Shellcheck
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Clone
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ inputs.app_repository }}
+          ref: ${{ inputs.app_branch_name }}
+      - name: Run ShellCheck
+        uses: ludeeus/action-shellcheck@00cae500b08a931fb5698e11e79bfbd38e612a38  # v2.0.0
+        env:
+          SHELLCHECK_OPTS: ${{ inputs.shellcheck_opts }}
+        with:
+          check_together: 'yes'
