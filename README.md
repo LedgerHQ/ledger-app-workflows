@@ -25,6 +25,10 @@ Having a correct and valid manifest is mandatory.
   - `_check_app_load_params.yml`\
     will perform some checks of your application parameters vs the `ledger-app-database` config.
 
+
+- `reusable_add_tag.yml` \
+this workflow will automate the creation of tags which versions are listed in `CHANGELOG.md`. It can also automate the creation and update of specific tag (e.g. `v1` in this repo).
+
 - `reusable_build.yml` \
 This workflow is mandatory, it will perform a build and upload the artifact containing the compiled application. It guarantees that the app will be buildable in the deployment environment.
 

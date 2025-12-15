@@ -1,0 +1,81 @@
+name: Create git tag based on the latest changelog entry
+
+on:
+  workflow_call:
+    secrets:
+      token:
+        description: 'A token passed from the caller workflow'
+        required: true
+    inputs:
+      app_repository:
+        description: 'The GIT repository to clone (defaults to `github.repository`)'
+        required: false
+        default: ${{ github.repository }}
+        type: string
+      app_branch_name:
+        description: 'The GIT branch on which to create a commit (defaults to `github.ref`)'
+        required: false
+        default: ${{ github.ref }}
+        type: string
+      app_tag:
+        description: 'The tag to be created.'
+        required: false
+        type: string
+        default: ""
+      app_tag_overwrite:
+        description: 'Wether the tag shall be overwritten if it already exists.'
+        required: true
+        type: boolean
+
+permissions:
+  contents: write
+
+env:
+  APP_REPOSITORY: ${{ inputs.app_repository }}
+  APP_BRANCH_NAME: ${{ inputs.app_branch_name }}
+  APP_TAG: ${{ inputs.app_tag }}
+  APP_TAG_OVERWRITE: ${{ inputs.app_tag_overwrite }}
+
+jobs:
+  tag:
+    name: Update tag
+    runs-on: ubuntu-latest
+    steps:
+      - name: Clone
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ inputs.app_repository }}
+          ref: ${{ inputs.app_branch_name }}
+          fetch-depth: 2
+          fetch-tags: true
+      - name: Create tag
+        run: |
+
+          if [[ -n "${APP_TAG}" ]]; then
+            echo "[NOTICE] app_tag was provided. will not parse CHANGELOG.md."
+            tag="${APP_TAG}"
+          else
+            echo "[NOTICE] app_tag was not provided. will parse tag in CHANGELOG.md."
+            tag=v$(sed -r -n -e 's/^## \[([[:digit:]]+\.[[:digit:]]+\.[[:digit:]]+)\].*$/\1/p' CHANGELOG.md | head -n1)
+            echo "[INFO] Proceeding with latest entry in CHANGELOG.md : $tag."
+          fi
+
+          if [[ -n "$tag" && -n $(git tag --list | grep -w "${tag}") ]]; then
+            tag_exists="true"
+          else
+            tag_exists="false"
+          fi
+
+          if [[ $tag_exists == "true" && ${APP_TAG_OVERWRITE} == "false" ]] ; then
+            echo "[NOTICE] tag already exists while app_tag_overwrite is set to false. Stopping."
+            exit 1
+          else
+            echo "[INFO] Proceeding with creating/updating tag $tag."
+          fi
+
+          if ! ( git tag -f "$tag" && git push -f origin "$tag" ); then
+            echo "[ERROR] failed to create/update tag $tag. Stopping."
+            exit 1
+          else
+            echo "[INFO] successfully created tag $tag."
+          fi
