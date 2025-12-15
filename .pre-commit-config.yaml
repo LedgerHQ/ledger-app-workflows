@@ -18,3 +18,10 @@ repos:
       - id: actionlint
         types_or: [yaml]
         args: [-shellcheck='' -pyflakes='']
+
+  - repo: https://github.com/Mateusz-Grzelinski/actionlint-py
+    rev: v1.7.7.23
+    hooks:
+      - id: actionlint
+        types_or: [yaml]
+        args: [-shellcheck='' -pyflakes='']
