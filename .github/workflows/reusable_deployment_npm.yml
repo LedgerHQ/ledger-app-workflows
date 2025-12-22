@@ -79,11 +79,6 @@ jobs:
         with:
           subject-path: ${{ env.PACKAGE_DIRECTORY }}/dist
 
-      - name: Sign
-        uses: LedgerHQ/actions-security/actions/sign-blob@actions/sign-blob-1
-        with:
-          path: ${{ env.PACKAGE_DIRECTORY }}/dist
-
       - name: Login to JFrog Ledger
         id: jfrog-login
         uses: LedgerHQ/actions-security/actions/jfrog-login@actions/jfrog-login-1
