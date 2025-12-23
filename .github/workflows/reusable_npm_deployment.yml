@@ -1,12 +1,12 @@
 on:
   workflow_call:
     inputs:
-      repository_name:
+      app_repository:
         description: 'The GIT repository to deploy (defaults to `github.repository`)'
         required: false
         default: ${{ github.repository }}
         type: string
-      branch_name:
+      app_ref_name:
         description: 'The GIT branch to deploy (defaults to `github.ref`)'
         required: false
         default: ${{ github.ref }}
@@ -22,7 +22,6 @@ on:
         default: false
       jfrog_deployment:
         description: If the npm package should be pushed on Ledger Jfrog or not.
-                     Ignored if `publish` is `false`.
         type: boolean
         required: false
         default: true
@@ -33,8 +32,8 @@ on:
         default: "embedded-apps-npm-prod-public"
 
 env:
-  REPOSITORY_NAME: ${{ inputs.repository_name }}
-  BRANCH_NAME: ${{ inputs.branch_name }}
+  APP_REPOSITORY: ${{ inputs.app_repository }}
+  APP_REF_NAME: ${{ inputs.app_ref_name }}
   PACKAGE_DIRECTORY: ${{ inputs.package_directory }}
   DRY_RUN: ${{ inputs.dry_run }}
   JFROG_DEPLOYMENT: ${{ inputs.jfrog_deployment }}
@@ -42,7 +41,7 @@ env:
 
 jobs:
   package_and_deploy:
-    name: Build and deploy a npm Package
+    name: Build and deploy an npm Package
     runs-on: public-ledgerhq-shared-small
     permissions:
       id-token: write
@@ -54,8 +53,8 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          repository: ${{ env.REPOSITORY_NAME }}
-          ref: ${{ env.BRANCH_NAME }}
+          repository: ${{ env.APP_REPOSITORY }}
+          ref: ${{ env.APP_REF_NAME }}
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build npm package
@@ -65,7 +64,7 @@ jobs:
           mkdir -p dist && mv *.tgz dist/
 
       - name: Attest
-        uses: LedgerHQ/actions-security/actions/attest@actions/attest-1
+        uses: LedgerHQ/actions-security/actions/attest-for-npmsjs-com@actions/attest-for-npmsjs-com-0.1
         with:
           subject-path: ${{ env.PACKAGE_DIRECTORY }}/dist
 

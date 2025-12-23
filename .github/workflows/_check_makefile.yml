@@ -100,4 +100,4 @@ jobs:
       - name: Run script
         run: |
             ./ledger-app-workflows/scripts/check_all.sh -c makefile -t "${{ matrix.device }}" \
-              -a ./app-repository -m "${DOWNLOAD_MANIFEST_ARTIFACT_NAME}" -w ../ledger-app-workflows
+              -a ./app-repository -m "${DOWNLOAD_MANIFEST_ARTIFACT_NAME}" -w ./ledger-app-workflows

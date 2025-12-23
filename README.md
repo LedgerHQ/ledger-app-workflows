@@ -61,6 +61,10 @@ This workflow is optional, but recommended.
 This workflow will analyze your application, using `CodeQL`. \
 This workflow is optional, but recommended.
 
+- `reusable_npm_deployment.yml` \
+This workflow will build, check and deploy an npm package. This workflow is optional and is meant
+to help developers to deploy application npm clients on `Ledger Jfrog` and subsequently to `npmjs.com`.
+
 - `reusable_swap_tests.yml` \
 This workflow will run Swap functional tests using `app-exchange`.
 

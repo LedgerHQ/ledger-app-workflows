@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.92.0] - 2026-01-13
+
+### Added
+
+- Reusable workflow `reusable_npm_deployment.yml` to deploy npm packages to Jfrog, and subsequently to npmjs.com.
+
+## [1.91.3] - 2026-01-13
+
+### Fixed
+
+- Fixing check_makefile.sh having wrong path in a CI context.
+
 ## [1.91.2] - 2026-01-08
 
 ### Fixed
