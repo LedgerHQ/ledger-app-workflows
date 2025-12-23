@@ -22,7 +22,6 @@ on:
         default: false
       jfrog_deployment:
         description: If the npm package should be pushed on Ledger Jfrog or not.
-                     Ignored if `publish` is `false`.
         type: boolean
         required: false
         default: true
@@ -42,7 +41,7 @@ env:
 
 jobs:
   package_and_deploy:
-    name: Build and deploy a npm Package
+    name: Build and deploy an npm Package
     runs-on: public-ledgerhq-shared-small
     permissions:
       id-token: write
