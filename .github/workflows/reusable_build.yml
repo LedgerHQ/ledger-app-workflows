@@ -22,6 +22,11 @@ on:
         required: false
         default: ''
         type: string
+      forbidden_flags:
+        description: "A set of flags that must NOT be present at build time."
+        required: false
+        default: 'DEBUG=1 DEBUG_OVER_USB=1 PRODUCTION_BUILD=0'
+        type: string
       use_case:
         description: "The use case to build the application for. Ignored if 'flags' is set"
         required: false
@@ -76,6 +81,7 @@ env:
   APP_REPOSITORY: ${{ inputs.app_repository }}
   APP_BRANCH_NAME: ${{ inputs.app_branch_name }}
   FLAGS: ${{ inputs.flags }}
+  FORBIDDEN_FLAGS: ${{ inputs.forbidden_flags }}
   USE_CASE: ${{ inputs.use_case }}
   UPLOAD_APP_BINARIES_ARTIFACT: ${{ inputs.upload_app_binaries_artifact }}
   UPLOAD_AS_LIB_ARTIFACT: ${{ inputs.upload_as_lib_artifact }}
@@ -138,6 +144,37 @@ jobs:
           git fetch -apt && git checkout ${SDK_REFERENCE}
           DEVICE=${{ matrix.device }}
           echo "ADDITIONAL_ARGS=TARGET=${DEVICE/sp/s2}" >> "${GITHUB_ENV}"
+
+      - name: Check that no debug flag goes to production codebases
+        id: check-no-debug-flag
+        working-directory: ${{ needs.call_get_app_metadata.outputs.build_directory }}
+        shell: bash
+        run: |
+          if [ "${{ needs.call_get_app_metadata.outputs.is_rust }}" = "true" ];
+          then
+              echo "[NOTICE] Rust is not supported yet."
+          else
+              echo "[INFO] Checking that build does not contain any of the following flags : "
+              echo "$FORBIDDEN_FLAGS"
+
+              BUILD_DEVICE_NAME="$(echo "${{ matrix.device }}" | sed 's/nanosp/nanos2/')"
+
+              make ${{ needs.call_get_app_metadata.outputs.flags }} \
+                   ${ADDITIONAL_ARGS} \
+                   BOLOS_SDK="${BOLOS_SDK}" \
+                   --dry-run build/$BUILD_DEVICE_NAME/obj/app/src/main.o 2>&1 | tee -a build_dry_run_output.txt
+
+              for forbidden_flag in $FORBIDDEN_FLAGS; do
+                echo "[INFO] Checking for forbidden flag $forbidden_flag"
+                if grep -q "$forbidden_flag" build_dry_run_output.txt; then
+                  echo "[ERROR] Detected forbidden flag $forbidden_flag in build output. Aborting."
+                  exit 1
+                else
+                  echo "[INFO] Did not find forbidden flag $forbidden_flag in build output. Continuing."
+                fi
+              done
+          fi
+
 
       - name: Build application
         id: "build"
