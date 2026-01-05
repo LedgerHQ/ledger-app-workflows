@@ -1,0 +1,12 @@
+{
+  "forbidden": {
+    "c":[
+        "DEBUG=1",
+        "DEBUG_OVER_USB=1",
+        "PRODUCTION_BUILD=0"
+    ],
+    "rust":[
+        "TBD"
+    ]
+  }
+}
