@@ -18,6 +18,7 @@ Having a correct and valid manifest is mandatory.
     will ensure that the icons and glyphs used in your app will be displayable on the device.
   - `_check_makefile.yml`\
     will ensure that your Makefile is up to date and compatible with our deployment scripts.
+    It will also check that it does not contain production-incompatible flags (e.g. DEBUG=1).
   - `_check_readme.yml`\
     will ensure that your README is up to date.
   - `_check_clang_static_analyzer.yml`\
