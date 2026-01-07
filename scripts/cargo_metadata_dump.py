@@ -7,7 +7,7 @@ from utils import run_cmd
 
 
 def save_app_params(device: str, app_build_path: Path, json_path: Path) -> None:
-    metadata = run_cmd("cargo metadata --no-deps --format-version 1 --offline -q",
+    metadata = run_cmd("cargo +$RUST_NIGHTLY metadata --no-deps --format-version 1 --offline -q",
                        cwd=app_build_path)
     metadata = json.loads(metadata)
 
