@@ -97,49 +97,7 @@ jobs:
           echo "BOLOS_SDK=${BOLOS_SDK}" >> "${GITHUB_ENV}"
           echo "BOLOS_SDK will be set to: ${BOLOS_SDK}"
 
-      - name: Check for forbidden flags
-        id: check-no-debug-flag
-        shell: bash
-        if: ${{ needs.call_get_app_metadata.outputs.is_rust == 'false' }}
-        working-directory: app-repository
-        run: |
-          forbidden_flags=$(jq -r '.forbidden.c[]' ../ledger-app-workflows/config/forbidden-flags.json)
-
-          BUILD_DEVICE_NAME="${{ matrix.device }}"
-          BUILD_DEVICE_NAME="${BUILD_DEVICE_NAME/sp/s2}"
-
-          entrypoint_filepath=$(grep -rP \
-                                         --exclude-dir='deps' \
-                                         --exclude-dir='tests' \
-                                         --exclude-dir='vendor' \
-                                         --include='*.c' \
-                                         '\b(app_)?main\s*\([^)]*\)' . | cut -d':' -f1 | head -n1)
-
-          entrypoint_filepath=${entrypoint_filepath#./}
-          entrypoint_filepath=${entrypoint_filepath%.c}.o
-
-          build_dir=$(ledger-manifest -ob ledger_app.toml)
-          if [ -z "${build_dir}" ]; then
-            echo "build directory not found in ledger_app.toml!" >&2
-            exit 1
-          fi
-
-          make ${{ needs.call_get_app_metadata.outputs.flags }} \
-               ${ADDITIONAL_ARGS} \
-               BOLOS_SDK="${BOLOS_SDK}" \
-               --dry-run build/${BUILD_DEVICE_NAME}/obj/app/${entrypoint_filepath} 2>&1 | tee -a build_dry_run_output.txt
-
-          for forbidden_flag in $forbidden_flags; do
-            echo "[INFO] Checking for forbidden flag $forbidden_flag"
-            if grep -q "$forbidden_flag" build_dry_run_output.txt; then
-              echo "[ERROR] Detected forbidden flag $forbidden_flag in build output. Aborting."
-              exit 1
-            else
-              echo "[INFO] Did not find forbidden flag $forbidden_flag in build output. Continuing."
-            fi
-          done
-
       - name: Run script
         run: |
             ./ledger-app-workflows/scripts/check_all.sh -c makefile -t "${{ matrix.device }}" \
-              -a ./app-repository -m "${DOWNLOAD_MANIFEST_ARTIFACT_NAME}"
+              -a ./app-repository -m "${DOWNLOAD_MANIFEST_ARTIFACT_NAME}" -w ../ledger-app-workflows

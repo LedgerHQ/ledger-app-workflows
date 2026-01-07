@@ -33,6 +33,7 @@ help() {
     echo
     echo "  -c <check>  : Requested check from (${ALL_CHECKS}). Default is all."
     echo "  -d <dir>    : Database directory"
+    echo "  -w <dir>    : Workflows directory"
     echo "  -a <dir>    : Application directory"
     echo "  -b <dir>    : Application build directory"
     echo "  -m <file>   : Manifest (file or directory)"
@@ -50,7 +51,7 @@ help() {
 #
 #===============================================================================
 
-while getopts ":a:b:c:d:m:t:rvh" opt; do
+while getopts ":a:b:c:d:m:t:w:rvh" opt; do
     case ${opt} in
         a)  APP_DIR=${OPTARG}   ;;
         b)  BUILD_DIR=${OPTARG} ;;
@@ -58,6 +59,7 @@ while getopts ":a:b:c:d:m:t:rvh" opt; do
         d)  DATABASE_DIR=${OPTARG} ;;
         m)  MANIFEST=${OPTARG}  ;;
         t)  TARGET=${OPTARG}    ;;
+        w)  WORKFLOWS_DIR=${OPTARG} ;;
         r)  IS_RUST=true ;;
         v)  VERBOSE=true ;;
         h)  help ;;
@@ -125,6 +127,16 @@ if [[ (-z ${REQUESTED_CHECK}) || ("${REQUESTED_CHECK}" == app_load_params) ]]; t
         # Check if DATABASE_DIR is already present
         DATABASE_DIR="/tmp/ledger-app-database"
         git clone "${verbose_mode[@]}" https://github.com/LedgerHQ/ledger-app-database.git "${DATABASE_DIR}"
+    fi
+fi
+
+if [[ (-z ${REQUESTED_CHECK}) || ("${REQUESTED_CHECK}" == makefile) ]]; then
+    if [[ -z "${WORKFLOWS_DIR}" ]]; then
+        # Check if WORKFLOWS_DIR is already present
+        WORKFLOWS_DIR="/tmp/ledger-app-workflows"
+        if [[ ! -d "$WORKFLOWS_DIR" ]]; then
+            git clone "${verbose_mode[@]}" https://github.com/LedgerHQ/ledger-app-database.git "${WORKFLOWS_DIR}"
+        fi
     fi
 fi
 
@@ -206,7 +218,7 @@ call_step() {
             COMMAND="python3 ${DATABASE_DIR}/scripts/app_load_params_check.py --database_path ${DATABASE_DIR}/app-load-params-db.json --app_manifests_path ${MANIFEST_DIR}"
             ;;
         "makefile")
-            COMMAND="${dirName}/check_makefile.sh ${APP_DIR} ${REPO_NAME} ${MANIFEST_DIR} ${TARGET}"
+            COMMAND="${dirName}/check_makefile.sh ${APP_DIR} ${REPO_NAME} ${MANIFEST_DIR} ${WORKFLOWS_DIR} ${TARGET}"
             ;;
         "readme")
             COMMAND="${dirName}/check_readme.sh ${APP_DIR} ${REPO_NAME}"
