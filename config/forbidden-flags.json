@@ -6,7 +6,7 @@
         "PRODUCTION_BUILD=0"
     ],
     "rust":[
-        "TBD"
+        "debug\\s*?=\\s*true"
     ]
   }
 }
