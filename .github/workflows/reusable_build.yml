@@ -148,10 +148,10 @@ jobs:
           then
               BUILD_DEVICE_NAME="$(echo "${{ matrix.device }}" | sed 's/nanosp/nanosplus/')"
               # Update the Rust SDK crate
-              cargo update ledger_device_sdk
+              cargo +$RUST_NIGHTLY update ledger_device_sdk
               # Build application
-              cargo ledger build "${BUILD_DEVICE_NAME}" -- ${CARGO_LEDGER_BUILD_ARGS}
-              binary_path=$(cargo metadata --no-deps --format-version 1 | jq -r '.target_directory')
+              cargo +$RUST_NIGHTLY ledger build "${BUILD_DEVICE_NAME}" -- ${CARGO_LEDGER_BUILD_ARGS}
+              binary_path=$(cargo +$RUST_NIGHTLY metadata --no-deps --format-version 1 | jq -r '.target_directory')
               echo "binary_path=${binary_path}" >> "${GITHUB_OUTPUT}"
           else
               echo "Using BOLOS_SDK: ${BOLOS_SDK}"
@@ -181,7 +181,7 @@ jobs:
             echo "C_DEVICE_NAME=$C_DEVICE_NAME"
             RUST_DEVICE_NAME="$(echo "${{ matrix.device }}" | sed 's/sp/splus/')"
             echo "RUST_DEVICE_NAME=$RUST_DEVICE_NAME"
-            ELF_NAME=$(cargo metadata --manifest-path ${{ needs.call_get_app_metadata.outputs.build_directory }}/Cargo.toml --no-deps --format-version 1 | jq -r '.packages[] | select(.metadata.ledger != null) | .name')
+            ELF_NAME=$(cargo +$RUST_NIGHTLY metadata --manifest-path ${{ needs.call_get_app_metadata.outputs.build_directory }}/Cargo.toml --no-deps --format-version 1 | jq -r '.packages[] | select(.metadata.ledger != null) | .name')
             echo "ELF_NAME=$ELF_NAME"
             mv "${{ steps.build.outputs.binary_path }}/${RUST_DEVICE_NAME}/release/${ELF_NAME}" "${{ steps.build.outputs.binary_path }}/${UPLOAD_AS_LIB_ARTIFACT}_${C_DEVICE_NAME}.elf"
             rm -rf "${{ steps.build.outputs.binary_path }}/${RUST_DEVICE_NAME}"
