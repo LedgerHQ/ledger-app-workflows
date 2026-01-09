@@ -99,12 +99,13 @@ main() (
 
     if [[ ${is_rust} == true ]]; then
         echo "$RUSTFLAGS" > env_rustflags.txt
+        echo "$CARGO_ENCODED_RUSTFLAGS" > env_cargo_encoded_rustflags.txt
 
         forbidden_flags=$(jq -r '.forbidden.rust[]' "$forbidden_flags_file")
 
         while IFS= read -r forbidden_flag; do
             echo "Checking flag $forbidden_flag"
-            if grep -Pq "$forbidden_flag" Cargo.toml .cargo/config.toml env_rustflags.txt; then
+            if grep -Pq "$forbidden_flag" Cargo.toml .cargo/config.toml env_rustflags.txt env_cargo_encoded_rustflags.txt; then
                 log_error_no_header "Detected forbidden flag $forbidden_flag in build output."
                 error=1
             else

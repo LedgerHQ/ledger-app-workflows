@@ -135,7 +135,7 @@ if [[ (-z ${REQUESTED_CHECK}) || ("${REQUESTED_CHECK}" == makefile) ]]; then
         # Check if WORKFLOWS_DIR is already present
         WORKFLOWS_DIR="/tmp/ledger-app-workflows"
         if [[ ! -d "$WORKFLOWS_DIR" ]]; then
-            git clone "${verbose_mode[@]}" https://github.com/LedgerHQ/ledger-app-database.git "${WORKFLOWS_DIR}"
+            git clone "${verbose_mode[@]}" https://github.com/LedgerHQ/ledger-app-workflows.git "${WORKFLOWS_DIR}"
         fi
     fi
 fi
