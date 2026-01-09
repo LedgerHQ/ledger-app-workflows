@@ -6,6 +6,9 @@
         "PRODUCTION_BUILD=0"
     ],
     "rust":[
+        "DEBUG\\s*?=\\s*1",
+        "DEBUG_OVER_USB\\s*?=\\s*1",
+        "PRODUCTION_BUILD\\s*?=\\s*0",
         "debug\\s*?=\\s*true"
     ]
   }
