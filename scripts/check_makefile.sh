@@ -9,8 +9,8 @@ main() (
     error=0
     repo="$1"
     repo_name="$2"
-    manifests_dir="$3"
-    workflows_dir="$4"
+    manifests_dir=$(realpath "$3")
+    workflows_dir=$(realpath "$4")
     is_rust="$5"
     target="$6"
 
@@ -115,6 +115,7 @@ main() (
     else
         forbidden_flags=$(jq -r '.forbidden.c[]' "$forbidden_flags_file")
 
+        cd "$repo"
         entrypoint_filepath=$(grep -rP \
             --exclude-dir='deps' \
             --exclude-dir='tests' \
@@ -125,6 +126,7 @@ main() (
         entrypoint_filepath=${entrypoint_filepath%.c}.o
 
         build_dir=$(ledger-manifest -ob ledger_app.toml)
+
         if [ -n "${build_dir}" ]; then
             for cur_manifest in $manifests_list; do
                 for variant in "${!variants_array[@]}"; do
@@ -152,7 +154,7 @@ main() (
             log_error_no_header "build directory not found in ledger_app.toml!" >&2
             error=1
         fi
-
+        cd -
     fi
 
     if [[ error -eq 0 ]]; then
