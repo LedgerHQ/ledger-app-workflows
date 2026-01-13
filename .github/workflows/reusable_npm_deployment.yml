@@ -1,0 +1,102 @@
+on:
+  workflow_call:
+    inputs:
+      app_repository:
+        description: 'The GIT repository to deploy (defaults to `github.repository`)'
+        required: false
+        default: ${{ github.repository }}
+        type: string
+      app_ref_name:
+        description: 'The GIT branch to deploy (defaults to `github.ref`)'
+        required: false
+        default: ${{ github.ref }}
+        type: string
+      package_directory:
+        description: The directory where the npm package lies (where the package.json can be found)
+        type: string
+        default: .
+      dry_run:
+        description: If true, runs all pre-publishing steps but run npm publish --dry-run.
+        required: false
+        type: boolean
+        default: false
+      jfrog_deployment:
+        description: If the npm package should be pushed on Ledger Jfrog or not.
+        type: boolean
+        required: false
+        default: true
+      jfrog_registry:
+        description: The package registry where the package will be pushed
+        type: string
+        required: false
+        default: "embedded-apps-npm-prod-public"
+
+env:
+  APP_REPOSITORY: ${{ inputs.app_repository }}
+  APP_REF_NAME: ${{ inputs.app_ref_name }}
+  PACKAGE_DIRECTORY: ${{ inputs.package_directory }}
+  DRY_RUN: ${{ inputs.dry_run }}
+  JFROG_DEPLOYMENT: ${{ inputs.jfrog_deployment }}
+  JFROG_REGISTRY: ${{ inputs.jfrog_registry }}
+
+jobs:
+  package_and_deploy:
+    name: Build and deploy an npm Package
+    runs-on: public-ledgerhq-shared-small
+    permissions:
+      id-token: write
+      attestations: write
+      contents: write
+    steps:
+
+      - name: Clone
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          repository: ${{ env.APP_REPOSITORY }}
+          ref: ${{ env.APP_REF_NAME }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build npm package
+        working-directory: ${{ env.PACKAGE_DIRECTORY }}
+        run: |
+          npm install && npm run build && npm pack
+          mkdir -p dist && mv *.tgz dist/
+
+      - name: Attest
+        uses: LedgerHQ/actions-security/actions/attest-for-npmsjs-com@actions/attest-for-npmsjs-com-0.1
+        with:
+          subject-path: ${{ env.PACKAGE_DIRECTORY }}/dist
+
+      - name: Login to JFrog Ledger
+        id: jfrog-login
+        uses: LedgerHQ/actions-security/actions/jfrog-login@actions/jfrog-login-1
+
+      - name: Configure npm authentication
+        working-directory: ${{ env.PACKAGE_DIRECTORY }}
+        run: |
+          echo "registry=https://jfrog.ledgerlabs.net/artifactory/api/npm/$JFROG_REGISTRY/" > .npmrc
+          echo "//jfrog.ledgerlabs.net/artifactory/api/npm/$JFROG_REGISTRY/:_authToken=${{ steps.jfrog-login.outputs.oidc-token }}" >> .npmrc
+          echo "//jfrog.ledgerlabs.net/artifactory/api/npm/$JFROG_REGISTRY/:always-auth=true" >> .npmrc
+
+      - name: Publish package to JFrog Ledger with npm
+        if: ${{ env.JFROG_DEPLOYMENT }}
+        working-directory: ${{ env.PACKAGE_DIRECTORY }}
+        run: |
+          tarball_name=$(ls dist/)
+          package_json_name=$(sed -n -r 's/"name": "(.+)",$/\1/p' package.json | xargs)
+
+          echo "tarball_name==$tarball_name"
+          echo "package_json_name==$package_json_name"
+
+          remote_name=$(echo "@$tarball_name" | sed 's/-/\//')
+
+          echo "remote_name is $remote_name"
+
+          if jfrog rt search "$JFROG_REGISTRY" | grep -qF "$remote_name"; then
+            echo "Package already exists. Nothing to do. Continuing."
+          else
+            echo "Publishing package."
+            [[ $DRY_RUN == "true" ]] && ARGS=--dry-run
+            npm publish $ARGS || (cat /home/runner/.npm/_logs/*.log && exit 1)
+          fi

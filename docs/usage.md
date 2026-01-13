@@ -229,3 +229,16 @@ In order to check an App, this workflow can use the following input parameters:
 | app_repository               | ❌       | `github.repository`       | The GIT repository to clone |
 | app_branch_name              | ❌       | `github.ref`              | The GIT branch to clone |
 | doxy_file                    | ❌       | `.doxygen/Doxyfile`       | Doxygen configuration file |
+
+## Reusable NPM Deployment
+
+In order to deploy an npm package, this workflow can use the following input parameters:
+
+  | Parameter                    | Required | Default value                   | Comment                                                                         |
+  | ---------------------------- | -------- | -------------------------       | ---------------------------------------                                         |
+  | app_repository               | ❌       | `github.repository`             | The GIT repository to deploy                                                    |
+  | app_ref_name                 | ❌       | `github.ref`                    | The GIT reference to deploy                                                     |
+  | package_directory            | ❌       | `.`                             | The directory where the npm packages lies (where the package.json can be found) |
+  | dry_run                      | ❌       | `false`                         | If true, runs all pre-publishing steps but run `npm publish --dry-run`          |
+  | jfrog_deployment             | ❌       | `true`                          | Whether the npm package should be pushed on Ledger Jfrog or not.                |
+  | jfrog_registry               | ❌       | `embedded-apps-npm-prod-public` | The package registry where the package will be pushed                           |
