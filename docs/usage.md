@@ -203,6 +203,7 @@ In order to deploy a package, this workflow can use the following input paramete
 | ------------------------------------ | -------- | ------------------------- | --------------------------------------- |
 | repository_name                      | ❌       | `github.repository`       | The GIT repository to deploy |
 | branch_name                          | ❌       | `github.ref`              | The GIT branch to deploy |
+| container_image                      | ❌       | `ubuntu:24.04`            | The container image to use (in case extra deps are required) |
 | package_name                         | ✅       |                           | The name of the package |
 | package_directory                    | ❌       | `.`                       | The directory where the Python package lies |
 | dry_run                              | ❌       | `false`                   | Whether to run all pre-publishing steps but skips the actual publishing |
