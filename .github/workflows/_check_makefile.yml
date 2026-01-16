@@ -99,5 +99,6 @@ jobs:
 
       - name: Run script
         run: |
+            [ ${{ needs.call_get_app_metadata.outputs.is_rust }} = 'true' ] && EXTRA_FLAGS=-r
             ./ledger-app-workflows/scripts/check_all.sh -c makefile -t "${{ matrix.device }}" \
-              -a ./app-repository -m "${DOWNLOAD_MANIFEST_ARTIFACT_NAME}" -w ./ledger-app-workflows
+              -a ./app-repository -m "${DOWNLOAD_MANIFEST_ARTIFACT_NAME}" -w ./ledger-app-workflows $EXTRA_FLAGS
