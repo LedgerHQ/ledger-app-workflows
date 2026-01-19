@@ -13,10 +13,6 @@ on:
         required: false
         default: ${{ github.ref }}
         type: string
-      package_name:
-        description: The name of the package.
-        required: true
-        type: string
       package_directory:
         description: The directory where the crate lies (where the Cargo.toml can be found)
         type: string
@@ -49,7 +45,6 @@ on:
 env:
   REPOSITORY_NAME: ${{ inputs.repository_name }}
   BRANCH_NAME: ${{ inputs.branch_name }}
-  PACKAGE_NAME: ${{ inputs.package_name }}
   PACKAGE_DIRECTORY: ${{ inputs.package_directory }}
   DRY_RUN: ${{ inputs.dry_run }}
   PUBLISH: ${{ inputs.publish }}
@@ -96,33 +91,26 @@ jobs:
           echo "[ERROR] Tag '${TAG_VERSION}' and CHANGELOG '${CHANGELOG_VERSION}' versions mismatch!"
           exit 1
 
-      - name: Build crate
-        working-directory: ${{ env.PACKAGE_DIRECTORY }}
-        run: |
-          cargo build --release
-
       - name: Publish crate on crates.io
         working-directory: ${{ env.PACKAGE_DIRECTORY }}
         if: ${{ success() && inputs.publish && !inputs.dry_run }}
         run: |
-            echo "Publishing ${{ env.PACKAGE_NAME }} crate to crates.io"
-            mkdir -p ~/.cargo
-            echo "[registry]" > ~/.cargo/credentials.toml
-            echo "token =  \"${{ secrets.cargo_token }}\"" >> ~/.cargo/credentials.toml
+            PACKAGE_NAME=$(sed -rne 's/^name = "([a-zA-Z0-9_-]+)"$/\1/p' Cargo.toml)
+            echo "PACKAGE_NAME=${PACKAGE_NAME}" >> $GITHUB_ENV
 
-            last_published_version=$(cargo search -q --limit 1 ${{ env.PACKAGE_NAME }} | grep -oP '\d+\.\d+\.\d+')
-            echo "Published version of ${{ env.PACKAGE_NAME }} is $last_published_version"
+            echo "Publishing ${PACKAGE_NAME} crate to crates.io"
+
+            last_published_version=$(cargo search -q --limit 1 ${PACKAGE_NAME} | grep -oP '\d+\.\d+\.\d+')
+            echo "Published version of ${PACKAGE_NAME} is $last_published_version"
 
             echo "Current version in manifest is ${TAG_VERSION}"
 
             if [ "$last_published_version" == "$TAG_VERSION" ]; then
-              echo "package ${{ env.PACKAGE_NAME }} is already published with version ${TAG_VERSION}."
+              echo "package ${PACKAGE_NAME} is already published with version ${TAG_VERSION}."
             else
-              echo "package ${{ env.PACKAGE_NAME }} with version ${TAG_VERSION} is not published."
-              cargo publish --no-verify
+              echo "package ${env.PACKAGE_NAME} with version ${TAG_VERSION} is not published."
+              cargo publish --no-verify --token "${{ secrets.cargo_token }}"
             fi
-
-            rm -rf ~/.cargo/credentials.toml
 
       - name: Login to Ledger Artifactory
         if: ${{ success() && inputs.publish && inputs.jfrog_deployment && !inputs.dry_run }}
@@ -147,30 +135,16 @@ jobs:
           echo "[registries.artifactory]" >> ~/.cargo/config.toml
           echo "index = \"sparse+https://jfrog.ledgerlabs.net/artifactory/api/cargo/embedded-apps-cargo-prod-green/index/\"" >> ~/.cargo/config.toml
 
-          echo "[registries.artifactory]" >> ~/.cargo/credentials.toml
-          echo "token = \"${CARGO_TOKEN}\"" >> ~/.cargo/credentials.toml
-
-          export CARGO_REGISTRIES_ARTIFACTORY_TOKEN="${CARGO_TOKEN}"
-
           echo "Publishing crate to Artifactory"
 
-          last_published_version=$(cargo search --registry artifactory -q --limit 1 ${{ env.PACKAGE_NAME }} | grep -oP '\d+\.\d+\.\d+')
-          echo "Published version of ${{ env.PACKAGE_NAME }} is $last_published_version"
+          last_published_version=$(cargo search --registry artifactory -q --limit 1 ${PACKAGE_NAME} | grep -oP '\d+\.\d+\.\d+')
+          echo "Published version of ${PACKAGE_NAME} is $last_published_version"
 
           echo "Current version in manifest is ${TAG_VERSION}"
 
           if [ "$last_published_version" == "$TAG_VERSION" ]; then
-            echo "package ${{ env.PACKAGE_NAME }} is already published with version ${TAG_VERSION}."
+            echo "package ${PACKAGE_NAME} is already published with version ${TAG_VERSION}."
           else
-            echo "package ${{ env.PACKAGE_NAME }} with version ${TAG_VERSION} is not published."
-            cargo publish --no-verify --registry artifactory
+            echo "package ${PACKAGE_NAME} with version ${TAG_VERSION} is not published."
+            cargo publish --no-verify --registry artifactory --token "${CARGO_TOKEN}"
           fi
-
-      - name: Publish a release on the repo
-        if: ${{ success() && inputs.publish && inputs.release && !inputs.dry_run }}
-        uses: softprops/action-gh-release@aec2ec56f94eb8180ceec724245f64ef008b89f5  # v2.4.0
-        with:
-          tag_name: "v${{ env.TAG_VERSION }}"
-          token: "${{ secrets.GITHUB_TOKEN }}"
-          draft: false
-          prerelease: false
