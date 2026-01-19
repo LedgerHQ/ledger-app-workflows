@@ -13,11 +13,6 @@ on:
         required: false
         default: ${{ github.ref }}
         type: string
-      container_image:
-        description: 'The container image to use for building the package'
-        required: false
-        default: 'python:3.10-slim'
-        type: string
       package_name:
         description: The name of the package.
         required: true
@@ -55,7 +50,6 @@ on:
 env:
   REPOSITORY_NAME: ${{ inputs.repository_name }}
   BRANCH_NAME: ${{ inputs.branch_name }}
-  CONTAINER_IMAGE: ${{ inputs.container_image }}
   PACKAGE_NAME: ${{ inputs.package_name }}
   PACKAGE_DIRECTORY: ${{ inputs.package_directory }}
   DRY_RUN: ${{ inputs.dry_run }}
@@ -67,8 +61,6 @@ jobs:
   package_and_deploy:
     name: Build and deploy a Python Package
     runs-on: public-ledgerhq-shared-small
-    container:
-      image: ${{ inputs.container_image }}
     permissions:
       id-token: write
       attestations: write
