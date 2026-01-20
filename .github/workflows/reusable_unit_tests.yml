@@ -93,7 +93,8 @@ jobs:
           path: ${{ inputs.test_directory }}/coverage
 
       - name: Install codecov dependencies
-        run: apt install --no-install-recommends -y curl gpg
+        run: |
+          apt-get -q update && apt-get -q install --no-install-recommends -y curl gpg
 
       - name: Upload to codecov.io
         uses: codecov/codecov-action@v5
