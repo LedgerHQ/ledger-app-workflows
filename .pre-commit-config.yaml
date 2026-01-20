@@ -24,4 +24,4 @@ repos:
     hooks:
       - id: actionlint
         types_or: [yaml]
-        args: [-shellcheck='' -pyflakes='']
+        args: ["-config-file", ".github/actionlint.yaml", "-shellcheck", "''", "-pyflakes", "''"]

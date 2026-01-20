@@ -1,0 +1,150 @@
+name: Build, check and deploy a package on crates.io
+
+on:
+  workflow_call:
+    inputs:
+      repository_name:
+        description: 'The GIT repository to deploy (defaults to `github.repository`)'
+        required: false
+        default: ${{ github.repository }}
+        type: string
+      branch_name:
+        description: 'The GIT branch to deploy (defaults to `github.ref`)'
+        required: false
+        default: ${{ github.ref }}
+        type: string
+      package_directory:
+        description: The directory where the crate lies (where the Cargo.toml can be found)
+        type: string
+        default: .
+      dry_run:
+        description: If true, runs all pre-publishing steps but skips the actual publishing.
+        required: false
+        type: boolean
+        default: false
+      publish:
+        description: Whether the package should be published or not
+        required: true
+        type: boolean
+      release:
+        description: Whether the package should be packaged as a release or not
+        required: false
+        type: boolean
+        default: true
+      jfrog_deployment:
+        description: Whether the crate should be pushed on Ledger Jfrog or not.
+                     Ignored if `publish` is `false`.
+        type: boolean
+        required: false
+        default: true
+    secrets:
+      cargo_token:
+        description: A token enabling to push a package on artifactory
+        required: true
+
+env:
+  REPOSITORY_NAME: ${{ inputs.repository_name }}
+  BRANCH_NAME: ${{ inputs.branch_name }}
+  PACKAGE_DIRECTORY: ${{ inputs.package_directory }}
+  DRY_RUN: ${{ inputs.dry_run }}
+  PUBLISH: ${{ inputs.publish }}
+  RELEASE: ${{ inputs.release }}
+  JFROG_DEPLOYMENT: ${{ inputs.jfrog_deployment }}
+
+jobs:
+  package_and_deploy:
+    name: Build and deploy a crate
+    runs-on: public-ledgerhq-shared-small
+    permissions:
+      id-token: write
+      attestations: write
+      contents: write
+    steps:
+
+      - name: Clone
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          repository: ${{ inputs.repository_name }}
+          ref: ${{ inputs.branch_name }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Rust
+        uses: actions-rs/toolchain@v1.0.7
+        with:
+          profile: minimal
+          toolchain: stable
+
+      - name: Check version against CHANGELOG
+        if: ${{ success() && (inputs.publish || inputs.dry_run) }}
+        working-directory: ${{ env.PACKAGE_DIRECTORY }}
+        run: |
+          TAG_VERSION=$(sed -rne 's/^version = "([[:digit:]]+\.[[:digit:]]+\.[[:digit:]]+)"$/\1/p' Cargo.toml)
+          echo "TAG_VERSION=${TAG_VERSION}" >> $GITHUB_ENV
+
+          CHANGELOG_VERSION=$(grep -Po '(?<=## \[)(\d+\.)+[^\]]' CHANGELOG.md | head -n 1)
+          if [ "${TAG_VERSION}" == "${CHANGELOG_VERSION}" ]
+              echo "[INFO] Tag '${TAG_VERSION}' and CHANGELOG '${CHANGELOG_VERSION}' versions match."
+          then
+              exit 0
+          fi
+          echo "[ERROR] Tag '${TAG_VERSION}' and CHANGELOG '${CHANGELOG_VERSION}' versions mismatch!"
+          exit 1
+
+      - name: Publish crate on crates.io
+        working-directory: ${{ env.PACKAGE_DIRECTORY }}
+        if: ${{ success() && inputs.publish && !inputs.dry_run }}
+        run: |
+            PACKAGE_NAME=$(sed -rne 's/^name = "([a-zA-Z0-9_-]+)"$/\1/p' Cargo.toml)
+            echo "PACKAGE_NAME=${PACKAGE_NAME}" >> $GITHUB_ENV
+
+            echo "Publishing ${PACKAGE_NAME} crate to crates.io"
+
+            last_published_version=$(cargo search -q --limit 1 ${PACKAGE_NAME} | grep -oP '\d+\.\d+\.\d+')
+            echo "Published version of ${PACKAGE_NAME} is $last_published_version"
+
+            echo "Current version in manifest is ${TAG_VERSION}"
+
+            if [ "$last_published_version" == "$TAG_VERSION" ]; then
+              echo "package ${PACKAGE_NAME} is already published with version ${TAG_VERSION}."
+            else
+              echo "package ${env.PACKAGE_NAME} with version ${TAG_VERSION} is not published."
+              cargo publish --no-verify --token "${{ secrets.cargo_token }}"
+            fi
+
+      - name: Login to Ledger Artifactory
+        if: ${{ success() && inputs.publish && inputs.jfrog_deployment && !inputs.dry_run }}
+        timeout-minutes: 10
+        id: jfrog-login
+        uses: LedgerHQ/actions-security/actions/jfrog-login@actions/jfrog-login-1
+
+      - name: Publish crate on Ledger Artifactory
+        working-directory: ${{ env.PACKAGE_DIRECTORY }}
+        if: ${{ success() && inputs.publish && inputs.jfrog_deployment && !inputs.dry_run }}
+        run: |
+          CARGO_USER=${{ steps.jfrog-login.outputs.oidc-user }}
+          CARGO_TOKEN="Bearer ${{ steps.jfrog-login.outputs.oidc-token }}"
+
+          echo "jfrog creds : user=${CARGO_USER} token=${CARGO_TOKEN}"
+
+          mkdir -p ~/.cargo
+          echo "[registry]" > ~/.cargo/config.toml
+          echo "default = \"artifactory\"" >> ~/.cargo/config.toml
+          echo "global-credential-providers = [\"cargo:token\"]" >> ~/.cargo/config.toml
+
+          echo "[registries.artifactory]" >> ~/.cargo/config.toml
+          echo "index = \"sparse+https://jfrog.ledgerlabs.net/artifactory/api/cargo/embedded-apps-cargo-prod-green/index/\"" >> ~/.cargo/config.toml
+
+          echo "Publishing crate to Artifactory"
+
+          last_published_version=$(cargo search --registry artifactory -q --limit 1 ${PACKAGE_NAME} | grep -oP '\d+\.\d+\.\d+')
+          echo "Published version of ${PACKAGE_NAME} is $last_published_version"
+
+          echo "Current version in manifest is ${TAG_VERSION}"
+
+          if [ "$last_published_version" == "$TAG_VERSION" ]; then
+            echo "package ${PACKAGE_NAME} is already published with version ${TAG_VERSION}."
+          else
+            echo "package ${PACKAGE_NAME} with version ${TAG_VERSION} is not published."
+            cargo publish --no-verify --registry artifactory --token "${CARGO_TOKEN}"
+          fi
