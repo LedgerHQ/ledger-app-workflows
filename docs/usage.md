@@ -236,6 +236,32 @@ In addition, the following secret can be used:
 | ---------------------------- | -------- | ------------------------- | --------------------------------------- |
 | cargo_token                  | ✅       |                           | A token enabling to push a crate on `crates.io` |
 
+## Reusable docker deployment
+
+In order to build and deploy a docker image, this workflow can use the following input parameters:
+
+| Parameter                            | Required | Default value             | Comment                                 |
+| ------------------------------------ | -------- | ------------------------- | --------------------------------------- |
+| app_repository                       | ❌       | `github.repository`       | The GIT repository to deploy |
+| app_ref                              | ❌       | `github.ref`              | The GIT branch to deploy |
+| image_name                           | ✅       |                           | The docker image name to build |
+| build_dir                            | ❌       | `.`                       | The directory from where to perform the build |
+| dockerfile_path                      | ❌       | `./Dockerfile`            | The path to the dockerfile to build |
+| build_args                           | ❌       |                           | Extra args to pass to docker build |
+| dry_run                              | ❌       | `false`                   | To perform a build but skip publishing steps |
+| jfrog_instance                       | ❌       |                           | hostname of the jfrog instance to deploy to |
+| jfrog_registry_name                  | ❌       |                           | registry within the instance to publish to |
+| runs_on                              | ❌       | `ubuntu-latest`           | The type of runner to use |
+| http_proxy                           | ❌       |                           | HTTP proxy to use during the build |
+| https_proxy                          | ❌       |                           | HTTPS proxy to use during the build |
+| no_proxy                             | ❌       |                           | List of addresses that should bypass the proxy |
+
+In addition, the following secret can be used:
+
+| Parameter                    | Required | Default value             | Comment                                 |
+| ---------------------------- | -------- | ------------------------- | --------------------------------------- |
+| token                        | ✅       |                           | A token with access to the target repository |
+
 ## Reusable Check Ethereum SDK
 
 No parameters for this workflow
