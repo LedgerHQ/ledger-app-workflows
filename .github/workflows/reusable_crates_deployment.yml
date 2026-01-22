@@ -135,6 +135,9 @@ jobs:
           echo "[registries.artifactory]" >> ~/.cargo/config.toml
           echo "index = \"sparse+https://jfrog.ledgerlabs.net/artifactory/api/cargo/embedded-apps-cargo-prod-green/index/\"" >> ~/.cargo/config.toml
 
+          echo "[registries.artifactory]" > ~/.cargo/credentials.toml
+          echo "token = \"${CARGO_TOKEN}\"" >> ~/.cargo/credentials.toml
+
           echo "Publishing crate to Artifactory"
 
           last_published_version=$(cargo search --registry artifactory -q --limit 1 ${PACKAGE_NAME} | grep -oP '\d+\.\d+\.\d+')
