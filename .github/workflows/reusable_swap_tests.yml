@@ -110,6 +110,7 @@ jobs:
       app_branch_name: ${{ inputs.app_branch_name }}
       upload_app_binaries_artifact: ${{ needs.compute_artifact_names.outputs.app_binaries_artifact }}
       use_case: ${{ inputs.use_case }}
+      builder: ledger-app-builder
 
   build_exchange:
     name: Build Exchange app using the reusable workflow
