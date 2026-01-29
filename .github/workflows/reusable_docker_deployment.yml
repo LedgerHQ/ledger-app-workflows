@@ -1,0 +1,206 @@
+name: Build, check and deploy a docker image
+
+on:
+  workflow_call:
+    inputs:
+      app_repository:
+        description: 'The GIT repository to deploy (defaults to `github.repository`)'
+        required: false
+        default: ${{ github.repository }}
+        type: string
+      app_ref:
+        description: 'The GIT ref name to deploy (defaults to `github.ref_name`)'
+        required: false
+        type: string
+        default: ${{ github.ref }}
+      image_name:
+        description: 'The image to deploy'
+        required: true
+        type: string
+      build_dir:
+        description: The directory where to build from
+        required: false
+        type: string
+        default: .
+      dockerfile_path:
+        description: The path to the Dockerfile to use
+        required: false
+        type: string
+        default: "./Dockerfile"
+      build_args:
+        description: Build arguments to pass to docker build
+        required: false
+        type: string
+        default: ""
+      dry_run:
+        description: If true, runs all pre-publishing steps but run npm publish --dry-run.
+        required: false
+        type: boolean
+        default: false
+      jfrog_instance:
+        description: 'The JFrog instance to deploy to'
+        required: false
+        type: string
+      jfrog_registry_name:
+        description: 'The JFrog registry name to deploy to'
+        required: false
+        type: string
+      runs_on:
+        description: 'The type of runner to use'
+        required: false
+        type: string
+        default: ubuntu-latest
+      http_proxy:
+        description: 'HTTP proxy to use during the build'
+        required: false
+        type: string
+        default: ""
+      https_proxy:
+        description: 'HTTPS proxy to use during the build'
+        required: false
+        type: string
+        default: ""
+      no_proxy:
+        description: 'List of addresses that should bypass the proxy'
+        required: false
+        type: string
+        default: ""
+    secrets:
+      token:
+        description: 'A token with access to the target repository'
+        required: true
+
+env:
+  APP_REPOSITORY: ${{ inputs.app_repository }}
+  APP_REF: ${{ inputs.app_ref }}
+  IMAGE_NAME: ${{ inputs.image_name }}
+  BUILD_DIR: ${{ inputs.build_dir }}
+  DOCKERFILE_PATH: ${{ inputs.dockerfile_path }}
+  BUILD_ARGS: ${{ inputs.build_args }}
+  DRY_RUN: ${{ inputs.dry_run }}
+  JFROG_INSTANCE: ${{ inputs.jfrog_instance }}
+  JFROG_REGISTRY_NAME: ${{ inputs.jfrog_registry_name }}
+
+  REPO_PATH: ${{ github.repository }}
+  GITHUB_REGISTRY: ghcr.io
+  GITHUB_ORG_PATH: ledgerhq/ledger-app-builder
+  BUILD_PLATFORMS: linux/amd64,linux/arm64
+
+  HTTP_PROXY: ${{ inputs.http_proxy }}
+  HTTPS_PROXY: ${{ inputs.https_proxy }}
+  NO_PROXY: ${{ inputs.no_proxy }}
+
+
+jobs:
+  build_and_deploy:
+    name: Build and deploy a docker image
+    runs-on: ${{ inputs.runs_on }}
+    permissions:
+      id-token: write
+      packages: write
+      contents: write
+    steps:
+      - name: Set proxy settings
+        run: |
+          echo "http_proxy=$HTTP_PROXY" >> $GITHUB_ENV
+          echo "https_proxy=$HTTPS_PROXY" >> $GITHUB_ENV
+          echo "no_proxy=$NO_PROXY" >> $GITHUB_ENV
+
+          echo "HTTP_PROXY=$HTTP_PROXY" >> $GITHUB_ENV
+          echo "HTTPS_PROXY=$HTTPS_PROXY" >> $GITHUB_ENV
+          echo "NO_PROXY=$NO_PROXY" >> $GITHUB_ENV
+
+      - name: Verify proxy settings
+        run: |
+          env | grep -i proxy
+
+      - name: Clone
+        uses: actions/checkout@v4
+        with:
+          github-server-url: https://github.com
+          fetch-depth: 0
+          repository: ${{ inputs.app_repository }}
+          ref: ${{ env.APP_REF }}
+          token: ${{ secrets.token }}
+
+      - name: Free disk space on runner
+        shell: bash
+        run: |
+          set -euxo pipefail
+          df -h
+          # Remove large preinstalled toolchains not needed for Docker builds
+          sudo rm -rf /usr/share/dotnet || true
+          sudo rm -rf /opt/ghc || true
+          sudo rm -rf /usr/local/lib/android || true
+          sudo rm -rf /opt/hostedtoolcache || true
+          # Clean apt caches
+          sudo apt-get clean || true
+          sudo rm -rf /var/lib/apt/lists/* || true
+          df -h
+
+      - name: Login to ghcr.io registry
+        uses: docker/login-action@v3.6.0
+        with:
+          registry: ${{ env.GITHUB_REGISTRY }}
+          username: ldg-github-ci
+          password: ${{ secrets.token }}
+
+      - name: Make image name
+        run: |
+            FULL_IMAGE_NAME="${GITHUB_REGISTRY,,}/${REPO_PATH,,}/${IMAGE_NAME}"
+            echo "FULL_IMAGE_NAME=${FULL_IMAGE_NAME}"
+            echo "FULL_IMAGE_NAME=${FULL_IMAGE_NAME}" >> $GITHUB_ENV
+
+      - name: Login to Ledger Artifactory
+        if: ${{ success() && !inputs.dry_run  && inputs.jfrog_instance && inputs.jfrog_registry_name }}
+        id: jfrog-login
+        uses: LedgerHQ/actions-security/actions/jfrog-login@actions/jfrog-login-1
+        with:
+          jfrog-url: https://${{ inputs.jfrog_instance }}
+
+      - name: Set up Docker Context for Buildx
+        id: buildx-context
+        run: |
+          docker context create builders
+
+      - name: Set-up QEMU
+        uses: docker/setup-qemu-action@v3.7.0
+
+      - name: Set-up Buildx
+        uses: docker/setup-buildx-action@v3.12.0
+        with:
+          endpoint: builders
+          driver-opts: |
+            "env.http_proxy=${{ env.http_proxy }}"
+            "env.https_proxy=${{ env.http_proxy }}"
+            "env.no_proxy='${{ env.no_proxy}}'"
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5.10.0
+        if: ${{ startsWith(github.ref, 'refs/tags/') }}
+        with:
+          images: |
+              ${{ env.GITHUB_REGISTRY }}/${{ env.GITHUB_ORG_PATH }}/${{ env.IMAGE_NAME }}
+              ${{ env.JFROG_INSTANCE }}.${{ env.JFROG_REGISTRY_NAME }}/${{ env.IMAGE_NAME }}
+          labels: |
+              org.opencontainers.image.source=https://github.com/${{ env.APP_REPOSITORY }}
+              org.opencontainers.image.title=${{ env.IMAGE_NAME }}
+              org.opencontainers.image.url=https://github.com/${{ env.APP_REPOSITORY }}
+              org.opencontainers.image.revision=${{ env.GIT_REF }}
+
+
+      - name: Build and push container image
+        uses: docker/build-push-action@v6.18.0
+        with:
+          context: ${{ env.BUILD_DIR }}
+          file: ${{ env.DOCKERFILE_PATH }}
+          platforms: ${{ env.BUILD_PLATFORMS }}
+          push: ${{ startsWith(github.ref, 'refs/tags/') && !inputs.dry_run }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            ${{ inputs.build_args }}
+            "http_proxy=${{ env.http_proxy }}"
+            "https_proxy=${{ env.http_proxy }}"
+            "no_proxy='${{ env.no_proxy}}'"
