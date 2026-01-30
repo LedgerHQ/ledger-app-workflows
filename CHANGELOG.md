@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.94.3] - 2026-01-30
+
+### Fixed
+
+- `reusable_pypi_deployment.yml` : for pypi deployment, ubuntu-latest runner is not in jfrog's whitelist
+
 ## [1.94.2] - 2026-01-30
 
 ### Fixed

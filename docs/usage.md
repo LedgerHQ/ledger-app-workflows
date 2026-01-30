@@ -199,18 +199,19 @@ In order to test an App, this workflow can use the following input parameters:
 
 In order to deploy a package, this workflow can use the following input parameters:
 
-| Parameter                            | Required | Default value             | Comment                                                                 |
-| ------------------------------------ | -------- | ------------------------- | ---------------------------------------                                 |
-| repository_name                      | ❌       | `github.repository`       | The GIT repository to deploy                                            |
-| branch_name                          | ❌       | `github.ref`              | The GIT branch to deploy                                                |
-| package_name                         | ✅       |                           | The name of the package                                                 |
-| package_directory                    | ❌       | `.`                       | The directory where the Python package lies                             |
-| dry_run                              | ❌       | `false`                   | Whether to run all pre-publishing steps but skips the actual publishing |
-| publish                              | ✅       | `true`                    | Whether the package should be published                                 |
-| release                              | ❌       | `true`                    | Whether the package should be packaged as a release                     |
-| jfrog_deployment                     | ❌       | `false`                   | If the Python package should be pushed on `Ledger Jfrog`                |
-| container                            | ❌       |                           | The container image that should be used to run the job                  |
-| python_version                       | ❌       | `3.10`                    | The python version to use within the container                          |
+| Parameter                            | Required | Default value                | Comment                                                                 |
+| ------------------------------------ | -------- | -------------------------    | ---------------------------------------                                 |
+| repository_name                      | ❌       | `github.repository`          | The GIT repository to deploy                                            |
+| branch_name                          | ❌       | `github.ref`                 | The GIT branch to deploy                                                |
+| package_name                         | ✅       |                              | The name of the package                                                 |
+| package_directory                    | ❌       | `.`                          | The directory where the Python package lies                             |
+| dry_run                              | ❌       | `false`                      | Whether to run all pre-publishing steps but skips the actual publishing |
+| publish                              | ✅       | `true`                       | Whether the package should be published                                 |
+| release                              | ❌       | `true`                       | Whether the package should be packaged as a release                     |
+| jfrog_deployment                     | ❌       | `false`                      | If the Python package should be pushed on `Ledger Jfrog`                |
+| runs_on                              | ❌       | public-ledgerhq-shared-small | The python version to use within the container                          |
+| container                            | ❌       |                              | The container image that should be used to run the job                  |
+| python_version                       | ❌       | `3.10`                       | The python version to use within the container                          |
 
 In addition, the following secret can be used:
 
