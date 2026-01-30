@@ -79,15 +79,12 @@ jobs:
       attestations: write
       contents: write
     steps:
-      - name: Set up Python
-        uses: actions/setup-python@v6.2.0
-        with:
-          python-version: ${{ inputs.python_version }}
 
-      - name: Install git
+      - name: Install dependencies
         run: |
-          sudo apt-get update
-          sudo apt-get install -y git
+          command -v sudo >/dev/null 2>&1 && SUDO="sudo"
+          $SUDO apt-get update
+          $SUDO apt-get install -y git python3 python3-pip
 
       - name: Clone
         uses: actions/checkout@v4
