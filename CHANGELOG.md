@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.94.2] - 2026-01-30
+
+### Fixed
+
+- `reusable_pypi_deployment.yml` : fix case where images that do not derive from ubuntu which do not necessarily have sudo command
+- `reusable_pypi_deployment.yml` : using github actions in a containerized runs the action in a sibling container, not the expected container
+
 ## [1.94.1] - 2026-01-30
 
 ### Added
