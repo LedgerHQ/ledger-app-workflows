@@ -42,6 +42,16 @@ on:
         type: boolean
         required: false
         default: true
+      container:
+        description: 'The container to use for the job'
+        required: false
+        type: string
+        default: ''
+      python_version:
+        description: 'The Python version to use for the job'
+        required: false
+        type: string
+        default: '3.10'
     secrets:
       pypi_token:
         description: A token enabling to push a package on pypi.org
@@ -56,21 +66,34 @@ env:
   PUBLISH: ${{ inputs.publish }}
   RELEASE: ${{ inputs.release }}
   JFROG_DEPLOYMENT: ${{ inputs.jfrog_deployment }}
+  CONTAINER: ${{ inputs.container }}
+  PYTHON_VERSION: ${{ inputs.python_version }}
 
 jobs:
   package_and_deploy:
     name: Build and deploy a Python Package
-    runs-on: public-ledgerhq-shared-small
+    runs-on: ubuntu-24.04
+    container: ${{ inputs.container != '' && inputs.container || null }}
     permissions:
       id-token: write
       attestations: write
       contents: write
     steps:
+      - name: Set up Python
+        uses: actions/setup-python@v6.2.0
+        with:
+          python-version: ${{ inputs.python_version }}
+
+      - name: Install git
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y git
 
       - name: Clone
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          fetch-tags: true
           repository: ${{ inputs.repository_name }}
           ref: ${{ inputs.branch_name }}
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -80,10 +103,10 @@ jobs:
         run: |
           # Needed to workaround this bug https://github.com/pypa/setuptools/issues/4759
           # To be removed when it's fixed
-          pip install -U packaging
-          pip install --upgrade pip build twine
+          python -m pip install -U packaging
+          python -m pip install --upgrade pip build twine
           python -m build
-          pip install .
+          python -m pip install .
           python -m twine check dist/*
           echo "TAG_VERSION=$(python -c "from ${PACKAGE_NAME} import __version__; print(__version__)")" >> "${GITHUB_ENV}"
 
