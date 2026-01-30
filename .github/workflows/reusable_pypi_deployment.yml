@@ -144,7 +144,7 @@ jobs:
 
       - name: Publish Python package on Ledger Artifactory
         if: ${{ success() && inputs.publish && inputs.jfrog_deployment && !inputs.dry_run }}
-        run: python -m twine upload --skip-existing "${PACKAGE_DIRECTORY}/dist/*"
+        run: python -m twine upload "${PACKAGE_DIRECTORY}/dist/*"
         env:
           TWINE_REPOSITORY_URL: https://jfrog.ledgerlabs.net/artifactory/api/pypi/embedded-apps-pypi-prod-green
           TWINE_USERNAME: ${{ steps.jfrog-login.outputs.oidc-user }}
