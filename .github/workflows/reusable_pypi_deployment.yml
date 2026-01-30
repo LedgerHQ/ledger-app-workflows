@@ -42,6 +42,11 @@ on:
         type: boolean
         required: false
         default: true
+      runs_on:
+        description: 'The type of runner to use'
+        required: false
+        type: string
+        default: public-ledgerhq-shared-small
       container:
         description: 'The container to use for the job'
         required: false
@@ -72,7 +77,7 @@ env:
 jobs:
   package_and_deploy:
     name: Build and deploy a Python Package
-    runs-on: ubuntu-24.04
+    runs-on: public-ledgerhq-shared-small
     container: ${{ inputs.container != '' && inputs.container || null }}
     permissions:
       id-token: write
