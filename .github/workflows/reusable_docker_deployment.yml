@@ -50,21 +50,6 @@ on:
         required: false
         type: string
         default: ubuntu-latest
-      http_proxy:
-        description: 'HTTP proxy to use during the build'
-        required: false
-        type: string
-        default: ""
-      https_proxy:
-        description: 'HTTPS proxy to use during the build'
-        required: false
-        type: string
-        default: ""
-      no_proxy:
-        description: 'List of addresses that should bypass the proxy'
-        required: false
-        type: string
-        default: ""
     secrets:
       token:
         description: 'A token with access to the target repository'
@@ -85,11 +70,6 @@ env:
   GITHUB_REGISTRY: ghcr.io
   GITHUB_ORG_PATH: ledgerhq/ledger-app-builder
   BUILD_PLATFORMS: linux/amd64,linux/arm64
-
-  HTTP_PROXY: ${{ inputs.http_proxy }}
-  HTTPS_PROXY: ${{ inputs.https_proxy }}
-  NO_PROXY: ${{ inputs.no_proxy }}
-
 
 jobs:
   build_and_deploy:
@@ -120,7 +100,7 @@ jobs:
           github-server-url: https://github.com
           fetch-depth: 0
           repository: ${{ inputs.app_repository }}
-          ref: ${{ env.APP_REF }}
+          ref: ${{ inputs.app_ref }}
           token: ${{ secrets.token }}
 
       - name: Free disk space on runner
@@ -138,13 +118,6 @@ jobs:
           sudo rm -rf /var/lib/apt/lists/* || true
           df -h
 
-      - name: Login to ghcr.io registry
-        uses: docker/login-action@v3.6.0
-        with:
-          registry: ${{ env.GITHUB_REGISTRY }}
-          username: ldg-github-ci
-          password: ${{ secrets.token }}
-
       - name: Make image name
         run: |
             FULL_IMAGE_NAME="${GITHUB_REGISTRY,,}/${REPO_PATH,,}/${IMAGE_NAME}"
@@ -152,11 +125,26 @@ jobs:
             echo "FULL_IMAGE_NAME=${FULL_IMAGE_NAME}" >> $GITHUB_ENV
 
       - name: Login to Ledger Artifactory
-        if: ${{ success() && !inputs.dry_run  && inputs.jfrog_instance && inputs.jfrog_registry_name }}
         id: jfrog-login
+        if: startsWith(github.ref, 'refs/tags/') && !inputs.dry_run && inputs.jfrog_instance && inputs.jfrog_registry_name
         uses: LedgerHQ/actions-security/actions/jfrog-login@actions/jfrog-login-1
         with:
-          jfrog-url: https://${{ inputs.jfrog_instance }}
+          jfrog-url: https://${{ env.JFROG_INSTANCE }}
+
+      - name: Login to JFrog OCI Registry
+        if: startsWith(github.ref, 'refs/tags/') && !inputs.dry_run && inputs.jfrog_instance && inputs.jfrog_registry_name
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.JFROG_INSTANCE }}/${{ env.JFROG_REGISTRY_NAME }}
+          username: ${{ steps.jfrog-login.outputs.oidc-user }}
+          password: ${{ steps.jfrog-login.outputs.oidc-token }}
+
+      - name: Login to ghcr.io registry
+        uses: docker/login-action@v3.6.0
+        with:
+          registry: ${{ env.GITHUB_REGISTRY }}
+          username: ldg-github-ci
+          password: ${{ secrets.token }}
 
       - name: Set up Docker Context for Buildx
         id: buildx-context
@@ -178,11 +166,10 @@ jobs:
       - name: Extract metadata
         id: meta
         uses: docker/metadata-action@v5.10.0
-        if: ${{ startsWith(github.ref, 'refs/tags/') }}
         with:
           images: |
               ${{ env.GITHUB_REGISTRY }}/${{ env.GITHUB_ORG_PATH }}/${{ env.IMAGE_NAME }}
-              ${{ env.JFROG_INSTANCE }}.${{ env.JFROG_REGISTRY_NAME }}/${{ env.IMAGE_NAME }}
+              ${{ env.JFROG_INSTANCE }}/${{ env.JFROG_REGISTRY_NAME }}/${{ env.IMAGE_NAME }}
           labels: |
               org.opencontainers.image.source=https://github.com/${{ env.APP_REPOSITORY }}
               org.opencontainers.image.title=${{ env.IMAGE_NAME }}
