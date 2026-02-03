@@ -255,9 +255,6 @@ In order to build and deploy a docker image, this workflow can use the following
 | jfrog_instance                       | ❌       |                           | hostname of the jfrog instance to deploy to |
 | jfrog_registry_name                  | ❌       |                           | registry within the instance to publish to |
 | runs_on                              | ❌       | `ubuntu-latest`           | The type of runner to use |
-| http_proxy                           | ❌       |                           | HTTP proxy to use during the build |
-| https_proxy                          | ❌       |                           | HTTPS proxy to use during the build |
-| no_proxy                             | ❌       |                           | List of addresses that should bypass the proxy |
 
 In addition, the following secret can be used:
 
