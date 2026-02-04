@@ -75,40 +75,26 @@ jobs:
           profile: minimal
           toolchain: stable
 
-      - name: Check version against CHANGELOG
-        if: ${{ success() && (inputs.publish || inputs.dry_run) }}
-        working-directory: ${{ env.PACKAGE_DIRECTORY }}
-        run: |
-          TAG_VERSION=$(sed -rne 's/^version = "([[:digit:]]+\.[[:digit:]]+\.[[:digit:]]+)"$/\1/p' Cargo.toml)
-          echo "TAG_VERSION=${TAG_VERSION}" >> $GITHUB_ENV
-
-          CHANGELOG_VERSION=$(grep -Po '(?<=## \[)(\d+\.)+[^\]]' CHANGELOG.md | head -n 1)
-          if [ "${TAG_VERSION}" == "${CHANGELOG_VERSION}" ]
-              echo "[INFO] Tag '${TAG_VERSION}' and CHANGELOG '${CHANGELOG_VERSION}' versions match."
-          then
-              exit 0
-          fi
-          echo "[ERROR] Tag '${TAG_VERSION}' and CHANGELOG '${CHANGELOG_VERSION}' versions mismatch!"
-          exit 1
-
       - name: Publish crate on crates.io
         working-directory: ${{ env.PACKAGE_DIRECTORY }}
         if: ${{ success() && inputs.publish && !inputs.dry_run }}
         run: |
-            PACKAGE_NAME=$(sed -rne 's/^name = "([a-zA-Z0-9_-]+)"$/\1/p' Cargo.toml)
-            echo "PACKAGE_NAME=${PACKAGE_NAME}" >> $GITHUB_ENV
+            TAG_VERSION=$(cargo metadata --format-version=1 --no-deps |\
+                            jq -r --arg PACKAGE_NAME ${PACKAGE_DIRECTORY} '.packages[] | select(.name == $PACKAGE_NAME) | .version')
+            echo "Tag version is ${TAG_VERSION}"
+            echo "TAG_VERSION=${TAG_VERSION}" >> $GITHUB_ENV
 
-            echo "Publishing ${PACKAGE_NAME} crate to crates.io"
+            echo "Publishing workspace to crates.io"
 
-            last_published_version=$(cargo search -q --limit 1 ${PACKAGE_NAME} | grep -oP '\d+\.\d+\.\d+')
-            echo "Published version of ${PACKAGE_NAME} is $last_published_version"
+            last_published_version=$(cargo search -q --limit 1 ${PACKAGE_DIRECTORY} | grep -oP '\d+\.\d+\.\d+')
+            echo "Published version of ${PACKAGE_DIRECTORY} is $last_published_version"
 
             echo "Current version in manifest is ${TAG_VERSION}"
 
             if [ "$last_published_version" == "$TAG_VERSION" ]; then
-              echo "package ${PACKAGE_NAME} is already published with version ${TAG_VERSION}."
+              echo "package ${PACKAGE_DIRECTORY} is already published with version ${TAG_VERSION}."
             else
-              echo "package ${PACKAGE_NAME} with version ${TAG_VERSION} is not published."
+              echo "package ${PACKAGE_DIRECTORY} with version ${TAG_VERSION} is not published."
               cargo publish --no-verify --token "${{ secrets.cargo_token }}"
             fi
 
@@ -140,14 +126,14 @@ jobs:
 
           echo "Publishing crate to Artifactory"
 
-          last_published_version=$(cargo search --registry artifactory -q --limit 1 ${PACKAGE_NAME} | grep -oP '\d+\.\d+\.\d+')
-          echo "Published version of ${PACKAGE_NAME} is $last_published_version"
+          last_published_version=$(cargo search --registry artifactory -q --limit 1 ${PACKAGE_DIRECTORY} | grep -oP '\d+\.\d+\.\d+')
+          echo "Published version of ${PACKAGE_DIRECTORY} is $last_published_version"
 
           echo "Current version in manifest is ${TAG_VERSION}"
 
           if [ "$last_published_version" == "$TAG_VERSION" ]; then
-            echo "package ${PACKAGE_NAME} is already published with version ${TAG_VERSION}."
+            echo "package ${PACKAGE_DIRECTORY} is already published with version ${TAG_VERSION}."
           else
-            echo "package ${PACKAGE_NAME} with version ${TAG_VERSION} is not published."
+            echo "package ${PACKAGE_DIRECTORY} with version ${TAG_VERSION} is not published."
             cargo publish --no-verify --registry artifactory --token "${CARGO_TOKEN}"
           fi
