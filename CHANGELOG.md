@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.94.6] - 2026-02-03
 
+### Fixed
+
+- `reusable_crates_deployment.yml` : Fixed trace
+
+## [1.94.6] - 2026-02-03
+
 ### Changed
 
 - `reusable_pypi_deployment.yml` : sync with downstream changes.

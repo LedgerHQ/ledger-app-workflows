@@ -108,7 +108,7 @@ jobs:
             if [ "$last_published_version" == "$TAG_VERSION" ]; then
               echo "package ${PACKAGE_NAME} is already published with version ${TAG_VERSION}."
             else
-              echo "package ${env.PACKAGE_NAME} with version ${TAG_VERSION} is not published."
+              echo "package ${PACKAGE_NAME} with version ${TAG_VERSION} is not published."
               cargo publish --no-verify --token "${{ secrets.cargo_token }}"
             fi
 
