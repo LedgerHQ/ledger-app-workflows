@@ -163,13 +163,20 @@ jobs:
             "env.https_proxy=${{ env.http_proxy }}"
             "env.no_proxy='${{ env.no_proxy}}'"
 
+      - name: Prepare image list
+        id: image-list
+        run: |
+          IMAGES="${GITHUB_REGISTRY}/${GITHUB_ORG_PATH}/${IMAGE_NAME}"
+          if [[ -n "${JFROG_INSTANCE}" && -n "${JFROG_REGISTRY_NAME}" ]]; then
+            IMAGES="${IMAGES} ${JFROG_INSTANCE}/${JFROG_REGISTRY_NAME}/${IMAGE_NAME}"
+          fi
+          echo "images=${IMAGES}" >> $GITHUB_OUTPUT
+
       - name: Extract metadata
         id: meta
         uses: docker/metadata-action@v5.10.0
         with:
-          images: |
-              ${{ env.GITHUB_REGISTRY }}/${{ env.GITHUB_ORG_PATH }}/${{ env.IMAGE_NAME }}
-              ${{ env.JFROG_INSTANCE }}/${{ env.JFROG_REGISTRY_NAME }}/${{ env.IMAGE_NAME }}
+          images: ${{ steps.image-list.outputs.images }}
           labels: |
               org.opencontainers.image.source=https://github.com/${{ env.APP_REPOSITORY }}
               org.opencontainers.image.title=${{ env.IMAGE_NAME }}
