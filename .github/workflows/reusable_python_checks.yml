@@ -72,13 +72,13 @@ jobs:
           sudo apt-get install -y ${ADDITIONAL_PACKAGES}
 
       - name: Clone
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: ${{ inputs.app_repository }}
           ref: ${{ inputs.app_branch_name }}
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: ${{ inputs.python_version }}
           cache: 'pip'
@@ -138,13 +138,13 @@ jobs:
           sudo apt-get install -y ${ADDITIONAL_PACKAGES}
 
       - name: Clone
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: ${{ inputs.app_repository }}
           ref: ${{ inputs.app_branch_name }}
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: ${{ inputs.python_version }}
           cache: 'pip'

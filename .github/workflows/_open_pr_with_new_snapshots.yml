@@ -46,7 +46,7 @@ jobs:
           exit 1
 
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: ${{ inputs.app_repository }}
           ref: ${{ inputs.app_branch_name }}
@@ -59,7 +59,7 @@ jobs:
           persist-credentials: false
 
       - name: Download new snapshots
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: ${{ inputs.snapshots_artifact_name }}
           path: ${{ inputs.snapshots_directory }}
