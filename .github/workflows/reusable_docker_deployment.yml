@@ -168,9 +168,13 @@ jobs:
         run: |
           IMAGES="${GITHUB_REGISTRY}/${GITHUB_ORG_PATH}/${IMAGE_NAME}"
           if [[ -n "${JFROG_INSTANCE}" && -n "${JFROG_REGISTRY_NAME}" ]]; then
-            IMAGES="${IMAGES} ${JFROG_INSTANCE}/${JFROG_REGISTRY_NAME}/${IMAGE_NAME}"
+            IMAGES="${IMAGES}"$'\n'"${JFROG_INSTANCE}/${JFROG_REGISTRY_NAME}/${IMAGE_NAME}"
           fi
-          echo "images=${IMAGES}" >> $GITHUB_OUTPUT
+          {
+            echo "images<<EOF"
+            echo "${IMAGES}"
+            echo "EOF"
+          } >> $GITHUB_OUTPUT
 
       - name: Extract metadata
         id: meta
