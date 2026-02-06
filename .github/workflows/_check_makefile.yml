@@ -12,6 +12,11 @@ on:
         required: false
         default: ${{ github.repository }}
         type: string
+      app_branch_name:
+        description: 'The GIT branch to build (defaults to `github.ref`)'
+        required: false
+        default: ${{ github.ref }}
+        type: string
       builder:
         description: "The docker image to build the application in (defaults to ledger-app-builder-lite)"
         required: false
@@ -30,6 +35,16 @@ on:
         description: 'The list of device(s) on which the checking will run'
         required: true
         type: string
+      flags:
+        description: "Additional compilation flags (default to none)"
+        required: false
+        default: ''
+        type: string
+      use_case:
+        description: "The use case to build the application for. Ignored if 'flags' is set"
+        required: false
+        default: ''
+        type: string
 
 permissions:
   contents: read  # Needed to clone the repositories
@@ -37,6 +52,7 @@ permissions:
 env:
   WORKFLOWS_REF: ${{ inputs.workflows_ref }}
   APP_REPOSITORY: ${{ inputs.app_repository }}
+  APP_BRANCH_NAME: ${{ inputs.app_branch_name }}
   REPO_NAME: ${{ inputs.repo_name }}
   DOWNLOAD_MANIFEST_ARTIFACT_NAME: ${{ inputs.download_manifest_artifact_name }}
   RUN_FOR_DEVICES: ${{ inputs.run_for_devices }}
@@ -84,7 +100,7 @@ jobs:
           submodules: recursive
 
       - name: Download manifest
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: ${{ inputs.download_manifest_artifact_name }}
           path: ${{ inputs.download_manifest_artifact_name }}
