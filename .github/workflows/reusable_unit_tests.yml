@@ -53,7 +53,7 @@ jobs:
           apt install --no-install-recommends -y ${ADDITIONAL_PACKAGES}
 
       - name: Clone
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: ${{ inputs.app_repository }}
           ref: ${{ inputs.app_branch_name }}
@@ -87,7 +87,7 @@ jobs:
           lcov --directory . -b "$(realpath build/)" --remove coverage.info "*/${TEST_DIRECTORY}/*" -o coverage.info
           genhtml coverage.info -o coverage
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: code-coverage
           path: ${{ inputs.test_directory }}/coverage
