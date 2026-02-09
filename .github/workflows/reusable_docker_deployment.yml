@@ -95,7 +95,7 @@ jobs:
           env | grep -i proxy
 
       - name: Clone
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           github-server-url: https://github.com
           fetch-depth: 0

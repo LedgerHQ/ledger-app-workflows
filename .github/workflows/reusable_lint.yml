@@ -41,7 +41,7 @@ jobs:
 
     steps:
       - name: Clone
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Ensure clang-format is customized
         if: ${{ needs.call_get_app_metadata.outputs.is_rust == 'false'}}

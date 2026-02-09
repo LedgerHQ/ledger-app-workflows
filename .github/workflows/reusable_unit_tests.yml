@@ -53,7 +53,7 @@ jobs:
           apt install --no-install-recommends -y ${ADDITIONAL_PACKAGES}
 
       - name: Clone
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: ${{ inputs.app_repository }}
           ref: ${{ inputs.app_branch_name }}
