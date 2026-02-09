@@ -46,7 +46,7 @@ jobs:
           exit 1
 
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: ${{ inputs.app_repository }}
           ref: ${{ inputs.app_branch_name }}
