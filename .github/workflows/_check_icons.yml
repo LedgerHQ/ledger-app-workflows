@@ -61,7 +61,7 @@ jobs:
           submodules: recursive
 
       - name: Download manifest
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: ${{ inputs.download_manifest_artifact_name }}
           path: ${{ inputs.download_manifest_artifact_name }}
