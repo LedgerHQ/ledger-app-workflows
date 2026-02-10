@@ -14,8 +14,9 @@ on:
         default: ${{ github.ref }}
         type: string
       test_directory:
-        description: "The directory containing the unit-tests to run"
-        required: true
+        description: "[DEPRECATED] The directory containing the unit-tests to run. If not provided, will be read from ledger_app.toml via ledger-manifest"
+        required: false
+        default: ''
         type: string
       builder:
         description: "The docker image to build the application in (defaults to ledger-app-builder-lite)"
@@ -59,6 +60,15 @@ jobs:
           ref: ${{ inputs.app_branch_name }}
           submodules: recursive
           token: ${{ secrets.token && secrets.token || github.token }}
+
+      - name: Deprecation warning for test_directory
+        if: ${{ inputs.test_directory != '' }}
+        run: |
+          echo "::warning::Parameter 'test_directory' is deprecated. It will be automatically read from ledger_app.toml using ledger-manifest. Please remove this parameter from your workflow."
+
+      - name: Determine test directory
+        run: |
+          echo "TEST_DIRECTORY=$(ledger-manifest -otu ledger_app.toml)" >> "${GITHUB_ENV}"
 
       - name: Set working directory
         run: |

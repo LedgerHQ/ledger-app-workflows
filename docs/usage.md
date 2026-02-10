@@ -155,7 +155,7 @@ In order to test an App, this workflow can use the following input parameters:
 | ------------------------------------ | -------- | ------------------------- | --------------------------------------- |
 | app_repository                       | ❌       | `github.repository`       | The GIT repository to test |
 | app_branch_name                      | ❌       | `github.ref`              | The GIT branch to test |
-| test_directory                       | ✅       |                           | The directory containing the unit-tests to run |
+| test_directory                       | ❌       | Auto-detected             | ⚠️ **DEPRECATED** - Automatically read from `ledger_app.toml` |
 | builder                              | ❌       | `ledger-app-builder-lite` | The docker image to build the application in |
 | additional_packages                  | ❌       |                           | Additional packages to install |
 
@@ -167,8 +167,7 @@ jobs:
     name: Call Ledger unit_test
     uses: LedgerHQ/ledger-app-workflows/.github/workflows/reusable_unit_tests.yml@v1
     secrets: inherit
-    with:
-      test_directory: tests/unit
+    # Note: test_directory is deprecated and auto-detected from ledger_app.toml
 ```
 
 ## Reusable ClusterFuzzLite Tests
