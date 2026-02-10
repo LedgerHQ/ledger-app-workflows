@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.94.11] - 2026-02-10
+
+### Changed
+
+- `reusable_unit_tests.yml` : test_directory is deprecated and overridden by `$(ledger-manifest -otu ledger-app-toml)`. To be removed eventually.
+
 ## [1.94.10] - 2026-02-06
 
 ### Fixed
