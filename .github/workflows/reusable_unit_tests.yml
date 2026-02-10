@@ -64,7 +64,9 @@ jobs:
       - name: Deprecation warning for test_directory
         if: ${{ inputs.test_directory != '' }}
         run: |
-          echo "::warning::Parameter 'test_directory' is deprecated. It will be automatically read from ledger_app.toml using ledger-manifest. Please remove this parameter from your workflow."
+          MSG="Parameter 'test_directory' is deprecated. It will be automatically read from ledger_app.toml using ledger-manifest. Please remove this parameter from your workflow."
+          echo ":warning:${MSG}"
+          echo ":warning: **Warning**: ${MSG}" >> "${GITHUB_STEP_SUMMARY}"
 
       - name: Determine test directory
         run: |
