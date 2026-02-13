@@ -83,7 +83,7 @@ jobs:
               -m "../manifest_${{ matrix.device }}.json"
 
       - name: Upload app manifest
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: ${{ inputs.upload_manifest_artifact_name }}-${{ matrix.device }}
           path: ./manifest_*.json
