@@ -340,7 +340,7 @@ jobs:
     needs: ragger_tests
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/upload-artifact/merge@v4
+      - uses: actions/upload-artifact/merge@v6
         if: ${{ needs.ragger_tests.outputs.snapshot_artifact_uploaded == 'true' }}
         with:
           # Merge all basename-$device.zip into a single basename.zip

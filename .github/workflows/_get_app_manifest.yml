@@ -94,7 +94,7 @@ jobs:
     needs: get_app_manifest
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/upload-artifact/merge@v4
+      - uses: actions/upload-artifact/merge@v6
         with:
           name: ${{ inputs.upload_manifest_artifact_name }}
           pattern: ${{ inputs.upload_manifest_artifact_name }}-*
