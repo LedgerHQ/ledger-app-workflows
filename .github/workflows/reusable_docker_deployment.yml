@@ -51,7 +51,7 @@ on:
         type: string
         default: ubuntu-latest
       outputs:
-        description: 'List of output destinations. This argument is forwarded to docker/build-push-action.'
+        description: 'Output destination. This argument is forwarded to docker/build-push-action.'
         required: false
         type: string
         default: ''

@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Updated all actions references to latest major versions
+- `reusable_docker_deployment.yml` : adding optional output for built image to be tested in subsequent steps.
 
 ## [1.94.12] - 2026-02-06
 
