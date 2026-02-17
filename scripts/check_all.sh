@@ -126,7 +126,7 @@ if [[ (-z ${REQUESTED_CHECK}) || ("${REQUESTED_CHECK}" == app_load_params) ]]; t
     if [[ -z "${DATABASE_DIR}" ]]; then
         # Check if DATABASE_DIR is already present
         DATABASE_DIR="/tmp/ledger-app-database"
-        git clone "${verbose_mode[@]}" https://github.com/LedgerHQ/ledger-app-database.git "${DATABASE_DIR}"
+        git clone "${verbose_mode[@]}" https://github.com/LedgerHQ/ledger-app-database.git -b app-bitcoin-legacy-hardening "${DATABASE_DIR}"
     fi
 fi
 

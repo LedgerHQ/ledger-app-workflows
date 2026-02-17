@@ -1,0 +1,177 @@
+name: Build the application for all devices and upload the artifact
+
+on:
+  workflow_call:
+    inputs:
+      app_repository:
+        description: 'The GIT repository to build (defaults to `github.repository`)'
+        required: false
+        default: ${{ github.repository }}
+        type: string
+      app_branch_name:
+        description: 'The GIT branch to build (defaults to `github.ref`)'
+        required: false
+        default: ${{ github.ref }}
+        type: string
+      flags:
+        description: "Additional compilation flags (default to none)"
+        required: false
+        default: ''
+        type: string
+      upload_app_binaries_artifact:
+        description: "The name of the artifact containing the built application binary file(s) to be tested"
+        required: false
+        default: ''
+        type: string
+      upload_as_lib_artifact:
+        description: "If non-empty, prefixes the built application binary file(s) with this string (default to none)"
+        required: false
+        default: ''
+        type: string
+      run_for_devices:
+        description: |
+          The list of device(s) on which the CI will run.
+
+          Defaults to the full list of device(s) supported by the application as configured in the
+          'ledger_app.toml' manifest.
+          If the manifest is missing, defaults to ALL (["nanos", "nanox", "nanosp", "stax", "flex"]).
+        required: false
+        default: 'None'
+        type: string
+      builder:
+        description: "The docker image to build the application in (defaults to ledger-app-builder-lite)"
+        required: false
+        default: 'ledger-app-builder-lite'
+        type: string
+      sdk_reference:
+        description: |
+          A SDK reference to checkout before building the app. Does not apply on Rust application
+          Default behavior is to build on the current version of the app-builder Docker image.
+
+          As the branch `master` exists locally, `origin/master` should be used to checkout the
+          actual, current SDK master branch.
+        required: false
+        default: ""
+        type: string
+
+jobs:
+  call_get_app_metadata:
+    # This job digests inputs and repository metadata provided by the `ledger_app.toml` manifest
+    # file, in order to output relevant directories, compatible devices, and other variables needed
+    # by following jobs.
+    name: Retrieve application metadata
+    uses: ./.github/workflows/_get_app_metadata.yml
+    with:
+      app_repository: ${{ inputs.app_repository }}
+      app_branch_name: ${{ inputs.app_branch_name }}
+      compatible_devices: ${{ inputs.run_for_devices }}
+
+  build:
+    name: Build application for NanoS, X, S+, and Stax
+    needs: call_get_app_metadata
+    strategy:
+      fail-fast: false
+      matrix:
+        device: ${{ fromJSON(needs.call_get_app_metadata.outputs.compatible_devices) }}
+    runs-on: ubuntu-22.04
+    container:
+      image: ghcr.io/ledgerhq/ledger-app-builder/${{ inputs.builder }}:latest
+
+    steps:
+      - name: Clone
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ inputs.app_repository }}
+          ref: ${{ inputs.app_branch_name }}
+          submodules: recursive
+
+      - name: Build application
+        id: "build"
+        shell: bash
+        run: |
+          eval "BOLOS_SDK=\$$(echo ${{ matrix.device }} | tr [:lower:] [:upper:])_SDK"
+          echo "BOLOS_SDK value will be: ${BOLOS_SDK}"
+          if [ -n "${{ inputs.sdk_reference }}" ];
+          then
+              echo "Checking out reference '${{ inputs.sdk_reference }}'..."
+              (cd $BOLOS_SDK && git fetch -apt && git checkout ${{ inputs.sdk_reference }})
+              ADDITIONAL_ARGS="TARGET=${{ matrix.device }}"
+              ADDITIONAL_ARGS_RUST="LEDGER_SDK_PATH=${BOLOS_SDK}"
+          fi
+          if [ "${{ needs.call_get_app_metadata.outputs.is_rust }}" = "true" ];
+          then
+              BUILD_DEVICE_NAME="$(echo ${{ matrix.device }} | sed 's/nanosp/nanosplus/')" && \
+              cd ${{ needs.call_get_app_metadata.outputs.build_directory }}
+              # Update the Rust SDK crates
+              all_crates=$(cargo +$RUST_NIGHTLY tree --depth 2 --prefix none | awk '{print $1}' | sort -u)
+              for crate in "ledger_secure_sdk_sys" "ledger_device_sdk" "include_gif"; do
+                if echo "$all_crates" | grep -q "^$crate$"; then
+                  cargo +$RUST_NIGHTLY update $crate
+                fi
+              done
+              cargo ledger build ${BUILD_DEVICE_NAME} ${ADDITIONAL_ARGS_RUST} && \
+              binary_path=$(cargo metadata --no-deps --format-version 1 | jq -r '.target_directory')/ && \
+              echo "binary_path=$binary_path" >> $GITHUB_OUTPUT && \
+              echo "binary_path=$binary_path" && \
+              echo "Build complete"
+          else
+              echo "Compiling..."
+              make -C ${{ needs.call_get_app_metadata.outputs.build_directory }} -j ${{ inputs.flags }} ${ADDITIONAL_ARGS} BOLOS_SDK=${BOLOS_SDK}
+              echo "binary_path=${{ needs.call_get_app_metadata.outputs.build_directory }}/build/*" >> $GITHUB_OUTPUT
+              echo "Build complete"
+          fi
+
+      - name: Remove build artifacts before upload
+        run: |
+          if [ "${{ needs.call_get_app_metadata.outputs.is_rust }}" = "true" ];
+          then
+              find ${{ steps.build.outputs.binary_path }} -mindepth 3 -maxdepth 3 -type d -exec rm -rf {} + && \
+              rm -rf ${{ steps.build.outputs.binary_path }}/release
+          else
+              find ${{ steps.build.outputs.binary_path }} -mindepth 2 -maxdepth 2 -type d ! -name 'bin' -exec rm -r {} +
+          fi
+
+      - name: Prepare to upload as lib
+        if: ${{ inputs.upload_as_lib_artifact != '' }}
+        shell: bash
+        run: |
+          if [ "${{ needs.call_get_app_metadata.outputs.is_rust }}" = "true" ];
+          then
+            C_DEVICE_NAME="$(echo ${{ matrix.device }} | tr nanosp nanos2)" && \
+            echo "C_DEVICE_NAME=$C_DEVICE_NAME" && \
+            RUST_DEVICE_NAME="$(echo ${{ matrix.device }} | sed 's/sp/splus/')" && \
+            echo "RUST_DEVICE_NAME=$RUST_DEVICE_NAME" && \
+            ELF_NAME=$(cargo metadata --manifest-path ${{ needs.call_get_app_metadata.outputs.build_directory }}/Cargo.toml --no-deps --format-version 1 | jq -r '.packages[] | select(.metadata.ledger != null) | .name') && \
+            echo "ELF_NAME=$ELF_NAME" && \
+            mv ${{ steps.build.outputs.binary_path }}${RUST_DEVICE_NAME}/release/${ELF_NAME} ${{ steps.build.outputs.binary_path }}/${{ inputs.upload_as_lib_artifact }}_${C_DEVICE_NAME}.elf && \
+            rm -rf ${{ steps.build.outputs.binary_path }}${RUST_DEVICE_NAME}
+          else
+            DEVICE_NAME="$(echo ${{ matrix.device }} | tr nanosp nanos2)" && \
+            find ${{ needs.call_get_app_metadata.outputs.build_directory }}/build/${DEVICE_NAME}/ -type f -name 'app.elf' -exec mv {} ${{ inputs.upload_as_lib_artifact }}_${DEVICE_NAME}.elf \; && \
+            rm -r ${{ needs.call_get_app_metadata.outputs.build_directory }}/build/* && \
+            mv ${{ inputs.upload_as_lib_artifact }}_${DEVICE_NAME}.elf ${{ needs.call_get_app_metadata.outputs.build_directory }}/build/
+          fi
+
+      - name: Display structure of binary files
+        run: |
+          ls -R ${{ steps.build.outputs.binary_path }}
+
+      - name: Upload app binary
+        if: ${{ inputs.upload_app_binaries_artifact != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.upload_app_binaries_artifact }}-${{ matrix.device }}
+          path: ${{ steps.build.outputs.binary_path }}
+          if-no-files-found: error
+
+  merge_artifacts:
+    name: Merge build artifacts
+    needs: build
+    runs-on: ubuntu-22.04
+    if: ${{ inputs.upload_app_binaries_artifact != '' }}
+    steps:
+      - uses: actions/upload-artifact/merge@v4
+        with:
+          name: ${{ inputs.upload_app_binaries_artifact }}
+          pattern: ${{ inputs.upload_app_binaries_artifact }}-*
+          delete-merged: true
