@@ -254,6 +254,7 @@ In order to build and deploy a docker image, this workflow can use the following
 | jfrog_instance                       | ❌       |                           | hostname of the jfrog instance to deploy to |
 | jfrog_registry_name                  | ❌       |                           | registry within the instance to publish to |
 | runs_on                              | ❌       | `ubuntu-latest`           | The type of runner to use |
+| outputs                              | ❌       |                           | type and location of the output. Useful to test the built image in the same workflow it was built in. |
 
 In addition, the following secret can be used:
 

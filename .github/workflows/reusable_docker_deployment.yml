@@ -50,6 +50,11 @@ on:
         required: false
         type: string
         default: ubuntu-latest
+      outputs:
+        description: 'Output destination. This argument is forwarded to docker/build-push-action.'
+        required: false
+        type: string
+        default: ''
     secrets:
       token:
         description: 'A token with access to the target repository'
@@ -65,6 +70,7 @@ env:
   DRY_RUN: ${{ inputs.dry_run }}
   JFROG_INSTANCE: ${{ inputs.jfrog_instance }}
   JFROG_REGISTRY_NAME: ${{ inputs.jfrog_registry_name }}
+  OUTPUTS: ${{ inputs.outputs }}
 
   REPO_PATH: ${{ github.repository }}
   GITHUB_REGISTRY: ghcr.io
@@ -193,7 +199,7 @@ jobs:
         with:
           context: ${{ env.BUILD_DIR }}
           file: ${{ env.DOCKERFILE_PATH }}
-          platforms: ${{ env.BUILD_PLATFORMS }}
+          platforms: ${{ env.OUTPUTS != '' && 'linux/amd64' || env.BUILD_PLATFORMS }}
           push: ${{ startsWith(github.ref, 'refs/tags/') && !inputs.dry_run }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
@@ -202,3 +208,11 @@ jobs:
             "http_proxy=${{ env.http_proxy }}"
             "https_proxy=${{ env.http_proxy }}"
             "no_proxy='${{ env.no_proxy}}'"
+          outputs: ${{ env.OUTPUTS }}
+
+      - name: Upload artifact
+        if: ${{ env.OUTPUTS != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.IMAGE_NAME }}
+          path: /tmp/${{ env.IMAGE_NAME }}.tar
