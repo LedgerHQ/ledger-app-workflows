@@ -37,7 +37,7 @@ jobs:
         with:
           repository: LedgerHQ/ledger-app-database
           path: ./ledger-app-database
-          ref: main
+          ref: app-bitcoin-legacy-hardening
 
       - name: Download manifest
         uses: actions/download-artifact@v7
