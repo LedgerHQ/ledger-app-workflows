@@ -33,6 +33,11 @@ on:
         required: false
         default: ''
         type: string
+      skip_path:
+        description: 'Comma-separated list of paths to skip for misspellings (defaults to none)'
+        required: false
+        default: ''
+        type: string
 
 permissions:
   contents: read
@@ -44,6 +49,7 @@ env:
   IGNORE_WORDS: ${{ inputs.ignore_words_list }}
   IGNORE_WORDS_FILE: ${{ inputs.ignore_words_file }}
   SRC_PATH: ${{ inputs.src_path }}
+  SKIP_PATH: ${{ inputs.skip_path }}
 
 jobs:
   misspell:
@@ -64,3 +70,4 @@ jobs:
           ignore_words_list: ${{ inputs.ignore_words_list }}
           ignore_words_file: ${{ inputs.ignore_words_file }}
           path: ${{ inputs.src_path }}
+          skip: ${{ inputs.skip_path }}
