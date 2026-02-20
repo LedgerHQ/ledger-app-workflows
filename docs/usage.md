@@ -124,6 +124,7 @@ In order to check an App, this workflow can use the following input parameters:
 | ignore_words_list                    | ❌       |                           | Comma-separated list of words to ignore |
 | ignore_words_file                    | ❌       |                           | Path to a file containing words to ignore |
 | src_path                             | ❌       |                           | Comma-separated list of paths to check for misspellings |
+| skip_path                            | ❌       |                           | Comma-separated list of paths to skip for misspellings |
 
 ## Reusable CodeQL Checks
 
