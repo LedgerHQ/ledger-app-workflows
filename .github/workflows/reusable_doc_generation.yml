@@ -45,7 +45,7 @@ jobs:
       - name: HTML documentation
         run: doxygen "${DOXY_FILE}"
 
-      - uses: actions/upload-artifact@v6
+      - uses: actions/upload-artifact@v7
         with:
           name: documentation
           path: doc/html
