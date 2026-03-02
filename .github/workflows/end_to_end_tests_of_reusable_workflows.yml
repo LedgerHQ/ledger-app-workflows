@@ -122,7 +122,7 @@ jobs:
     needs: build_sideloaded_applications_for_exchange
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/upload-artifact/merge@v4
+      - uses: actions/upload-artifact/merge@v7
         with:
           name: libraries_binaries
           pattern: libraries_binaries-*
