@@ -48,10 +48,6 @@ jobs:
           # We need the full history so that BASE_SHA is reachable
           fetch-depth: 0
 
-      - name: Install gh copilot extension
-        env:
-          GH_TOKEN: ${{ secrets.token }}
-        run: gh extension install github/gh-copilot --force
 
       - name: Review PR changes and post comments
         env:
