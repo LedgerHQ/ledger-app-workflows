@@ -289,3 +289,41 @@ In order to deploy an npm package, this workflow can use the following input par
   | dry_run                      | ❌       | `false`                         | If true, runs all pre-publishing steps but run `npm publish --dry-run`          |
   | jfrog_deployment             | ❌       | `true`                          | Whether the npm package should be pushed on Ledger Jfrog or not.                |
   | jfrog_registry               | ❌       | `embedded-apps-npm-prod-public` | The package registry where the package will be pushed                           |
+## Reusable AI Code Review
+
+This workflow performs an AI-powered code review on a pull request using the `gh copilot` CLI extension.
+For each issue found, inline review comments are posted directly on the affected lines of the PR.
+If inline commenting fails, individual PR comments are posted as a fallback.
+
+This workflow must be triggered from a `pull_request` event.
+
+| Parameter        | Required | Default value                                | Comment                                                           |
+| ---------------- | -------- | -------------------------------------------- | ----------------------------------------------------------------- |
+| model            | ❌       | `claude-sonnet-4.6`                          | The AI model to use for code review                               |
+| max_diff_size    | ❌       | `30000`                                      | Maximum diff size (chars) per file. Larger diffs are skipped      |
+| exclude_patterns | ❌       | binary & lockfile extensions                 | Comma-separated grep -E patterns of files to exclude from review  |
+
+In addition, the following secret is required:
+
+| Parameter | Required | Comment                                                                                    |
+| --------- | -------- | ------------------------------------------------------------------------------------------ |
+| token     | ✅       | GitHub token with `contents: read`, `pull-requests: write`, and Copilot access permissions |
+
+### Example usage
+
+```yml
+name: AI Code Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  ai_review:
+    name: AI Code Review
+    uses: LedgerHQ/ledger-app-workflows/.github/workflows/reusable_ai_code_review.yml@vX
+    with:
+      model: 'claude-sonnet-4.6'
+    secrets:
+      token: ${{ secrets.GITHUB_TOKEN }}
+```

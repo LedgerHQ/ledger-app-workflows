@@ -1,0 +1,245 @@
+name: AI Code Review with GitHub Copilot
+
+on:
+  workflow_call:
+    inputs:
+      model:
+        description: |
+          The AI model to use for code review.
+          Must be a model supported by the gh copilot extension.
+        required: false
+        default: 'claude-sonnet-4.6'
+        type: string
+      max_diff_size:
+        description: 'Maximum diff size (in characters) per file to review. Larger diffs are skipped.'
+        required: false
+        default: 30000
+        type: number
+      exclude_patterns:
+        description: |
+          Comma-separated list of file patterns to exclude from review.
+          Uses grep -E syntax (e.g. "\.lock$,\.min\.js$,__generated__").
+        required: false
+        default: '\.(png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot|lock|min\.js|min\.css|pdf|zip|tar|gz|bin|exe|so|o|a|dylib)$'
+        type: string
+    secrets:
+      token:
+        description: |
+          GitHub token with the following permissions:
+            - contents: read  (to fetch the PR diff)
+            - pull-requests: write  (to post review comments)
+            - copilot: read  (to invoke the gh copilot extension)
+        required: true
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  ai-code-review:
+    name: AI Code Review
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          # We need the full history so that BASE_SHA is reachable
+          fetch-depth: 0
+
+      - name: Install gh copilot extension
+        env:
+          GH_TOKEN: ${{ secrets.token }}
+        run: gh extension install github/gh-copilot --force
+
+      - name: Review PR changes and post comments
+        env:
+          GH_TOKEN: ${{ secrets.token }}
+          MODEL: ${{ inputs.model }}
+          MAX_DIFF_SIZE: ${{ inputs.max_diff_size }}
+          EXCLUDE_PATTERNS: ${{ inputs.exclude_patterns }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+
+          echo "🤖 Starting AI Code Review"
+          echo "   Model       : ${MODEL}"
+          echo "   PR          : #${PR_NUMBER}"
+          echo "   Base commit : ${BASE_SHA:0:8}"
+          echo "   Head commit : ${HEAD_SHA:0:8}"
+
+          # -------------------------------------------------------------------
+          # 1. Collect the list of reviewable changed files
+          # -------------------------------------------------------------------
+          changed_files=$(git diff --name-only --diff-filter=ACMR \
+            "${BASE_SHA}...${HEAD_SHA}" | \
+            grep -Ev "${EXCLUDE_PATTERNS}" || true)
+
+          if [ -z "$changed_files" ]; then
+            echo "✅ No reviewable files changed in this PR"
+            exit 0
+          fi
+
+          file_count=$(echo "$changed_files" | wc -l)
+          echo "📁 ${file_count} file(s) to review"
+
+          # Temporary file that accumulates issues as a JSON array
+          issues_file=$(mktemp)
+          echo "[]" > "$issues_file"
+
+          # -------------------------------------------------------------------
+          # 2. Review each file individually
+          # -------------------------------------------------------------------
+          while IFS= read -r file; do
+            echo "::group::📄 ${file}"
+
+            diff=$(git diff "${BASE_SHA}...${HEAD_SHA}" -- "$file")
+
+            # Skip empty diffs
+            if [ -z "$diff" ]; then
+              echo "⏭️  empty diff – skipping"
+              echo "::endgroup::"
+              continue
+            fi
+
+            # Skip oversized diffs
+            diff_size=${#diff}
+            if [ "$diff_size" -gt "$MAX_DIFF_SIZE" ]; then
+              echo "⏭️  diff too large (${diff_size} > ${MAX_DIFF_SIZE}) – skipping"
+              echo "::endgroup::"
+              continue
+            fi
+
+            # Build the review prompt ------------------------------------------
+            prompt="You are an expert code reviewer. Analyze the following git diff and identify any:
+          - Bugs or logic errors
+          - Security vulnerabilities
+          - Performance problems
+          - Code style or best-practice violations
+          - Missing or incorrect error handling
+
+          For each issue found, output a JSON object on its own line (JSONL) with these fields:
+            \"path\"     – the file path (string)
+            \"line\"     – the line number in the NEW version of the file (integer)
+            \"severity\" – one of \"error\", \"warning\", \"info\" (string)
+            \"body\"     – a clear description of the issue with a suggested fix (string)
+
+          Rules:
+            • Output ONLY JSON lines — no markdown fences, no explanatory text.
+            • If there are no issues, output nothing at all.
+
+          File: ${file}
+          ${diff}"
+
+            # Call gh copilot -------------------------------------------------
+            response=""
+            if ! response=$(gh copilot ask --model "${MODEL}" "${prompt}" 2>&1); then
+              echo "⚠️  gh copilot returned an error – skipping this file"
+              echo "::endgroup::"
+              continue
+            fi
+
+            # Parse each line looking for valid JSON issue objects -------------
+            found=0
+            while IFS= read -r line; do
+              # Skip empty lines
+              [ -z "$line" ] && continue
+              # Attempt to parse as JSON with the required fields
+              if echo "$line" | jq -e 'select(.path and .body)' > /dev/null 2>&1; then
+                current=$(cat "$issues_file")
+                echo "$current" | jq --argjson item "$line" '. + [$item]' > "$issues_file"
+                found=$((found + 1))
+              fi
+            done <<< "$response"
+
+            if [ "$found" -gt 0 ]; then
+              echo "🔍 ${found} issue(s)"
+            else
+              echo "✅ no issues"
+            fi
+
+            echo "::endgroup::"
+
+            # Small delay to avoid rate-limiting
+            sleep 1
+          done <<< "$changed_files"
+
+          # -------------------------------------------------------------------
+          # 3. Post results back to the PR
+          # -------------------------------------------------------------------
+          total=$(jq length "$issues_file")
+
+          if [ "$total" -eq 0 ]; then
+            echo "✅ AI Code Review complete – no issues found"
+            gh pr comment "$PR_NUMBER" \
+              --body "✅ **AI Code Review** (model: \`${MODEL}\`): no issues found. LGTM!"
+            rm -f "$issues_file"
+            exit 0
+          fi
+
+          echo "📝 ${total} issue(s) found – posting review…"
+
+          # Build the comments payload for the Pull Request Review API.
+          # Each comment targets a specific line on the RIGHT side of the diff.
+          comments_json=$(jq -c '[.[] | {
+            path:  .path,
+            line:  (.line // 1),
+            side:  "RIGHT",
+            body:  (
+              (if   .severity == "error"   then "🔴 **Error** — "
+               elif .severity == "warning" then "🟡 **Warning** — "
+               else                              "🔵 **Info** — "
+               end) + .body
+            )
+          }]' "$issues_file")
+
+          review_body="🤖 **AI Code Review** (model: \`${MODEL}\`) found **${total}** issue(s)."
+
+          # Attempt to create a single PR review with inline comments ---------
+          if jq -n \
+            --arg     commit_id "$HEAD_SHA" \
+            --arg     event     "COMMENT" \
+            --arg     body      "$review_body" \
+            --argjson comments  "$comments_json" \
+            '{commit_id: $commit_id, event: $event, body: $body, comments: $comments}' | \
+            gh api --method POST "/repos/${REPO}/pulls/${PR_NUMBER}/reviews" --input - 2>/dev/null; then
+
+            echo "✅ Inline review posted successfully"
+          else
+            # Fallback: post each issue as an individual PR comment -----------
+            echo "⚠️  Inline review failed – falling back to individual comments"
+
+            gh pr comment "$PR_NUMBER" --body "$review_body"
+
+            jq -c '.[]' "$issues_file" | while read -r issue; do
+              path=$(echo     "$issue" | jq -r '.path')
+              line_num=$(echo "$issue" | jq -r '.line // "N/A"')
+              severity=$(echo "$issue" | jq -r '.severity // "info"')
+              body=$(echo     "$issue" | jq -r '.body')
+
+              case "$severity" in
+                error)   icon="🔴 **Error**"   ;;
+                warning) icon="🟡 **Warning**" ;;
+                *)       icon="🔵 **Info**"    ;;
+              esac
+
+              comment_body=$(cat <<EOF
+          ${icon} — **AI Code Review** (model: \`${MODEL}\`)
+
+          **File:** \`${path}\` (line ${line_num})
+
+          ${body}
+          EOF
+              )
+
+              gh pr comment "$PR_NUMBER" --body "$comment_body"
+              sleep 0.5
+            done
+          fi
+
+          rm -f "$issues_file"
+          echo "🏁 AI Code Review complete"
