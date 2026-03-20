@@ -132,13 +132,30 @@ jobs:
           File: ${file}
           ${diff}"
 
-            # Call gh copilot -------------------------------------------------
-            response=""
-            if ! response=$(gh copilot --model "${MODEL}" -p "${prompt}" 2>&1); then
-              echo "⚠️  gh copilot returned an error – skipping this file"
+            # Call GitHub Models API ------------------------------------------
+            request_body=$(jq -n \
+              --arg model   "$MODEL" \
+              --arg content "$prompt" \
+              '{model: $model, messages: [{role: "user", content: $content}], max_tokens: 4096}')
+
+            api_response_file=$(mktemp)
+            http_status=$(curl -s -w "%{http_code}" -o "$api_response_file" \
+              -X POST \
+              -H "Authorization: Bearer ${GH_TOKEN}" \
+              -H "Content-Type: application/json" \
+              "https://models.inference.ai.azure.com/chat/completions" \
+              -d "$request_body")
+
+            if [ "$http_status" != "200" ]; then
+              echo "⚠️  GitHub Models API returned HTTP ${http_status} – skipping this file"
+              cat "$api_response_file" || true
+              rm -f "$api_response_file"
               echo "::endgroup::"
               continue
             fi
+
+            response=$(jq -r '.choices[0].message.content // empty' "$api_response_file")
+            rm -f "$api_response_file"
 
             # Parse each line looking for valid JSON issue objects -------------
             found=0
