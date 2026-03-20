@@ -116,12 +116,8 @@ jobs:
             fi
 
             # Build the review prompt ------------------------------------------
-            prompt="You are an expert code reviewer. Analyze the following git diff and identify any:
-          - Bugs or logic errors
-          - Security vulnerabilities
-          - Performance problems
-          - Code style or best-practice violations
-          - Missing or incorrect error handling
+            prompt="You are an expert code reviewer. Analyze the following git diff and, if present, use the instructions under .github/instructions/REVIEW.instructions.md to identify any potential issues, bugs, security vulnerabilities, code quality problems, or style inconsistencies.
+
 
           For each issue found, output a JSON object on its own line (JSONL) with these fields:
             \"path\"     – the file path (string)
@@ -138,7 +134,7 @@ jobs:
 
             # Call gh copilot -------------------------------------------------
             response=""
-            if ! response=$(gh copilot ask --model "${MODEL}" "${prompt}" 2>&1); then
+            if ! response=$(gh copilot --model "${MODEL}" -p "${prompt}" 2>&1); then
               echo "⚠️  gh copilot returned an error – skipping this file"
               echo "::endgroup::"
               continue
