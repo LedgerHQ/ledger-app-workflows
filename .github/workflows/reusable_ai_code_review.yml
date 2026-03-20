@@ -8,7 +8,7 @@ on:
           The AI model to use for code review.
           Must be a model supported by the gh copilot extension.
         required: false
-        default: 'claude-sonnet-4.6'
+        default: 'AI21-Jamba-Instruct'
         type: string
       max_diff_size:
         description: 'Maximum diff size (in characters) per file to review. Larger diffs are skipped.'
@@ -134,30 +134,13 @@ jobs:
           File: ${file}
           ${diff}"
 
-            # Call GitHub Models API ------------------------------------------
-            request_body=$(jq -n \
-              --arg model   "$MODEL" \
-              --arg content "$prompt" \
-              '{model: $model, messages: [{role: "user", content: $content}], max_tokens: 4096}')
-
-            api_response_file=$(mktemp)
-            http_status=$(curl -s -w "%{http_code}" -o "$api_response_file" \
-              -X POST \
-              -H "Authorization: Bearer ${MODELS_TOKEN}" \
-              -H "Content-Type: application/json" \
-              "https://models.inference.ai.azure.com/chat/completions" \
-              -d "$request_body")
-
-            if [ "$http_status" != "200" ]; then
-              echo "⚠️  GitHub Models API returned HTTP ${http_status} – skipping this file"
-              cat "$api_response_file" || true
-              rm -f "$api_response_file"
+            # Call gh copilot -------------------------------------------------
+            response=""
+            if ! response=$(gh copilot --model "${MODEL}" -p "${prompt}" 2>&1); then
+              echo "⚠️  gh copilot returned an error – skipping this file"
               echo "::endgroup::"
               continue
             fi
-
-            response=$(jq -r '.choices[0].message.content // empty' "$api_response_file")
-            rm -f "$api_response_file"
 
             # Parse each line looking for valid JSON issue objects -------------
             found=0
