@@ -34,6 +34,7 @@ on:
 permissions:
   contents: read
   pull-requests: write
+  models: read
 
 jobs:
   ai-code-review:
@@ -57,6 +58,7 @@ jobs:
       - name: Review PR changes and post comments
         env:
           GH_TOKEN: ${{ secrets.token }}
+          MODELS_TOKEN: ${{ github.token }}
           MODEL: ${{ inputs.model }}
           MAX_DIFF_SIZE: ${{ inputs.max_diff_size }}
           EXCLUDE_PATTERNS: ${{ inputs.exclude_patterns }}
@@ -141,7 +143,7 @@ jobs:
             api_response_file=$(mktemp)
             http_status=$(curl -s -w "%{http_code}" -o "$api_response_file" \
               -X POST \
-              -H "Authorization: Bearer ${GH_TOKEN}" \
+              -H "Authorization: Bearer ${MODELS_TOKEN}" \
               -H "Content-Type: application/json" \
               "https://models.inference.ai.azure.com/chat/completions" \
               -d "$request_body")
