@@ -91,7 +91,7 @@ jobs:
 
             echo "Current version in manifest is ${TAG_VERSION}"
 
-            if [ "$last_published_version" == "$TAG_VERSION" ]; then
+            if [ "$last_published_version" = "$TAG_VERSION" ]; then
               echo "package ${PACKAGE_DIRECTORY} is already published with version ${TAG_VERSION}."
             else
               echo "package ${PACKAGE_DIRECTORY} with version ${TAG_VERSION} is not published."
@@ -131,7 +131,7 @@ jobs:
 
           echo "Current version in manifest is ${TAG_VERSION}"
 
-          if [ "$last_published_version" == "$TAG_VERSION" ]; then
+          if [ "$last_published_version" = "$TAG_VERSION" ]; then
             echo "package ${PACKAGE_DIRECTORY} is already published with version ${TAG_VERSION}."
           else
             echo "package ${PACKAGE_DIRECTORY} with version ${TAG_VERSION} is not published."
