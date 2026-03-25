@@ -121,7 +121,7 @@ jobs:
         working-directory: ${{ env.PACKAGE_DIRECTORY }}
         run: |
           CHANGELOG_VERSION=$(grep -Po '(?<=## \[)(\d+\.)+[^\]]' CHANGELOG.md | head -n 1)
-          if [ "${TAG_VERSION}" == "${CHANGELOG_VERSION}" ]
+          if [ "${TAG_VERSION}" = "${CHANGELOG_VERSION}" ]
           then
               exit 0
           fi

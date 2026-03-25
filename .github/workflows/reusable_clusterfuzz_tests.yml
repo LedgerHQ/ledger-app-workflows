@@ -42,7 +42,7 @@ jobs:
       - name: Set Dynamic Matrix
         id: set_matrix
         run: |
-          if [ "${EXEC_MODE}" == "pull_request" ]; then
+          if [ "${EXEC_MODE}" = "pull_request" ]; then
             MATRIX='[{"sanitizer":"address","mode_cflite":"code-change"},{"sanitizer":"undefined","mode_cflite":"code-change"},{"sanitizer":"memory","mode_cflite":"code-change"}]'
           else
             MATRIX='[{"sanitizer":"address","mode_cflite":"batch"},{"sanitizer":"memory","mode_cflite":"batch"},{"sanitizer":"address","mode_cflite":"prune"},{"sanitizer":"coverage","mode_cflite":"coverage"}]'
@@ -65,9 +65,9 @@ jobs:
       - name: Set Fuzz Seconds
         id: set_seconds
         run: |
-          if [ "${EXEC_MODE}" == "pull_request" ]; then
+          if [ "${EXEC_MODE}" = "pull_request" ]; then
             FUZZ_SECONDS=${SECONDS_PR}
-          elif [ "${{ matrix.mode_cflite }}" == "coverage" ]; then
+          elif [ "${{ matrix.mode_cflite }}" = "coverage" ]; then
             FUZZ_SECONDS=${SECONDS_SCHEDULE}
           else
             FUZZ_SECONDS=${SECONDS_PUSH}
