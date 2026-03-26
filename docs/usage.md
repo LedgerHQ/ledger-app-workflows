@@ -212,6 +212,7 @@ In order to deploy a package, this workflow can use the following input paramete
 | runs_on                              | ❌       | public-ledgerhq-shared-small | The python version to use within the container                          |
 | container                            | ❌       |                              | The container image that should be used to run the job                  |
 | python_version                       | ❌       | `3.10`                       | The python version to use within the container                          |
+| workspace_mark_safe                  | ❌       | `false`                      | Mark the workspace as safe for git, needed for jobs running in containers with root UID |
 
 In addition, the following secret can be used:
 

@@ -57,6 +57,11 @@ on:
         required: false
         type: string
         default: '3.10'
+      workspace_mark_safe:
+        description: Whether to mark the repository as safe for git operations. Needed when using a container with a different user than the host runner.
+        required: false
+        type: boolean
+        default: false
     secrets:
       pypi_token:
         description: A token enabling to push a package on pypi.org
@@ -99,6 +104,10 @@ jobs:
           repository: ${{ inputs.repository_name }}
           ref: ${{ inputs.branch_name }}
           token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Mark repository as safe for git operations
+        if: ${{ inputs.workspace_mark_safe }}
+        run: git config --global --add safe.directory '*'
 
       - name: Build Python package
         working-directory: ${{ env.PACKAGE_DIRECTORY }}
