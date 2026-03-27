@@ -149,14 +149,14 @@ jobs:
 
       - name: Login to JFrog OCI Registry
         if: ${{ !inputs.dry_run && inputs.jfrog_instance && inputs.jfrog_registry_name }}
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ${{ env.JFROG_INSTANCE }}/${{ env.JFROG_REGISTRY_NAME }}
           username: ${{ steps.jfrog-login.outputs.oidc-user }}
           password: ${{ steps.jfrog-login.outputs.oidc-token }}
 
       - name: Login to ghcr.io registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ${{ env.GITHUB_REGISTRY }}
           username: ldg-github-ci
