@@ -213,6 +213,7 @@ In order to deploy a package, this workflow can use the following input paramete
 | container                            | ❌       |                              | The container image that should be used to run the job                  |
 | python_version                       | ❌       | `3.10`                       | The python version to use within the container                          |
 | workspace_mark_safe                  | ❌       | `false`                      | Mark the workspace as safe for git, needed for jobs running in containers with root UID |
+| docker_image_artifact                | ❌       |                              | Name of a Docker image artifact (tar) built by a previous job to use as the execution container. Mutually exclusive with `container`. |
 
 In addition, the following secret can be used:
 

@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.94.19] - 2026-03-27
+
+### Added
+
+- `reusable_pypi_deployment.yml` : added option `docker_image_artifact` to load a locally built Docker image from a previous job and use it as the execution container.
+
 ## [1.94.18] - 2026-03-26
 
 ### Changed

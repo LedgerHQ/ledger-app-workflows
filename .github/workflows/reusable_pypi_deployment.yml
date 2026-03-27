@@ -62,6 +62,11 @@ on:
         required: false
         type: boolean
         default: false
+      docker_image_artifact:
+        description: 'Name of a Docker image artifact (tar) built by a previous job to use as the execution container. Mutually exclusive with `container`.'
+        required: false
+        type: string
+        default: ''
     secrets:
       pypi_token:
         description: A token enabling to push a package on pypi.org
@@ -96,6 +101,28 @@ jobs:
           $SUDO apt-get update
           $SUDO apt-get install -y git python3 python3-pip
 
+      - name: Download Docker image artifact
+        if: ${{ inputs.docker_image_artifact != '' }}
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.docker_image_artifact }}
+          path: /tmp
+
+      - name: Load Docker image
+        if: ${{ inputs.docker_image_artifact != '' }}
+        run: |
+          IMAGE=$(docker load -i /tmp/${{ inputs.docker_image_artifact }}.tar | grep 'Loaded image:' | sed 's/Loaded image: //')
+          echo "DOCKER_IMAGE=${IMAGE}" >> $GITHUB_ENV
+
+      - name: Start Docker container
+        if: ${{ inputs.docker_image_artifact != '' }}
+        run: |
+          docker run -d --name pypi-deploy \
+            -v "${GITHUB_WORKSPACE}:/workspace" \
+            "${DOCKER_IMAGE}" \
+            sleep infinity
+          echo "DOCKER_CONTAINER=pypi-deploy" >> $GITHUB_ENV
+
       - name: Clone
         uses: actions/checkout@v6
         with:
@@ -110,16 +137,37 @@ jobs:
         run: git config --global --add safe.directory '*'
 
       - name: Build Python package
-        working-directory: ${{ env.PACKAGE_DIRECTORY }}
         run: |
           # Needed to workaround this bug https://github.com/pypa/setuptools/issues/4759
           # To be removed when it's fixed
-          python -m pip install -U packaging
-          python -m pip install --upgrade pip build twine
-          python -m build
-          python -m pip install .
-          python -m twine check dist/*
-          echo "TAG_VERSION=$(python -c "from ${PACKAGE_NAME} import __version__; print(__version__)")" >> "${GITHUB_ENV}"
+          if [ -n "${DOCKER_CONTAINER}" ]; then
+            docker exec \
+              -w "/workspace/${PACKAGE_DIRECTORY}" \
+              -e PACKAGE_NAME \
+              "${DOCKER_CONTAINER}" \
+              sh -c '
+                git config --global --add safe.directory /workspace &&
+                python -m pip install -U packaging &&
+                python -m pip install --upgrade pip build twine &&
+                python -m build &&
+                python -m pip install . &&
+                python -m twine check dist/*
+              '
+            TAG_VERSION=$(docker exec \
+              -w "/workspace/${PACKAGE_DIRECTORY}" \
+              -e PACKAGE_NAME \
+              "${DOCKER_CONTAINER}" \
+              python -c "from ${PACKAGE_NAME} import __version__; print(__version__)")
+          else
+            cd "${GITHUB_WORKSPACE}/${PACKAGE_DIRECTORY}"
+            python -m pip install -U packaging
+            python -m pip install --upgrade pip build twine
+            python -m build
+            python -m pip install .
+            python -m twine check dist/*
+            TAG_VERSION=$(python -c "from ${PACKAGE_NAME} import __version__; print(__version__)")
+          fi
+          echo "TAG_VERSION=${TAG_VERSION}" >> "${GITHUB_ENV}"
 
       - name: Display current status
         run: |
@@ -139,7 +187,18 @@ jobs:
 
       - name: Publish Python package on pypi.org
         if: ${{ success() && inputs.publish && !inputs.dry_run }}
-        run: python -m twine upload --skip-existing "${PACKAGE_DIRECTORY}/dist/*"
+        run: |
+          if [ -n "${DOCKER_CONTAINER}" ]; then
+            docker exec \
+              -w "/workspace/${PACKAGE_DIRECTORY}" \
+              -e TWINE_USERNAME \
+              -e TWINE_PASSWORD \
+              -e TWINE_NON_INTERACTIVE \
+              "${DOCKER_CONTAINER}" \
+              python -m twine upload --skip-existing dist/*
+          else
+            python -m twine upload --skip-existing "${PACKAGE_DIRECTORY}/dist/*"
+          fi
         env:
           TWINE_USERNAME: __token__
           TWINE_PASSWORD: ${{ secrets.pypi_token }}
@@ -153,7 +212,19 @@ jobs:
 
       - name: Publish Python package on Ledger Artifactory
         if: ${{ success() && inputs.publish && inputs.jfrog_deployment && !inputs.dry_run }}
-        run: python -m twine upload "${PACKAGE_DIRECTORY}/dist/*"
+        run: |
+          if [ -n "${DOCKER_CONTAINER}" ]; then
+            docker exec \
+              -w "/workspace/${PACKAGE_DIRECTORY}" \
+              -e TWINE_REPOSITORY_URL \
+              -e TWINE_USERNAME \
+              -e TWINE_PASSWORD \
+              -e TWINE_NON_INTERACTIVE \
+              "${DOCKER_CONTAINER}" \
+              python -m twine upload dist/*
+          else
+            python -m twine upload "${PACKAGE_DIRECTORY}/dist/*"
+          fi
         env:
           TWINE_REPOSITORY_URL: https://jfrog.ledgerlabs.net/artifactory/api/pypi/embedded-apps-pypi-prod-green
           TWINE_USERNAME: ${{ steps.jfrog-login.outputs.oidc-user }}
@@ -186,3 +257,9 @@ jobs:
             LICENSE
             CHANGELOG.md
             ${{ inputs.package_directory }}/dist/*
+
+      - name: Stop Docker container
+        if: ${{ always() && inputs.docker_image_artifact != '' }}
+        run: |
+          docker stop pypi-deploy || true
+          docker rm pypi-deploy || true
