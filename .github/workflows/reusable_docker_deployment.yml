@@ -55,6 +55,16 @@ on:
         required: false
         type: string
         default: ''
+      custom_image_version:
+        description: 'Custom image version/tag to use. If not set, app_ref will be used.'
+        required: false
+        type: string
+        default: ''
+      github_org_path:
+        description: 'The GitHub org/path to use for ghcr.io (defaults to ledgerhq/ledger-app-builder)'
+        required: false
+        type: string
+        default: 'ledgerhq/ledger-app-builder'
     secrets:
       token:
         description: 'A token with access to the target repository'
@@ -71,10 +81,10 @@ env:
   JFROG_INSTANCE: ${{ inputs.jfrog_instance }}
   JFROG_REGISTRY_NAME: ${{ inputs.jfrog_registry_name }}
   OUTPUTS: ${{ inputs.outputs }}
-
+  CUSTOM_IMAGE_VERSION: ${{ inputs.custom_image_version }}
   REPO_PATH: ${{ github.repository }}
   GITHUB_REGISTRY: ghcr.io
-  GITHUB_ORG_PATH: ledgerhq/ledger-app-builder
+  GITHUB_ORG_PATH: ${{ inputs.github_org_path }}
   BUILD_PLATFORMS: linux/amd64,linux/arm64
 
 jobs:
@@ -132,13 +142,13 @@ jobs:
 
       - name: Login to Ledger Artifactory
         id: jfrog-login
-        if: startsWith(github.ref, 'refs/tags/') && !inputs.dry_run && inputs.jfrog_instance && inputs.jfrog_registry_name
+        if: ${{ !inputs.dry_run && inputs.jfrog_instance && inputs.jfrog_registry_name }}
         uses: LedgerHQ/actions-security/actions/jfrog-login@actions/jfrog-login-1
         with:
           jfrog-url: https://${{ env.JFROG_INSTANCE }}
 
       - name: Login to JFrog OCI Registry
-        if: startsWith(github.ref, 'refs/tags/') && !inputs.dry_run && inputs.jfrog_instance && inputs.jfrog_registry_name
+        if: ${{ !inputs.dry_run && inputs.jfrog_instance && inputs.jfrog_registry_name }}
         uses: docker/login-action@v3
         with:
           registry: ${{ env.JFROG_INSTANCE }}/${{ env.JFROG_REGISTRY_NAME }}
@@ -187,11 +197,15 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: ${{ steps.image-list.outputs.images }}
+          tags: |
+              type=raw,value=${{ env.CUSTOM_IMAGE_VERSION != '' && env.CUSTOM_IMAGE_VERSION || env.APP_REF }}
+              type=raw,value=latest
           labels: |
               org.opencontainers.image.source=https://github.com/${{ env.APP_REPOSITORY }}
               org.opencontainers.image.title=${{ env.IMAGE_NAME }}
               org.opencontainers.image.url=https://github.com/${{ env.APP_REPOSITORY }}
-              org.opencontainers.image.revision=${{ env.GIT_REF }}
+              org.opencontainers.image.revision=${{ env.APP_REF }}
+              org.opencontainers.image.version=${{ env.CUSTOM_IMAGE_VERSION != '' && env.CUSTOM_IMAGE_VERSION || env.APP_REF }}
 
 
       - name: Build and push container image
@@ -200,7 +214,7 @@ jobs:
           context: ${{ env.BUILD_DIR }}
           file: ${{ env.DOCKERFILE_PATH }}
           platforms: ${{ env.OUTPUTS != '' && 'linux/amd64' || env.BUILD_PLATFORMS }}
-          push: ${{ startsWith(github.ref, 'refs/tags/') && !inputs.dry_run }}
+          push: ${{ !inputs.dry_run }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
