@@ -95,6 +95,12 @@ jobs:
       contents: write
     steps:
 
+      - name: Ensure mutual exclusivity of container and docker_image_artifact inputs
+        if: ${{ inputs.container != '' && inputs.docker_image_artifact != '' }}
+        run: |
+          echo "Error: 'container' and 'docker_image_artifact' inputs are mutually exclusive. Please provide only one of them."
+          exit 1
+
       - name: Install dependencies
         run: |
           command -v sudo >/dev/null 2>&1 && SUDO="sudo"
@@ -103,7 +109,7 @@ jobs:
 
       - name: Download Docker image artifact
         if: ${{ inputs.docker_image_artifact != '' }}
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: ${{ inputs.docker_image_artifact }}
           path: /tmp
@@ -138,8 +144,6 @@ jobs:
 
       - name: Build Python package
         run: |
-          # Needed to workaround this bug https://github.com/pypa/setuptools/issues/4759
-          # To be removed when it's fixed
           if [ -n "${DOCKER_CONTAINER}" ]; then
             docker exec \
               -w "/workspace/${PACKAGE_DIRECTORY}" \
@@ -147,8 +151,7 @@ jobs:
               "${DOCKER_CONTAINER}" \
               sh -c '
                 git config --global --add safe.directory /workspace &&
-                python -m pip install -U packaging &&
-                python -m pip install --upgrade pip build twine &&
+                python -m pip install --upgrade pip build twine packaging &&
                 python -m build &&
                 python -m pip install . &&
                 python -m twine check dist/*
@@ -160,8 +163,8 @@ jobs:
               python -c "from ${PACKAGE_NAME} import __version__; print(__version__)")
           else
             cd "${GITHUB_WORKSPACE}/${PACKAGE_DIRECTORY}"
-            python -m pip install -U packaging
-            python -m pip install --upgrade pip build twine
+            pip freeze
+            python -m pip install --upgrade pip build twine packaging
             python -m build
             python -m pip install .
             python -m twine check dist/*
