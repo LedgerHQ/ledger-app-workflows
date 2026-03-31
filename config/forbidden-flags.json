@@ -3,13 +3,15 @@
     "c":[
         "DEBUG=1",
         "DEBUG_OVER_USB=1",
-        "PRODUCTION_BUILD=0"
+        "PRODUCTION_BUILD=0",
+        "DEBUG_OS_STACK_CONSUMPTION=1"
     ],
     "rust":[
         "DEBUG\\s*?=\\s*1",
         "DEBUG_OVER_USB\\s*?=\\s*1",
         "PRODUCTION_BUILD\\s*?=\\s*0",
-        "debug\\s*?=\\s*true"
+        "debug\\s*?=\\s*true",
+        "DEBUG_OS_STACK_CONSUMPTION\\s*?=\\s*1"
     ]
   }
 }
