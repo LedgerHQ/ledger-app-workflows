@@ -116,6 +116,7 @@ jobs:
       upload_app_binaries_artifact: libraries_binaries-${{ matrix.coin.name }}-${{ strategy.job-index }}
       upload_as_lib_artifact: ${{ matrix.coin.name }}
       builder: ledger-app-builder
+      build_comparison: false
 
   merge_libraries_build:
     name: Merge built libraries
@@ -136,6 +137,7 @@ jobs:
       app_branch_name: develop
       flags: "TESTING=1 TEST_PUBLIC_KEY=1"
       upload_app_binaries_artifact: exchange_binaries
+      build_comparison: false
 
   ragger_tests_exchange:
     name: Run Exchange tests
@@ -151,6 +153,7 @@ jobs:
       lib_binaries_artifact_dir: test/python/lib_binaries
       # No need to run everyone, we are testing the reusable workflows not exchange
       test_filter: "ethereum"
+      post_stack_consumption: false
 
   #####################################
   ######### Boilerplate tests #########
@@ -163,6 +166,7 @@ jobs:
       app_repository: LedgerHQ/app-boilerplate
       app_branch_name: master
       upload_app_binaries_artifact: "boilerplate_binaries"
+      build_comparison: false
 
   ragger_tests_boilerplate:
     name: Run boilerplate tests
@@ -173,6 +177,7 @@ jobs:
       app_branch_name: master
       download_app_binaries_artifact: "boilerplate_binaries"
       test_dir: "tests/standalone"
+      post_stack_consumption: false
 
   ragger_swap_tests_boilerplate:
     name: Run boilerplate swap tests
@@ -195,6 +200,8 @@ jobs:
       app_branch_name: develop
       upload_app_binaries_artifact: plugin_boilerplate_binaries
       flags: "DEBUG=1"
+      build_comparison: false
+
 
   build_develop_ethereum_app:
     name: Build Ethereum
@@ -204,6 +211,8 @@ jobs:
       app_branch_name: develop
       flags: "DEBUG=1 CAL_TEST_KEY=1"
       upload_app_binaries_artifact: ethereum_build_develop
+      build_comparison: false
+
 
   ragger_tests_plugin_boilerplate:
     name: Run plugin boilerplate tests
@@ -217,6 +226,7 @@ jobs:
       download_app_binaries_artifact: plugin_boilerplate_binaries
       additional_app_binaries_artifact: ethereum_build_develop
       additional_app_binaries_artifact_dir: ./tests/.test_dependencies/ethereum/build
+      post_stack_consumption: false
 
 
   ####################################
@@ -231,6 +241,7 @@ jobs:
       app_branch_name: main
       upload_app_binaries_artifact: "rust_boilerplate_binaries"
       builder: ledger-app-builder
+      build_comparison: false
 
   ragger_tests_rust_boilerplate:
     name: Run rust boilerplate tests
@@ -240,6 +251,7 @@ jobs:
       app_repository: LedgerHQ/app-boilerplate-rust
       app_branch_name: main
       download_app_binaries_artifact: "rust_boilerplate_binaries"
+      post_stack_consumption: false
 
   ####################################
   ######### Ragger deployment ########

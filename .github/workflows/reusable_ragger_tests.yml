@@ -89,6 +89,20 @@ on:
         required: false
         default: ''
         type: string
+      post_stack_consumption:
+        description: "Whether to post a stack consumption summary comment on PRs (defaults to true).
+                     Requires `reusable_build.yml` to be configured with `enable_stack_consumption == true`.
+                     Requires the ELF size diff comment from reusable_build to exist."
+        required: false
+        default: true
+        type: boolean
+      stack_consumption_section_id:
+        description: "Unique identifier for the stack consumption comment section.
+                     Used to avoid collisions when multiple workflows post stack summaries on the same PR
+                     (e.g. ragger tests vs swap tests). Defaults to 'stack-consumption-summary'."
+        required: false
+        default: 'stack-consumption-summary'
+        type: string
     secrets:
       secret_test_options:
         description: 'A string of secret options to be given to `pytest`'
@@ -227,6 +241,10 @@ jobs:
           PYTEST_ARGS=("${{ needs.call_get_test_metadata.outputs.pytest_directory }}")
           PYTEST_ARGS+=(--tb=short -v --device "${{ matrix.device }}")
 
+          if [ "${{ inputs.post_stack_consumption }}" = "true" ]; then
+            PYTEST_ARGS+=(--get-stack-consumption)
+          fi
+
           if [ -n "${TEST_FILTER}" ] && [ "${TEST_FILTER}" != '""' ]; then
             # Remove leading and trailing quotes from the filter if they exist
             TRIMMED_FILTER="${TEST_FILTER%\"}"
@@ -252,8 +270,46 @@ jobs:
             # Capture pytest output to a file
             pytest "${PYTEST_ARGS[@]}" -s 2>&1 | tee pytest_output.log
           else
-            pytest "${PYTEST_ARGS[@]}"
+            pytest "${PYTEST_ARGS[@]}" 2>&1 | tee pytest_run.log
           fi
+
+      - name: Extract stack consumption summary
+        if: ${{ always() }}
+        shell: bash
+        run: |
+          LOG_FILE="pytest_output.log"
+          if [ ! -f "$LOG_FILE" ]; then
+            LOG_FILE="pytest_run.log"
+          fi
+          if [ ! -f "$LOG_FILE" ]; then
+            echo "No pytest log found, skipping."
+            exit 0
+          fi
+          # Extract from "stack consumption summary" to the "worst case" separator
+          awk '/stack consumption summary/{found=1} found{print} /worst case:/{exit}' "$LOG_FILE" > stack_summary_${{ matrix.device }}.txt
+          if [ ! -s stack_summary_${{ matrix.device }}.txt ]; then
+            echo "No stack consumption data found for ${{ matrix.device }}."
+            rm -f stack_summary_${{ matrix.device }}.txt
+          else
+            cat stack_summary_${{ matrix.device }}.txt
+            echo "| Test | Stack |" >> ${GITHUB_STEP_SUMMARY}
+            echo "|------|--------------:|" >> ${GITHUB_STEP_SUMMARY}
+
+            # print stack summary detail, worst case line printed out separately
+            tail -n +2 stack_summary_${{ matrix.device }}.txt | head -n -1 |
+              sed -r -e 's/^/| /' -e 's/$/ |/' -e 's/([[:digit:]]+ bytes)\s+(\S+)/\2 | \1 |/' >> ${GITHUB_STEP_SUMMARY}
+
+            # print worst case line
+            echo "" >> ${GITHUB_STEP_SUMMARY}
+            tail -n1 stack_summary_${{ matrix.device }}.txt >> ${GITHUB_STEP_SUMMARY}
+          fi
+
+      - name: Upload stack consumption summary
+        if: ${{ always() && hashFiles(format('stack_summary_{0}.txt', matrix.device)) != '' }}
+        uses: actions/upload-artifact@v6
+        with:
+          name: ${{ inputs.stack_consumption_section_id }}-${{ matrix.device }}
+          path: stack_summary_${{ matrix.device }}.txt
 
       - name: Upload pytest logs
         if: ${{ inputs.capture_file != '' }}
@@ -363,3 +419,139 @@ jobs:
       app_branch_name: ${{ inputs.app_branch_name }}
       snapshots_artifact_name: ${{ needs.merge_artifacts_if_needed.outputs.snapshot_artifact_name }}
       snapshots_directory: ${{ needs.call_get_test_metadata.outputs.pytest_directory }}/snapshots
+
+  post_stack_consumption:
+    name: Post stack consumption summary on PR
+    needs: [ragger_tests, call_get_app_metadata]
+    if: ${{ always() && inputs.post_stack_consumption && github.event_name == 'pull_request' }}
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Download all stack summary artifacts
+        uses: actions/download-artifact@v7
+        with:
+          pattern: ${{ inputs.stack_consumption_section_id }}-*
+          path: summaries
+          merge-multiple: true
+
+      - name: Download app binaries for stack reference
+        uses: actions/download-artifact@v7
+        with:
+          name: ${{ inputs.additional_app_binaries_artifact != '' && inputs.additional_app_binaries_artifact || inputs.download_app_binaries_artifact }}
+          path: app_binaries/
+
+      - name: Install dependencies for comment generation
+        run: sudo apt-get install -y --no-install-recommends binutils
+
+      - name: Build PR comment body
+        id: build_comment
+        shell: bash
+        run: |
+          files=$(find summaries -name "stack_summary_*.txt" | sort)
+          if [ -z "$files" ]; then
+              echo "No stack summary files found."
+              echo "has_report=false" >> "$GITHUB_OUTPUT"
+              exit 0
+          fi
+
+          echo "| Device | Worst case (bytes) | Remaining stack (bytes) | Test |" > stack_comment.md
+          echo "|--------|------------------:|------------------:|------|" >> stack_comment.md
+
+          has_data=false
+          for f in $files; do
+              device=$(echo "$f" | sed -n 's/.*stack_summary_\(.*\)\.txt/\1/p')
+
+              if [ -n "${{ inputs.additional_app_binaries_artifact }}" ]; then
+                # additional_app_binaries_artifact is set (e.g. app-exchange for swap tests).
+                # It is always a C SDK app, so use the C layout.
+                DEVICE_NAME="$(echo "${device}" | sed 's/nanosp/nanos2/')"
+                APP_PATH=$(find app_binaries/${DEVICE_NAME}/bin -name '*.elf' | head -n 1)
+              elif ${{ needs.call_get_app_metadata.outputs.is_rust == 'true' }}; then
+                DEVICE_NAME="$(echo "${device}" | sed 's/nanosp/nanosplus/')"
+                APP_PATH=$(find app_binaries/${DEVICE_NAME}/release -type f ! -name '*.*' | head -n 1)
+              else
+                DEVICE_NAME="$(echo "${device}" | sed 's/nanosp/nanos2/')"
+                APP_PATH=$(find app_binaries/${DEVICE_NAME}/bin -name '*.elf' | head -n 1)
+              fi
+
+              # hardcoded limit of 8kp for nanox
+              if [[ "$DEVICE_NAME" == "nanox" ]]; then
+                max_stack_size=8192
+              else
+                estack_addr=$(nm ${APP_PATH} | grep -w '_estack' | awk '{print "0x"$1}')
+                stack_addr=$(nm ${APP_PATH} | grep -w '_stack' | awk '{print "0x"$1}')
+                max_stack_size=$((estack_addr - stack_addr))
+              fi
+
+              [ -z "$device" ] && device="unknown"
+              while IFS= read -r line; do
+                  if echo "$line" | grep -iqE 'worst case:\s*[0-9]+\s+bytes'; then
+                      bytes=$(echo "$line" | sed -n 's/.*worst case:\s*\([0-9]\+\)\s\+bytes.*/\1/Ip')
+                      test_name=$(echo "$line" | sed -n 's/.*worst case:\s*[0-9]\+\s\+bytes\s*(\(.*\))/\1/Ip' | sed 's/[[:space:]]*-*$//')
+                      echo "| ${device} | ${bytes} | $((max_stack_size - bytes)) | \`${test_name}\` |" >> stack_comment.md
+                      has_data=true
+                      break
+                  fi
+              done < "$f"
+          done
+
+          if [ "$has_data" = false ]; then
+              echo "has_report=false" >> "$GITHUB_OUTPUT"
+              exit 0
+          fi
+
+          echo "has_report=true" >> "$GITHUB_OUTPUT"
+
+      - name: Post or update PR comment
+        if: ${{ steps.build_comment.outputs.has_report == 'true' }}
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const elfMarker   = '<!-- elf-size-diff -->';
+            const stackMarker = '<!-- ${{ inputs.stack_consumption_section_id }} -->';
+            const disclaimer =
+              '> :warning: This summary is for informative purpose only. ' +
+              'It may not give the application actual worst case, for example if the test coverage is low.';
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const sectionId = '${{ inputs.stack_consumption_section_id }}';
+            const sectionTitle = sectionId === 'stack-consumption-summary'
+              ? 'Stack consumption summary'
+              : 'Stack consumption summary (' + sectionId.replace('stack-consumption-summary-', '') + ')';
+            const stackSection =
+              stackMarker + '\n ' + sectionTitle + '\n\n' +
+              disclaimer + '\n\n' +
+              fs.readFileSync('stack_comment.md', 'utf8') +
+              `\n[Full details](${runUrl})`;
+
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+
+            // Prefer appending to / updating inside the ELF diff comment
+            const elfComment = comments.find(c => c.body && c.body.includes(elfMarker));
+            if (!elfComment) {
+              core.setFailed(
+                'No ELF size diff comment found on this PR. ' +
+                'The reusable_build workflow with build_comparison enabled must run first to create the comment.'
+              );
+              return;
+            }
+
+            // Replace existing stack section, or append it.
+            // The regex matches from this marker up to the next HTML comment marker or end of string,
+            // so that other stack sections (e.g. swap vs ragger) are preserved.
+            const newBody = elfComment.body.includes(stackMarker)
+              ? elfComment.body.replace(
+                  new RegExp(stackMarker + '[\\s\\S]*?(?=\\n\\n<!--|$)'),
+                  stackSection)
+              : elfComment.body.trimEnd() + '\n\n' + stackSection;
+            await github.rest.issues.updateComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: elfComment.id,
+              body: newBody,
+            });
+            console.log(`Appended stack section to ELF comment ${elfComment.id}`);
