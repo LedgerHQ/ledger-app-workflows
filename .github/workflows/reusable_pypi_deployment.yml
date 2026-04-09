@@ -241,6 +241,15 @@ jobs:
         with:
           subject-path: ${{ inputs.package_directory }}/dist/*
 
+      - name: Fix dist directory permissions
+        if: ${{ success() && inputs.publish && inputs.jfrog_deployment && !inputs.dry_run }}
+        run: |
+          if [ -n "${DOCKER_CONTAINER}" ]; then
+            docker exec "${DOCKER_CONTAINER}" chmod -R a+w "/workspace/${PACKAGE_DIRECTORY}/dist"
+          else
+            chmod -R u+w "${PACKAGE_DIRECTORY}/dist"
+          fi
+
       - name: Sign library artifacts
         if: ${{ success() && inputs.publish && inputs.jfrog_deployment && !inputs.dry_run }}
         timeout-minutes: 10
