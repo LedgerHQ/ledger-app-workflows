@@ -188,25 +188,6 @@ jobs:
           echo "Tag '${TAG_VERSION}' and CHANGELOG '${CHANGELOG_VERSION}' versions mismatch!"
           exit 1
 
-      - name: Publish Python package on pypi.org
-        if: ${{ success() && inputs.publish && !inputs.dry_run }}
-        run: |
-          if [ -n "${DOCKER_CONTAINER}" ]; then
-            docker exec \
-              -w "/workspace/${PACKAGE_DIRECTORY}" \
-              -e TWINE_USERNAME \
-              -e TWINE_PASSWORD \
-              -e TWINE_NON_INTERACTIVE \
-              "${DOCKER_CONTAINER}" \
-              python -m twine upload --skip-existing dist/*
-          else
-            python -m twine upload --skip-existing "${PACKAGE_DIRECTORY}/dist/*"
-          fi
-        env:
-          TWINE_USERNAME: __token__
-          TWINE_PASSWORD: ${{ secrets.pypi_token }}
-          TWINE_NON_INTERACTIVE: 1
-
       - name: Login to Ledger Artifactory
         if: ${{ success() && inputs.publish && inputs.jfrog_deployment && !inputs.dry_run }}
         timeout-minutes: 10
