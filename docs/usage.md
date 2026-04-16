@@ -208,7 +208,7 @@ In order to deploy a package, this workflow can use the following input paramete
 | dry_run                              | ❌       | `false`                      | Whether to run all pre-publishing steps but skips the actual publishing |
 | publish                              | ✅       | `true`                       | Whether the package should be published                                 |
 | release                              | ❌       | `true`                       | Whether the package should be packaged as a release                     |
-| jfrog_deployment                     | ❌       | `false`                      | If the Python package should be pushed on `Ledger Jfrog`                |
+| jfrog_deployment                     | ❌       | `true`                       | **DEPRECATED** - If the Python package should be pushed on `Ledger Jfrog` |
 | runs_on                              | ❌       | public-ledgerhq-shared-small | The python version to use within the container                          |
 | container                            | ❌       |                              | The container image that should be used to run the job                  |
 | python_version                       | ❌       | `3.10`                       | The python version to use within the container                          |

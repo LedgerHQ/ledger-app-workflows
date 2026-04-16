@@ -37,8 +37,8 @@ on:
         type: boolean
         default: true
       jfrog_deployment:
-        description: If the Python package should be pushed on Ledger Jfrog or not.
-                     Ignored if `publish` is `false`.
+        description: '[DEPRECATED] If the Python package should be pushed on Ledger Jfrog or not.
+                       Ignored if `publish` is `false`.'
         type: boolean
         required: false
         default: true
@@ -80,7 +80,6 @@ env:
   DRY_RUN: ${{ inputs.dry_run }}
   PUBLISH: ${{ inputs.publish }}
   RELEASE: ${{ inputs.release }}
-  JFROG_DEPLOYMENT: ${{ inputs.jfrog_deployment }}
   CONTAINER: ${{ inputs.container }}
   PYTHON_VERSION: ${{ inputs.python_version }}
 
@@ -94,6 +93,11 @@ jobs:
       attestations: write
       contents: write
     steps:
+
+      - name: Notify user that jfrog_deployment input is deprecated
+        if: ${{ always() }}
+        run: |
+          echo "Warning: 'jfrog_deployment' input is deprecated and will be removed in future versions. Please use 'publish' input instead." >> $GITHUB_STEP_SUMMARY
 
       - name: Ensure mutual exclusivity of container and docker_image_artifact inputs
         if: ${{ inputs.container != '' && inputs.docker_image_artifact != '' }}
@@ -208,13 +212,13 @@ jobs:
           TWINE_NON_INTERACTIVE: 1
 
       - name: Login to Ledger Artifactory
-        if: ${{ success() && inputs.publish && inputs.jfrog_deployment && !inputs.dry_run }}
+        if: ${{ success() && inputs.publish && !inputs.dry_run }}
         timeout-minutes: 10
         id: jfrog-login
         uses: LedgerHQ/actions-security/actions/jfrog-login@actions/jfrog-login-1
 
       - name: Publish Python package on Ledger Artifactory
-        if: ${{ success() && inputs.publish && inputs.jfrog_deployment && !inputs.dry_run }}
+        if: ${{ success() && inputs.publish && !inputs.dry_run }}
         run: |
           if [ -n "${DOCKER_CONTAINER}" ]; then
             docker exec \
@@ -235,14 +239,14 @@ jobs:
           TWINE_NON_INTERACTIVE: 1
 
       - name: Generate library build attestations
-        if: ${{ success() && inputs.publish && inputs.jfrog_deployment && !inputs.dry_run }}
+        if: ${{ success() && inputs.publish && !inputs.dry_run }}
         timeout-minutes: 10
         uses: LedgerHQ/actions-security/actions/attest@actions/attest-1
         with:
           subject-path: ${{ inputs.package_directory }}/dist/*
 
       - name: Fix dist directory permissions
-        if: ${{ success() && inputs.publish && inputs.jfrog_deployment && !inputs.dry_run }}
+        if: ${{ success() && inputs.publish && !inputs.dry_run }}
         run: |
           if [ -n "${DOCKER_CONTAINER}" ]; then
             docker exec "${DOCKER_CONTAINER}" chmod -R a+w "/workspace/${PACKAGE_DIRECTORY}/dist"
@@ -251,7 +255,7 @@ jobs:
           fi
 
       - name: Sign library artifacts
-        if: ${{ success() && inputs.publish && inputs.jfrog_deployment && !inputs.dry_run }}
+        if: ${{ success() && inputs.publish && !inputs.dry_run }}
         timeout-minutes: 10
         uses: LedgerHQ/actions-security/actions/sign-blob@actions/sign-blob-1
         with:
