@@ -36,6 +36,22 @@ In addition, the following secret can be used:
 | ---------------------------- | -------- | ------------------------- | --------------------------------------- |
 | token                        | ❌       |                           | A token passed from the caller workflow |
 
+## Reusable App Release
+
+This workflow builds the application for all compatible devices and creates a GitHub release with ELF binaries attached.
+Release notes are automatically extracted from `CHANGELOG.md`.
+
+| Parameter                    | Required | Default value             | Comment                                 |
+| ---------------------------- | -------- | ------------------------- | --------------------------------------- |
+| app_repository               | ❌       | `github.repository`       | The GIT repository to release |
+| app_ref_name                 | ❌       | `github.ref_name`         | The GIT reference to build |
+
+In addition, the following secret can be used:
+
+| Parameter                    | Required | Default value             | Comment                                 |
+| ---------------------------- | -------- | ------------------------- | --------------------------------------- |
+| token                        | ❌       |                           | A token passed from the caller workflow |
+
 ## Reusable Ragger tests
 
 In order to test an App, this workflow can use the following input parameters:

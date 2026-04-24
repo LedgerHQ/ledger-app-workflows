@@ -1,0 +1,126 @@
+on:
+  workflow_call:
+    inputs:
+      app_repository:
+        description: 'The GIT repository to release (defaults to `github.repository`)'
+        required: false
+        default: ${{ github.repository }}
+        type: string
+      app_ref_name:
+        description: 'The GIT reference to build (defaults to `github.ref`)'
+        required: false
+        default: ${{ github.ref_name }}
+        type: string
+
+env:
+  APP_REPOSITORY: ${{ inputs.app_repository }}
+  APP_REF_NAME: ${{ inputs.app_ref_name }}
+
+permissions:
+  contents: read
+  actions: write  # Needed for upload-artifact & gh release
+
+jobs:
+  print_inputs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Print app inputs
+        run: |
+          echo "App Repository: ${{ inputs.app_repository }}"
+          echo "App Reference Name: ${{ inputs.app_ref_name }}"
+
+  call_get_app_metadata:
+    # This job digests inputs and repository metadata provided by the `ledger_app.toml` manifest
+    # file, in order to output relevant directories, compatible devices, and other variables needed
+    # by following jobs.
+    name: Retrieve application metadata
+    uses: ./.github/workflows/_get_app_metadata.yml
+    with:
+      app_repository: ${{ inputs.app_repository }}
+      app_branch_name: ${{ inputs.app_ref_name }}
+    secrets:
+      token: ${{ secrets.token }}
+
+  build_app:
+    uses: ./.github/workflows/reusable_build.yml
+    with:
+      app_repository: ${{ inputs.app_repository }}
+      app_branch_name: ${{ inputs.app_ref_name }}
+      upload_app_binaries_artifact: 'app_binaries'
+
+  release:
+    name: Create GitHub release with ELF binaries
+    needs: [call_get_app_metadata, build_app]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update && sudo apt-get install -y tree
+
+      - name: Download app binaries artifact
+        uses: actions/download-artifact@v8
+        with:
+          name: app_binaries
+          path: binaries
+
+      - name: Rename ELF files per device
+        run: |
+          echo "binaries directory structure:"
+          tree binaries
+
+          mkdir release_assets
+          for device_dir in binaries/*; do
+            device_name=$(basename "$device_dir")
+            if [ ${{ needs.call_get_app_metadata.outputs.is_rust }} == 'false' ]; then
+              if [ -f "${device_dir}/bin/app.elf" ]; then
+                cp "${device_dir}/bin/app.elf" "release_assets/app-${APP_REF_NAME}-${device_name}.elf"
+              fi
+            else
+              rust_app_path=$(find app_binaries/${device_name}/release -type f ! -name '*.*' | head -n 1)
+              if [ -n "$rust_app_path" ] && [ -f "$rust_app_path" ]; then
+                cp "$rust_app_path" "release_assets/app-${APP_REF_NAME}-${device_name}.elf"
+              fi
+            fi
+          done
+
+          echo "Release assets prepared in 'release_assets' directory:"
+          tree release_assets
+
+      - name: Extract release notes from changelog
+        id: extract_release_notes
+        run: |
+          if [ -f CHANGELOG.md ]; then
+            VERSION="${GITHUB_REF_NAME}"
+            # Extract the section for this version from CHANGELOG.md
+            # Matches from "## [x.y.z]" until the next "## [" or end of file
+            NOTES=$(awk -v ver="$VERSION" '
+              BEGIN { found=0 }
+              /^## \[/ {
+                if (found) exit
+                if (index($0, "[" ver "]")) { found=1; next }
+              }
+              found { print }
+            ' CHANGELOG.md)
+
+            if [ -z "$NOTES" ]; then
+              echo "Warning: No changelog entry found for version $VERSION"
+              NOTES="Release $VERSION"
+            fi
+
+            # Write to file to avoid delimiter issues
+            echo "$NOTES" > release_notes.md
+          else
+            echo "No CHANGELOG.md found, no release message will be added in github release."
+            touch release_notes.md
+          fi
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${APP_REF_NAME}" --notes-file release_notes.md release_assets/*
