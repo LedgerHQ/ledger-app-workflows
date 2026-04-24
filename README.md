@@ -33,6 +33,11 @@ this workflow will automate the creation of tags which versions are listed in `C
 - `reusable_build.yml` \
 This workflow is mandatory, it will perform a build and upload the artifact containing the compiled application. It guarantees that the app will be buildable in the deployment environment.
 
+- `reusable_app_release.yml` \
+This workflow will build the application for all compatible devices then create a GitHub release
+with ELF binaries attached. Release notes are automatically extracted from `CHANGELOG.md`.
+This workflow is optional.
+
 - `reusable_crates_deployment.yml` \
 This workflow will build, check and deploy a Rust crate. This workflow is optional and is meant
 to help developers to deploy Rust crates on `Ledger Jfrog` and `crates.io`.
