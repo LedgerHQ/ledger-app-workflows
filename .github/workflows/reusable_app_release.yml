@@ -11,24 +11,22 @@ on:
         required: false
         default: ${{ github.ref_name }}
         type: string
+      builder:
+        description: "The docker image to build the application in (defaults to ledger-app-builder-lite)"
+        required: false
+        default: 'ledger-app-builder-lite'
+        type: string
 
 env:
   APP_REPOSITORY: ${{ inputs.app_repository }}
   APP_REF_NAME: ${{ inputs.app_ref_name }}
+  BUILDER: ${{ inputs.builder }}
 
 permissions:
   contents: read
   actions: write  # Needed for upload-artifact & gh release
 
 jobs:
-  print_inputs:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Print app inputs
-        run: |
-          echo "App Repository: ${{ inputs.app_repository }}"
-          echo "App Reference Name: ${{ inputs.app_ref_name }}"
-
   call_get_app_metadata:
     # This job digests inputs and repository metadata provided by the `ledger_app.toml` manifest
     # file, in order to output relevant directories, compatible devices, and other variables needed
@@ -41,11 +39,49 @@ jobs:
     secrets:
       token: ${{ secrets.token }}
 
+  check-tag:
+    name: Check that tag matches last changelog entry (c apps) or cargo.toml version (rust apps)
+    needs: call_get_app_metadata
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          repository: ${{ inputs.app_repository }}
+          ref: ${{ inputs.app_ref_name }}
+      - name: Check tag against changelog or cargo.toml
+        run: |
+          if [ "${{ needs.call_get_app_metadata.outputs.is_rust }}" == "false"
+          then
+            # For C apps, check that the tag matches the last entry in CHANGELOG.md
+            if [ -f CHANGELOG.md ]; then
+              LAST_CHANGELOG_VERSION=$(awk '/^## \[/{print $2; exit}' CHANGELOG.md | tr -d '[]')
+              if [ "$LAST_CHANGELOG_VERSION" != "${GITHUB_REF_NAME}" ]; then
+                echo "Error: The latest version in CHANGELOG.md ($LAST_CHANGELOG_VERSION) does not match the tag being released (${GITHUB_REF_NAME}). Please update CHANGELOG.md."
+                exit 1
+              fi
+            else
+              echo "Warning: No CHANGELOG.md found, skipping changelog version check."
+            fi
+          else
+            # For Rust apps, check that the tag matches the version in Cargo.toml
+            if [ -f Cargo.toml ]; then
+              CARGO_VERSION=$(awk -F\" '/^version =/{print $2; exit}' Cargo.toml)
+              if [ "$CARGO_VERSION" != "${GITHUB_REF_NAME}" ]; then
+                echo "Error: The version in Cargo.toml ($CARGO_VERSION) does not match the tag being released (${GITHUB_REF_NAME}). Please update Cargo.toml."
+                exit 1
+              fi
+            else
+              echo "Warning: No Cargo.toml found, skipping Cargo.toml version check."
+            fi
+          fi
+
   build_app:
     uses: ./.github/workflows/reusable_build.yml
     with:
       app_repository: ${{ inputs.app_repository }}
       app_branch_name: ${{ inputs.app_ref_name }}
+      builder: ${{ inputs.builder }}
       upload_app_binaries_artifact: 'app_binaries'
 
   release:
@@ -81,7 +117,7 @@ jobs:
                 cp "${device_dir}/bin/app.elf" "release_assets/app-${APP_REF_NAME}-${device_name}.elf"
               fi
             else
-              rust_app_path=$(find app_binaries/${device_name}/release -type f ! -name '*.*' | head -n 1)
+              rust_app_path=$(find binaries/${device_name}/release -type f ! -name '*.*' | head -n 1)
               if [ -n "$rust_app_path" ] && [ -f "$rust_app_path" ]; then
                 cp "$rust_app_path" "release_assets/app-${APP_REF_NAME}-${device_name}.elf"
               fi

@@ -45,6 +45,9 @@ Release notes are automatically extracted from `CHANGELOG.md`.
 | ---------------------------- | -------- | ------------------------- | --------------------------------------- |
 | app_repository               | ❌       | `github.repository`       | The GIT repository to release |
 | app_ref_name                 | ❌       | `github.ref_name`         | The GIT reference to build |
+| builder                      | ❌       | `ledger-app-builder-lite` | The docker image to build the application in |
+
+The workflow also checks before building that the tag being released matches the latest version in `CHANGELOG.md` (for C apps) or the version in `Cargo.toml` (for Rust apps).
 
 In addition, the following secret can be used:
 

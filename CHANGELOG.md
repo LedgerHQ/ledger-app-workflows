@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.94.27] - 2026-04-27
+
+### Changed
+
+- `reusable_app_release.yml` : Added `builder` input parameter. Added a version check step that verifies the tag matches the last changelog entry (C apps) or `Cargo.toml` version (Rust apps) before releasing.
+
 ## [1.94.26] - 2026-04-24
 
 ### Added
