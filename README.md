@@ -36,6 +36,7 @@ This workflow is mandatory, it will perform a build and upload the artifact cont
 - `reusable_app_release.yml` \
 This workflow will build the application for all compatible devices then create a GitHub release
 with ELF binaries attached. Release notes are automatically extracted from `CHANGELOG.md`.
+It also verifies that the tag matches the latest changelog or `Cargo.toml` version before releasing.
 This workflow is optional.
 
 - `reusable_crates_deployment.yml` \
