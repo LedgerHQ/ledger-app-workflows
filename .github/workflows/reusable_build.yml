@@ -429,6 +429,7 @@ jobs:
 
       - name: Post or update PR comment
         uses: actions/github-script@v7
+        continue-on-error: true
         with:
           script: |
             const fs = require('fs');
