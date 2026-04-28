@@ -68,7 +68,7 @@ on:
         default: ""
         type: string
       build_comparison:
-        description: "Whether to perform a build comparison between source and target branches (defaults to false).
+        description: "Whether to perform a build comparison between source and target branches (defaults to true).
                       Requires upload_app_binaries_artifact to be set.
                       If false, not target branch build will be performed, and no artifact will be uploaded for the target branch."
         required: false
@@ -362,13 +362,13 @@ jobs:
         run: sudo apt-get install -y --no-install-recommends binutils
 
       - name: Download source branch artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: ${{ inputs.upload_app_binaries_artifact }}
           path: source_artifact/
 
       - name: Download target branch artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: ${{ inputs.upload_app_binaries_artifact }}_target
           path: target_artifact/

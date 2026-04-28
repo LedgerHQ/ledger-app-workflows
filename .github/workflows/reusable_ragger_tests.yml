@@ -129,6 +129,7 @@ env:
   REGENERATE_SNAPSHOTS: ${{ inputs.regenerate_snapshots }}
   CONTAINER_IMAGE: ${{ inputs.container_image }}
   CAPTURE_FILE: ${{ inputs.capture_file }}
+  POST_STACK_CONSUMPTION: ${{ inputs.post_stack_consumption }}
 
 jobs:
   call_get_app_metadata:
@@ -157,7 +158,7 @@ jobs:
       fail-fast: false
       matrix:
         device: ${{ fromJSON(needs.call_get_app_metadata.outputs.compatible_devices) }}
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     container: ${{ inputs.container_image != '' && inputs.container_image || null }}
 
     steps:
@@ -241,7 +242,7 @@ jobs:
           PYTEST_ARGS=("${{ needs.call_get_test_metadata.outputs.pytest_directory }}")
           PYTEST_ARGS+=(--tb=short -v --device "${{ matrix.device }}")
 
-          if [ "${{ inputs.post_stack_consumption }}" = "true" ]; then
+          if [ "${POST_STACK_CONSUMPTION}" = "true" ]; then
             PYTEST_ARGS+=(--get-stack-consumption)
           fi
 
@@ -371,7 +372,7 @@ jobs:
   merge_pytest_logs:
     name: Merge pytest logs
     needs: ragger_tests
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     if: ${{ inputs.capture_file != '' }}
     steps:
       - uses: actions/download-artifact@v7
@@ -394,7 +395,7 @@ jobs:
     # Merge matrix output
     name: Merge snapshots artifacts
     needs: ragger_tests
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/upload-artifact/merge@v4
         if: ${{ needs.ragger_tests.outputs.snapshot_artifact_uploaded == 'true' }}
@@ -424,7 +425,7 @@ jobs:
     name: Post stack consumption summary on PR
     needs: [ragger_tests, call_get_app_metadata]
     if: ${{ always() && inputs.post_stack_consumption && github.event_name == 'pull_request' }}
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
 
     steps:
       - name: Download all stack summary artifacts
