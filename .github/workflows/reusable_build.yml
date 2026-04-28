@@ -67,10 +67,24 @@ on:
         required: false
         default: ""
         type: string
+      build_comparison:
+        description: "Whether to perform a build comparison between source and target branches (defaults to true).
+                      Requires upload_app_binaries_artifact to be set.
+                      If false, not target branch build will be performed, and no artifact will be uploaded for the target branch."
+        required: false
+        default: true
+        type: boolean
+      enable_stack_consumption:
+        description: "Whether to enable stack consumption tracking in the build (defaults to true).
+                      Sets DEBUG_OS_STACK_CONSUMPTION=1 for C apps and --features stack_usage for Rust apps."
+        required: false
+        default: true
+        type: boolean
 
 permissions:
   contents: read
-  actions: write  # Needed for upload-artifact
+  actions: write        # Needed for upload-artifact
+  pull-requests: write  # Needed to post PR comments
 
 env:
   APP_REPOSITORY: ${{ inputs.app_repository }}
@@ -107,7 +121,7 @@ jobs:
       fail-fast: false
       matrix:
         device: ${{ fromJSON(needs.call_get_app_metadata.outputs.compatible_devices) }}
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     container:
       image: ghcr.io/ledgerhq/ledger-app-builder/${{ inputs.builder }}:latest
 
@@ -150,12 +164,20 @@ jobs:
               # Update the Rust SDK crate
               cargo +$RUST_NIGHTLY update ledger_device_sdk
               # Build application
-              cargo +$RUST_NIGHTLY ledger build "${BUILD_DEVICE_NAME}" -- ${CARGO_LEDGER_BUILD_ARGS}
+              RUST_FEATURES=""
+              if [ "${{ inputs.enable_stack_consumption }}" = "true" ]; then
+                RUST_FEATURES="--features ledger_device_sdk/stack_usage"
+              fi
+              cargo +$RUST_NIGHTLY ledger build "${BUILD_DEVICE_NAME}" -- ${RUST_FEATURES} ${CARGO_LEDGER_BUILD_ARGS}
               binary_path=$(cargo +$RUST_NIGHTLY metadata --no-deps --format-version 1 | jq -r '.target_directory')
               echo "binary_path=${binary_path}" >> "${GITHUB_OUTPUT}"
           else
               echo "Using BOLOS_SDK: ${BOLOS_SDK}"
-              make -j ${{ needs.call_get_app_metadata.outputs.flags }} ${ADDITIONAL_ARGS} BOLOS_SDK="${BOLOS_SDK}"
+              STACK_FLAG=""
+              if [ "${{ inputs.enable_stack_consumption }}" = "true" ]; then
+                STACK_FLAG="DEBUG_OS_STACK_CONSUMPTION=1"
+              fi
+              make -j ${{ needs.call_get_app_metadata.outputs.flags }} ${ADDITIONAL_ARGS} ${STACK_FLAG} BOLOS_SDK="${BOLOS_SDK}"
               echo "binary_path=${{ needs.call_get_app_metadata.outputs.build_directory }}/build" >> "${GITHUB_OUTPUT}"
           fi
           echo "binary_path=${binary_path}"
@@ -207,7 +229,7 @@ jobs:
   merge_artifacts:
     name: Merge build artifacts
     needs: build
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     if: ${{ inputs.upload_app_binaries_artifact != '' }}
     steps:
       - uses: actions/upload-artifact/merge@v4
@@ -215,3 +237,225 @@ jobs:
           name: ${{ inputs.upload_app_binaries_artifact }}
           pattern: ${{ inputs.upload_app_binaries_artifact }}-*
           delete-merged: true
+
+  # The following jobs are used in PRs, to compare builds between source and target branches.
+  build_target_branch:
+    name: Build application for all selected devices (target branch)
+    if: ${{ inputs.build_comparison && github.event_name == 'pull_request' && inputs.upload_app_binaries_artifact != '' }}
+    needs: call_get_app_metadata
+    strategy:
+      fail-fast: false
+      matrix:
+        device: ${{ fromJSON(needs.call_get_app_metadata.outputs.compatible_devices) }}
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/ledgerhq/ledger-app-builder/${{ inputs.builder }}:latest
+
+    steps:
+      - name: Clone
+        uses: actions/checkout@v6
+        with:
+          repository: ${{ inputs.app_repository }}
+          ref: ${{ github.base_ref }}
+          submodules: recursive
+          token: ${{ secrets.token && secrets.token || github.token }}
+
+      - name: Set device-specific environment variables
+        if: ${{ needs.call_get_app_metadata.outputs.is_rust == 'false' }}
+        shell: bash
+        run: |
+          eval "BOLOS_SDK=\$$(echo ${{ matrix.device }} | tr '[:lower:]' '[:upper:]')_SDK"
+          echo "BOLOS_SDK=${BOLOS_SDK}" >> "${GITHUB_ENV}"
+          echo "BOLOS_SDK will be set to: ${BOLOS_SDK}"
+
+      - name: Checkout SDK
+        if: ${{ needs.call_get_app_metadata.outputs.is_rust == 'false' && inputs.sdk_reference != '' }}
+        working-directory: ${{ env.BOLOS_SDK }}
+        shell: bash
+        run: |
+          echo "Using BOLOS_SDK: ${BOLOS_SDK}"
+          echo "Checking out reference '${SDK_REFERENCE}'..."
+          git fetch -apt && git checkout ${SDK_REFERENCE}
+          DEVICE=${{ matrix.device }}
+          echo "ADDITIONAL_ARGS=TARGET=${DEVICE/sp/s2}" >> "${GITHUB_ENV}"
+
+      - name: Build application
+        id: "build"
+        working-directory: ${{ needs.call_get_app_metadata.outputs.build_directory }}
+        shell: bash
+        run: |
+          if [ "${{ needs.call_get_app_metadata.outputs.is_rust }}" = "true" ];
+          then
+              BUILD_DEVICE_NAME="$(echo "${{ matrix.device }}" | sed 's/nanosp/nanosplus/')"
+              cargo +$RUST_NIGHTLY update ledger_device_sdk
+              cargo +$RUST_NIGHTLY ledger build "${BUILD_DEVICE_NAME}" -- ${CARGO_LEDGER_BUILD_ARGS}
+              binary_path=$(cargo +$RUST_NIGHTLY metadata --no-deps --format-version 1 | jq -r '.target_directory')
+              echo "binary_path=${binary_path}" >> "${GITHUB_OUTPUT}"
+          else
+              echo "Using BOLOS_SDK: ${BOLOS_SDK}"
+              make -j ${{ needs.call_get_app_metadata.outputs.flags }} ${ADDITIONAL_ARGS} BOLOS_SDK="${BOLOS_SDK}"
+              echo "binary_path=${{ needs.call_get_app_metadata.outputs.build_directory }}/build" >> "${GITHUB_OUTPUT}"
+          fi
+          echo "binary_path=${binary_path}"
+          echo "Build complete"
+
+      - name: Remove build artifacts before upload
+        run: |
+          if [ "${{ needs.call_get_app_metadata.outputs.is_rust }}" = "true" ];
+          then
+              find ${{ steps.build.outputs.binary_path }} -mindepth 3 -maxdepth 3 -type d -exec rm -rf {} +
+              rm -rf ${{ steps.build.outputs.binary_path }}/release
+          else
+              find ${{ steps.build.outputs.binary_path }} -mindepth 2 -maxdepth 2 -type d ! -name 'bin' -exec rm -r {} +
+          fi
+
+      - name: Prepare to upload as lib
+        if: ${{ inputs.upload_as_lib_artifact != '' }}
+        shell: bash
+        run: |
+          if [ "${{ needs.call_get_app_metadata.outputs.is_rust }}" = "true" ];
+          then
+            C_DEVICE_NAME="$(echo "${{ matrix.device }}" | sed 's/nanosp/nanos2/')"
+            RUST_DEVICE_NAME="$(echo "${{ matrix.device }}" | sed 's/sp/splus/')"
+            ELF_NAME=$(cargo +$RUST_NIGHTLY metadata --manifest-path ${{ needs.call_get_app_metadata.outputs.build_directory }}/Cargo.toml --no-deps --format-version 1 | jq -r '.packages[] | select(.metadata.ledger != null) | .name')
+            mv "${{ steps.build.outputs.binary_path }}/${RUST_DEVICE_NAME}/release/${ELF_NAME}" "${{ steps.build.outputs.binary_path }}/${UPLOAD_AS_LIB_ARTIFACT}_${C_DEVICE_NAME}.elf"
+            rm -rf "${{ steps.build.outputs.binary_path }}/${RUST_DEVICE_NAME}"
+          else
+            DEVICE_NAME="$(echo "${{ matrix.device }}" | sed 's/nanosp/nanos2/')"
+            find "${{ needs.call_get_app_metadata.outputs.build_directory }}/build/${DEVICE_NAME}/" -type f -name 'app.elf' -exec mv {} "${UPLOAD_AS_LIB_ARTIFACT}_${DEVICE_NAME}.elf" \;
+            rm -r ${{ needs.call_get_app_metadata.outputs.build_directory }}/build/*
+            mv "${UPLOAD_AS_LIB_ARTIFACT}_${DEVICE_NAME}.elf" "${{ needs.call_get_app_metadata.outputs.build_directory }}/build/"
+          fi
+
+      - name: Display structure of binary files
+        run: |
+          ls -1 ${{ steps.build.outputs.binary_path }}
+
+      - name: Upload app binary
+        if: ${{ inputs.upload_app_binaries_artifact != '' }}
+        uses: actions/upload-artifact@v6
+        with:
+          name: ${{ inputs.upload_app_binaries_artifact }}_target-${{ matrix.device }}
+          path: ${{ steps.build.outputs.binary_path }}
+          if-no-files-found: error
+
+  merge_artifacts_target_branch:
+    name: Merge build artifacts (target branch)
+    needs: build_target_branch
+    runs-on: ubuntu-latest
+    if: ${{ inputs.build_comparison && github.event_name == 'pull_request' && inputs.upload_app_binaries_artifact != '' }}
+    steps:
+      - uses: actions/upload-artifact/merge@v4
+        with:
+          name: ${{ inputs.upload_app_binaries_artifact }}_target
+          pattern: ${{ inputs.upload_app_binaries_artifact }}_target-*
+          delete-merged: true
+
+  diff_elf_sizes:
+    name: Report ELF section sizes and post PR comment
+    needs: [call_get_app_metadata, merge_artifacts, merge_artifacts_target_branch]
+    runs-on: ubuntu-latest
+    if: ${{ inputs.build_comparison && github.event_name == 'pull_request' && inputs.upload_app_binaries_artifact != '' }}
+
+    steps:
+      - name: Install binutils
+        run: sudo apt-get install -y --no-install-recommends binutils
+
+      - name: Download source branch artifact
+        uses: actions/download-artifact@v7
+        with:
+          name: ${{ inputs.upload_app_binaries_artifact }}
+          path: source_artifact/
+
+      - name: Download target branch artifact
+        uses: actions/download-artifact@v7
+        with:
+          name: ${{ inputs.upload_app_binaries_artifact }}_target
+          path: target_artifact/
+
+      - name: Compute ELF section sizes
+        shell: bash
+        run: |
+          SRC="${GITHUB_HEAD_REF}"
+          TGT="${GITHUB_BASE_REF}"
+          echo "elf sizes" >> elf_diff.md
+
+          echo "source = source branch ${SRC}" >> elf_diff.md
+          echo "target = target branch ${TGT}" >> elf_diff.md
+
+          echo "| Device | .text source | .text target | .text delta | .bss source | .bss target | .bss delta | max stack size source | max stack size target | max stack size delta |" >> elf_diff.md
+          echo "|--------|---:|---:|---:|---:|---:|---:|---:|---:|---:|" >> elf_diff.md
+          for device in $(echo '${{ needs.call_get_app_metadata.outputs.compatible_devices }}' | jq -r '.[]'); do
+
+              if ${{ needs.call_get_app_metadata.outputs.is_rust == 'true' }}; then
+                DEVICE_NAME="$(echo "${device}" | sed 's/nanosp/nanosplus/')"
+                APP_PATH_SRC=$(find source_artifact/${DEVICE_NAME}/release -type f ! -name '*.*' | head -n 1)
+                APP_PATH_TARGET=$(find target_artifact/${DEVICE_NAME}/release -type f ! -name '*.*' | head -n 1)
+              else
+                DEVICE_NAME="$(echo "${device}" | sed 's/nanosp/nanos2/')"
+                APP_PATH_SRC=$(find source_artifact/${DEVICE_NAME}/bin -name '*.elf' | head -n 1)
+                APP_PATH_TARGET=$(find target_artifact/${DEVICE_NAME}/bin -name '*.elf' | head -n 1)
+              fi
+
+              read src_text <<< $(size ${APP_PATH_SRC} | tail -n 1 | awk '{print $1}')
+              read tgt_text <<< $(size ${APP_PATH_TARGET} | tail -n 1 | awk '{print $1}')
+
+              src_bss=$(nm ${APP_PATH_SRC} | grep -w '_bss' | awk '{print "0x"$1}')
+              src_ebss=$(nm ${APP_PATH_SRC} | grep -w '_ebss' | awk '{print "0x"$1}')
+              src_bss_size=$((src_ebss - src_bss))
+
+              tgt_bss=$(nm ${APP_PATH_TARGET} | grep -w '_bss' | awk '{print "0x"$1}')
+              tgt_ebss=$(nm ${APP_PATH_TARGET} | grep -w '_ebss' | awk '{print "0x"$1}')
+              tgt_bss_size=$((tgt_ebss - tgt_bss))
+
+              bss_delta=$((src_bss_size - tgt_bss_size))
+
+              if [[ "$DEVICE_NAME" == "nanox" ]]; then
+                src_stack_size=8192
+                tgt_stack_size=8192
+              else
+                src_stack=$(nm ${APP_PATH_SRC} | grep -w '_stack' | awk '{print "0x"$1}')
+                src_estack=$(nm ${APP_PATH_SRC} | grep -w '_estack' | awk '{print "0x"$1}')
+                src_stack_size=$((src_estack - src_stack))
+                tgt_stack=$(nm ${APP_PATH_TARGET} | grep -w '_stack' | awk '{print "0x"$1}')
+                tgt_estack=$(nm ${APP_PATH_TARGET} | grep -w '_estack' | awk '{print "0x"$1}')
+                tgt_stack_size=$((tgt_estack - tgt_stack))
+              fi
+
+              stack_delta=$((src_stack_size - tgt_stack_size))
+
+              echo "| ${DEVICE_NAME} | ${src_text} | ${tgt_text} | $((src_text - tgt_text)) | ${src_bss_size} | ${tgt_bss_size} | ${bss_delta} | ${src_stack_size} | ${tgt_stack_size} | ${stack_delta} |" >> elf_diff.md
+          done
+
+      - name: Post or update PR comment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const marker = '<!-- elf-size-diff -->';
+            const body = marker + '\n' + fs.readFileSync('elf_diff.md', 'utf8');
+
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+
+            const existing = comments.find(c => c.body && c.body.includes(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+              console.log(`Updated comment ${existing.id}`);
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+              console.log('Created new comment');
+            }

@@ -111,6 +111,7 @@ jobs:
       upload_app_binaries_artifact: ${{ needs.compute_artifact_names.outputs.app_binaries_artifact }}
       use_case: ${{ inputs.use_case }}
       builder: ledger-app-builder
+      build_comparison: false
 
   build_exchange:
     name: Build Exchange app using the reusable workflow
@@ -122,6 +123,7 @@ jobs:
       app_branch_name: 'develop'
       upload_app_binaries_artifact: ${{ needs.compute_artifact_names.outputs.exchange_binaries_artifact }}
       use_case: 'use_test_keys'
+      build_comparison: false
 
   build_ethereum:
     name: Build Ethereum app using the reusable workflow
@@ -133,6 +135,7 @@ jobs:
       app_branch_name: 'develop'
       upload_app_binaries_artifact: ${{ needs.compute_artifact_names.outputs.ethereum_binaries_artifact }}
       use_case: 'use_test_keys'
+      build_comparison: false
 
   get_swap_test_metadata:
     name: Retrieve swap test metadata
@@ -200,3 +203,5 @@ jobs:
       lib_binaries_artifact_dir: ${{ needs.get_swap_test_metadata.outputs.lib_app_dir }}
       test_dir: ${{ needs.get_swap_test_metadata.outputs.swap_test_dir }}
       regenerate_snapshots: ${{ inputs.regenerate_snapshots }}
+      post_stack_consumption: false  # XXX : for now this feature is not compatible with swap tests. Will be fixed in upcoming PR.
+      stack_consumption_section_id: 'stack-consumption-summary-swap'

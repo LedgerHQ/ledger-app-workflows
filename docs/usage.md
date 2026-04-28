@@ -29,6 +29,8 @@ In order to build an App, this workflow can use the following input parameters:
 | builder                      | ❌       | `ledger-app-builder-lite` | The docker image to build the application in |
 | sdk_reference                | ❌       |                           | A SDK reference to checkout before building the app |
 | cargo_ledger_build_args      | ❌       |                           | Additional arguments to pass to the cargo |
+| build_comparison             | ❌       | `true`                    | Whether to build the target branch and report ELF size diffs on PRs |
+| enable_stack_consumption     | ❌       | `true`                    | Enable stack consumption tracking (`DEBUG_OS_STACK_CONSUMPTION=1` for C, `--features stack_usage` for Rust) |
 
 In addition, the following secret can be used:
 
@@ -76,6 +78,7 @@ In order to test an App, this workflow can use the following input parameters:
 | test_options                         | ❌       |                           | Specify optional parameters to be passed to the running test |
 | container_image                      | ❌       |                           | Optional container image to run the ragger_tests job |
 | capture_file                         | ❌       |                           | Optional file name to capture pytest logs into an artifact |
+| post_stack_consumption               | ❌       | `true`                    | Post a stack consumption summary on PRs. Requires `reusable_build` with `enable_stack_consumption` and `build_comparison` enabled |
 
 In addition, the following secret can be used:
 
