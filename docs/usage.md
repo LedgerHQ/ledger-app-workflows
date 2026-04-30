@@ -255,13 +255,6 @@ In order to deploy a crate, this workflow can use the following input parameters
 | dry_run                              | ❌       | `false`                   | Whether to run all pre-publishing steps but skips the actual publishing |
 | publish                              | ✅       | `true`                    | Whether the package should be published |
 | release                              | ❌       | `true`                    | Whether the package should be packaged as a release |
-| jfrog_deployment                     | ❌       | `false`                   | If the crate should be pushed on `Ledger Jfrog` |
-
-In addition, the following secret can be used:
-
-| Parameter                    | Required | Default value             | Comment                                 |
-| ---------------------------- | -------- | ------------------------- | --------------------------------------- |
-| cargo_token                  | ✅       |                           | A token enabling to push a crate on `crates.io` |
 
 ## Reusable docker deployment
 
