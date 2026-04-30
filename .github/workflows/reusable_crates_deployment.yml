@@ -94,7 +94,7 @@ jobs:
           echo "global-credential-providers = [\"cargo:token\"]" >> ~/.cargo/config.toml
 
           echo "[registries.artifactory]" >> ~/.cargo/config.toml
-          echo "index = \"sparse+https://jfrog.ledgerlabs.net/artifactory/api/cargo/embedded-apps-cargo-prod-green/index/\"" >> ~/.cargo/config.toml
+          echo "index = \"sparse+https://jfrog.ledgerlabs.net/artifactory/api/cargo/embedded-apps-cargo-prod-public/index/\"" >> ~/.cargo/config.toml
 
           echo "[registries.artifactory]" > ~/.cargo/credentials.toml
           echo "token = \"${CARGO_TOKEN}\"" >> ~/.cargo/credentials.toml
