@@ -72,13 +72,13 @@ on:
                       Requires upload_app_binaries_artifact to be set.
                       If false, not target branch build will be performed, and no artifact will be uploaded for the target branch."
         required: false
-        default: true
+        default: false
         type: boolean
       enable_stack_consumption:
         description: "Whether to enable stack consumption tracking in the build (defaults to true).
                       Sets DEBUG_OS_STACK_CONSUMPTION=1 for C apps and --features stack_usage for Rust apps."
         required: false
-        default: true
+        default: false
         type: boolean
 
 permissions:
