@@ -94,7 +94,7 @@ on:
                      Requires `reusable_build.yml` to be configured with `enable_stack_consumption == true`.
                      Requires the ELF size diff comment from reusable_build to exist."
         required: false
-        default: true
+        default: false
         type: boolean
       stack_consumption_section_id:
         description: "Unique identifier for the stack consumption comment section.
