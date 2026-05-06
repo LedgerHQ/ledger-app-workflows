@@ -97,6 +97,7 @@ env:
   BUILDER: ${{ inputs.builder }}
   SDK_REFERENCE: ${{ inputs.sdk_reference }}
   CARGO_LEDGER_BUILD_ARGS: ${{ inputs.cargo_ledger_build_args }}
+  ENABLE_STACK_CONSUMPTION: ${{ inputs.enable_stack_consumption }}
 
 jobs:
   call_get_app_metadata:
@@ -165,7 +166,7 @@ jobs:
               cargo +$RUST_NIGHTLY update ledger_device_sdk
               # Build application
               RUST_FEATURES=""
-              if [ "${{ inputs.enable_stack_consumption }}" = "true" ]; then
+              if [ "${ENABLE_STACK_CONSUMPTION}" = "true" ]; then
                 RUST_FEATURES="--features ledger_device_sdk/stack_usage"
               fi
               cargo +$RUST_NIGHTLY ledger build "${BUILD_DEVICE_NAME}" -- ${RUST_FEATURES} ${CARGO_LEDGER_BUILD_ARGS}
@@ -174,7 +175,7 @@ jobs:
           else
               echo "Using BOLOS_SDK: ${BOLOS_SDK}"
               STACK_FLAG=""
-              if [ "${{ inputs.enable_stack_consumption }}" = "true" ]; then
+              if [ "${ENABLE_STACK_CONSUMPTION}" = "true" ]; then
                 STACK_FLAG="DEBUG_OS_STACK_CONSUMPTION=1"
               fi
               make -j ${{ needs.call_get_app_metadata.outputs.flags }} ${ADDITIONAL_ARGS} ${STACK_FLAG} BOLOS_SDK="${BOLOS_SDK}"
@@ -287,13 +288,23 @@ jobs:
           if [ "${{ needs.call_get_app_metadata.outputs.is_rust }}" = "true" ];
           then
               BUILD_DEVICE_NAME="$(echo "${{ matrix.device }}" | sed 's/nanosp/nanosplus/')"
+              # Update the Rust SDK crate
               cargo +$RUST_NIGHTLY update ledger_device_sdk
-              cargo +$RUST_NIGHTLY ledger build "${BUILD_DEVICE_NAME}" -- ${CARGO_LEDGER_BUILD_ARGS}
+              # Build application
+              RUST_FEATURES=""
+              if [ "${ENABLE_STACK_CONSUMPTION}" = "true" ]; then
+                RUST_FEATURES="--features ledger_device_sdk/stack_usage"
+              fi
+              cargo +$RUST_NIGHTLY ledger build "${BUILD_DEVICE_NAME}" -- ${RUST_FEATURES} ${CARGO_LEDGER_BUILD_ARGS}
               binary_path=$(cargo +$RUST_NIGHTLY metadata --no-deps --format-version 1 | jq -r '.target_directory')
               echo "binary_path=${binary_path}" >> "${GITHUB_OUTPUT}"
           else
               echo "Using BOLOS_SDK: ${BOLOS_SDK}"
-              make -j ${{ needs.call_get_app_metadata.outputs.flags }} ${ADDITIONAL_ARGS} BOLOS_SDK="${BOLOS_SDK}"
+              STACK_FLAG=""
+              if [ "${ENABLE_STACK_CONSUMPTION}" = "true" ]; then
+                STACK_FLAG="DEBUG_OS_STACK_CONSUMPTION=1"
+              fi
+              make -j ${{ needs.call_get_app_metadata.outputs.flags }} ${ADDITIONAL_ARGS} ${STACK_FLAG} BOLOS_SDK="${BOLOS_SDK}"
               echo "binary_path=${{ needs.call_get_app_metadata.outputs.build_directory }}/build" >> "${GITHUB_OUTPUT}"
           fi
           echo "binary_path=${binary_path}"

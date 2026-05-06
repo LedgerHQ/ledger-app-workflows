@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.95.5] - 2026-05-05
+
+### Changed
+
+- `reusable_build.yml` : Use environment variable `${ENABLE_STACK_CONSUMPTION}` instead of direct input `${{ inputs.enable_stack_consumption }}` in shell scripts to prevent script injection.
+
 ## [1.95.4] - 2026-05-04
 
 ### Changed
