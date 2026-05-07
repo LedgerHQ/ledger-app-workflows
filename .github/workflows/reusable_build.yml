@@ -241,7 +241,7 @@ jobs:
 
   # The following jobs are used in PRs, to compare builds between source and target branches.
   build_target_branch:
-    name: Build application for all selected devices (target branch)
+    name: Build target branch sources for all selected devices
     if: ${{ inputs.build_comparison && github.event_name == 'pull_request' && inputs.upload_app_binaries_artifact != '' }}
     needs: call_get_app_metadata
     strategy:
