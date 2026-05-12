@@ -230,18 +230,11 @@ In order to deploy a package, this workflow can use the following input paramete
 | dry_run                              | ❌       | `false`                      | Whether to run all pre-publishing steps but skips the actual publishing |
 | publish                              | ✅       | `true`                       | Whether the package should be published                                 |
 | release                              | ❌       | `true`                       | Whether the package should be packaged as a release                     |
-| jfrog_deployment                     | ❌       | `true`                       | **DEPRECATED** - If the Python package should be pushed on `Ledger Jfrog` |
 | runs_on                              | ❌       | public-ledgerhq-shared-small | The python version to use within the container                          |
 | container                            | ❌       |                              | The container image that should be used to run the job                  |
 | python_version                       | ❌       | `3.10`                       | The python version to use within the container                          |
 | workspace_mark_safe                  | ❌       | `false`                      | Mark the workspace as safe for git, needed for jobs running in containers with root UID |
 | docker_image_artifact                | ❌       |                              | Name of a Docker image artifact (tar) built by a previous job to use as the execution container. Mutually exclusive with `container`. |
-
-In addition, the following secret can be used:
-
-| Parameter                    | Required | Default value             | Comment                                 |
-| ---------------------------- | -------- | ------------------------- | --------------------------------------- |
-| pypi_token                   | ✅       |                           | A token enabling to push a package on `pypi.org` |
 
 ## Reusable crates deployment
 
@@ -304,5 +297,4 @@ In order to deploy an npm package, this workflow can use the following input par
   | app_ref_name                 | ❌       | `github.ref`                    | The GIT reference to deploy                                                     |
   | package_directory            | ❌       | `.`                             | The directory where the npm packages lies (where the package.json can be found) |
   | dry_run                      | ❌       | `false`                         | If true, runs all pre-publishing steps but run `npm publish --dry-run`          |
-  | jfrog_deployment             | ❌       | `true`                          | Whether the npm package should be pushed on Ledger Jfrog or not.                |
   | jfrog_registry               | ❌       | `embedded-apps-npm-prod-public` | The package registry where the package will be pushed                           |

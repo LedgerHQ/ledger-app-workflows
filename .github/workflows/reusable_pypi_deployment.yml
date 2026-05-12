@@ -36,12 +36,6 @@ on:
         required: false
         type: boolean
         default: true
-      jfrog_deployment:
-        description: '[DEPRECATED] If the Python package should be pushed on Ledger Jfrog or not.
-                       Ignored if `publish` is `false`.'
-        type: boolean
-        required: false
-        default: true
       runs_on:
         description: 'The type of runner to use'
         required: false
@@ -67,10 +61,6 @@ on:
         required: false
         type: string
         default: ''
-    secrets:
-      pypi_token:
-        description: A token enabling to push a package on pypi.org
-        required: true
 
 env:
   REPOSITORY_NAME: ${{ inputs.repository_name }}
@@ -93,12 +83,6 @@ jobs:
       attestations: write
       contents: write
     steps:
-
-      - name: Notify user that jfrog_deployment input is deprecated
-        if: ${{ always() }}
-        run: |
-          echo "Warning: 'jfrog_deployment' input is deprecated and will be removed in future versions. Please use 'publish' input instead." >> $GITHUB_STEP_SUMMARY
-
       - name: Ensure mutual exclusivity of container and docker_image_artifact inputs
         if: ${{ inputs.container != '' && inputs.docker_image_artifact != '' }}
         run: |
