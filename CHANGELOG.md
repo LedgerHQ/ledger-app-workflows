@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.95.8] - 2026-05-12
+
+### Removed
+
+- `reusable_pypi_deployment.yml` : Removed `pypi_token` secret (no longer required).
+- `reusable_pypi_deployment.yml` : Removed deprecated `jfrog_deployment` input.
+- `reusable_npm_deployment.yml` : Removed `jfrog_deployment` input.
+
 ## [1.95.7] - 2026-05-11
 
 ### Added

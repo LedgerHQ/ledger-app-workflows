@@ -22,11 +22,6 @@ on:
         required: false
         type: boolean
         default: false
-      jfrog_deployment:
-        description: If the npm package should be pushed on Ledger Jfrog or not.
-        type: boolean
-        required: false
-        default: true
       jfrog_registry:
         description: The package registry where the package will be pushed
         type: string
@@ -38,7 +33,6 @@ env:
   APP_REF_NAME: ${{ inputs.app_ref_name }}
   PACKAGE_DIRECTORY: ${{ inputs.package_directory }}
   DRY_RUN: ${{ inputs.dry_run }}
-  JFROG_DEPLOYMENT: ${{ inputs.jfrog_deployment }}
   JFROG_REGISTRY: ${{ inputs.jfrog_registry }}
 
 jobs:
@@ -82,7 +76,7 @@ jobs:
           echo "//jfrog.ledgerlabs.net/artifactory/api/npm/$JFROG_REGISTRY/:always-auth=true" >> .npmrc
 
       - name: Publish package to JFrog Ledger with npm
-        if: ${{ env.JFROG_DEPLOYMENT }}
+        if: ${{ !inputs.dry_run }}
         working-directory: ${{ env.PACKAGE_DIRECTORY }}
         run: |
           tarball_name=$(ls dist/)
