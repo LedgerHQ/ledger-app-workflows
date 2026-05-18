@@ -237,6 +237,7 @@ jobs:
         env:
           CTEST_OUTPUT_ON_FAILURE: 1
           PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION: python
+          SECRET_TEST_OPTIONS: ${{ secrets.secret_test_options }}
         shell: bash
         run: |
           PYTEST_ARGS=("${{ needs.call_get_test_metadata.outputs.pytest_directory }}")
@@ -261,8 +262,19 @@ jobs:
             PYTEST_ARGS+=(${TEST_OPTIONS})
           fi
 
-          if [ -n "${{ secrets.secret_test_options }}" ]; then
-            PYTEST_ARGS+=(${{ secrets.secret_test_options }})
+          if [ -n "${SECRET_TEST_OPTIONS}" ]; then
+            # GitHub's auto-mask covers the composite secret_test_options
+            # string as a whole. After bash word-splits it for argv, the
+            # individual values (token, email, ...) become substrings that
+            # no longer match the mask, so any subsequent log line that
+            # echoes them would leak. Re-register each non-flag token
+            # under ::add-mask:: before adding to argv.
+            eval "SECRET_TOKENS=(${SECRET_TEST_OPTIONS})"
+            for tok in "${SECRET_TOKENS[@]}"; do
+              [[ -z "${tok}" || "${tok}" == --* ]] && continue
+              echo "::add-mask::${tok}"
+            done
+            PYTEST_ARGS+=("${SECRET_TOKENS[@]}")
           fi
 
           echo "Running pytest with arguments: ${PYTEST_ARGS[*]}"
