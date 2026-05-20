@@ -28,6 +28,11 @@ on:
         required: false
         default: ''
         type: string
+      coverage_exclude:
+        description: "Space-separated list of directories to exclude from code coverage (e.g. 'lib/ third_party/')"
+        required: false
+        default: ''
+        type: string
 
 permissions:
   contents: read
@@ -39,6 +44,7 @@ env:
   TEST_DIRECTORY: ${{ inputs.test_directory }}
   BUILDER: ${{ inputs.builder }}
   ADDITIONAL_PACKAGES: ${{ inputs.additional_packages }}
+  COVERAGE_EXCLUDE: ${{ inputs.coverage_exclude }}
 
 jobs:
   unit_test:
@@ -97,6 +103,11 @@ jobs:
           lcov --rc lcov_branch_coverage=1 --directory . -b "$(realpath build/)" --capture -o coverage.capture
           lcov --directory . -b "$(realpath build/)" --add-tracefile coverage.base --add-tracefile coverage.capture -o coverage.info
           lcov --directory . -b "$(realpath build/)" --remove coverage.info "*/${TEST_DIRECTORY}/*" -o coverage.info
+          if [ -n "${COVERAGE_EXCLUDE}" ]; then
+            for dir in ${COVERAGE_EXCLUDE}; do
+              lcov --directory . -b "$(realpath build/)" --remove coverage.info "*/${dir}/*" -o coverage.info
+            done
+          fi
           genhtml coverage.info -o coverage
 
       - uses: actions/upload-artifact@v6
