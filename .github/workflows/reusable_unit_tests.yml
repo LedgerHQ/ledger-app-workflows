@@ -102,7 +102,7 @@ jobs:
       - uses: actions/upload-artifact@v6
         with:
           name: code-coverage
-          path: ${{ inputs.test_directory }}/coverage
+          path: ${{ env.WORK_DIR }}/coverage
 
       - name: Install codecov dependencies
         run: |
@@ -113,7 +113,7 @@ jobs:
         env:
           CODECOV_TOKEN: ${{ secrets.codecov_token }}
         with:
-          files: ./${{ inputs.test_directory }}/coverage.info
+          files: ${{ env.WORK_DIR }}/coverage.info
           flags: unittests
           name: codecov-${{ inputs.app_repository }}
           fail_ci_if_error: true
