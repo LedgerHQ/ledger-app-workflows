@@ -267,6 +267,3 @@ jobs:
       dry_run: true
       publish: false
       release: false
-      jfrog_deployment: false
-    secrets:
-      pypi_token: "1234"  # Dummy invalid token for testing purposes only

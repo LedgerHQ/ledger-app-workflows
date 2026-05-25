@@ -165,7 +165,7 @@ jobs:
           echo "- Tag version: ${TAG_VERSION}"
 
       - name: Check version against CHANGELOG
-        if: ${{ success() && (inputs.publish || inputs.dry_run) }}
+        if: ${{ success() && !inputs.dry_run && inputs.publish }}
         working-directory: ${{ env.PACKAGE_DIRECTORY }}
         run: |
           CHANGELOG_VERSION=$(grep -Po '(?<=## \[)(\d+\.)+\d+' CHANGELOG.md | head -n 1)
