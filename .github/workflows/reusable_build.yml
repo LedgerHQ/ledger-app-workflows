@@ -233,7 +233,7 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ inputs.upload_app_binaries_artifact != '' }}
     steps:
-      - uses: actions/upload-artifact/merge@v4
+      - uses: actions/upload-artifact/merge@v6
         with:
           name: ${{ inputs.upload_app_binaries_artifact }}
           pattern: ${{ inputs.upload_app_binaries_artifact }}-*
@@ -356,7 +356,7 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ inputs.build_comparison && github.event_name == 'pull_request' && inputs.upload_app_binaries_artifact != '' }}
     steps:
-      - uses: actions/upload-artifact/merge@v4
+      - uses: actions/upload-artifact/merge@v6
         with:
           name: ${{ inputs.upload_app_binaries_artifact }}_target
           pattern: ${{ inputs.upload_app_binaries_artifact }}_target-*
