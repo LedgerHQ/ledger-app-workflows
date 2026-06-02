@@ -51,7 +51,7 @@ jobs:
       - name: Installing required packages
         if: ${{ inputs.additional_packages != '' }}
         run: |
-          apt install --no-install-recommends -y ${ADDITIONAL_PACKAGES}
+          apt-get -q update && apt-get -q install --no-install-recommends -y ${ADDITIONAL_PACKAGES}
 
       - name: Clone
         uses: actions/checkout@v6
@@ -93,11 +93,20 @@ jobs:
       - name: Generate code coverage
         working-directory: ${{ env.WORK_DIR }}
         run: |
-          lcov --directory . -b "$(realpath build/)" --capture --initial -o coverage.base
-          lcov --rc lcov_branch_coverage=1 --directory . -b "$(realpath build/)" --capture -o coverage.capture
-          lcov --directory . -b "$(realpath build/)" --add-tracefile coverage.base --add-tracefile coverage.capture -o coverage.info
-          lcov --directory . -b "$(realpath build/)" --remove coverage.info "*/${TEST_DIRECTORY}/*" -o coverage.info
-          genhtml coverage.info -o coverage
+          # --ignore-errors negative: gcov 14 occasionally emits negative
+          # branch-taken counts in instrumented .gcda files (upstream gcov
+          # regression). lcov 2.x rejects them as a fatal error and breaks
+          # the coverage step even though every test passed. Suppress only
+          # on the capture commands -- merge/remove operate on the already
+          # captured .info files so they can't hit this path.
+          # --branch-coverage replaces the deprecated --rc lcov_branch_coverage=1
+          # and is honoured by lcov 2.x on every subcommand (capture, merge,
+          # remove, genhtml) so the branch data survives the whole pipeline.
+          lcov --branch-coverage --ignore-errors negative --directory . -b "$(realpath build/)" --capture --initial -o coverage.base
+          lcov --branch-coverage --ignore-errors negative --directory . -b "$(realpath build/)" --capture -o coverage.capture
+          lcov --branch-coverage --directory . -b "$(realpath build/)" --add-tracefile coverage.base --add-tracefile coverage.capture -o coverage.info
+          lcov --branch-coverage --directory . -b "$(realpath build/)" --remove coverage.info "*/${TEST_DIRECTORY}/*" -o coverage.info
+          genhtml --branch-coverage coverage.info -o coverage
 
       - uses: actions/upload-artifact@v6
         with:
