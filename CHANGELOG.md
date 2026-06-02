@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.95.12] - 2026-06-02
+
+### Fixed
+
+- `reusable_unit_tests.yml` : Unblock `lcov` coverage capture under gcov 14. Added `--ignore-errors negative` on the `--capture` commands (gcov 14 occasionally emits negative branch-taken counts that lcov 2.x rejects as fatal) and replaced the deprecated `--rc lcov_branch_coverage=1` with `--branch-coverage` on all subcommands.
+
 ## [1.95.11] - 2026-05-26
 
 ### Fixed
