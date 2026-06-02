@@ -51,7 +51,7 @@ jobs:
       - name: Installing required packages
         if: ${{ inputs.additional_packages != '' }}
         run: |
-          apt install --no-install-recommends -y ${ADDITIONAL_PACKAGES}
+          apt-get -q update && apt-get -q install --no-install-recommends -y ${ADDITIONAL_PACKAGES}
 
       - name: Clone
         uses: actions/checkout@v6
