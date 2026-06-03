@@ -7,7 +7,7 @@ on:
         description: 'A token passed from the caller workflow (defaults to `github.token`)'
         required: false
       codecov_token:
-        description: 'The Codecov token used to authorize the coverage upload and the develop-coverage API query'
+        description: 'The Codecov token used to authorize the coverage upload'
         required: false
     inputs:
       app_repository:
@@ -35,6 +35,11 @@ on:
         required: false
         default: ''
         type: string
+      coverage_exclude_paths:
+        description: "Space-separated glob patterns to exclude from the coverage result (artifact, Codecov upload and job summary), in addition to the always-excluded system/container paths (/usr/*, /opt/*) and the test directory"
+        required: false
+        default: ''
+        type: string
 
 permissions:
   contents: read
@@ -46,10 +51,24 @@ env:
   TEST_DIRECTORY: ${{ inputs.test_directory }}
   BUILDER: ${{ inputs.builder }}
   ADDITIONAL_PACKAGES: ${{ inputs.additional_packages }}
+  COVERAGE_EXCLUDE_PATHS: ${{ inputs.coverage_exclude_paths }}
 
 jobs:
+  # Resolve the ref this reusable workflow was called with, so the steps below
+  # can checkout the matching version of this repository (for its scripts/).
+  # Workaround for https://github.com/actions/toolkit/issues/1264
+  call_get_workflow_version:
+    name: Get workflow version
+    uses: ./.github/workflows/_get_workflow_version.yaml
+    with:
+      repository_name: LedgerHQ/ledger-app-workflows
+      file_name: reusable_unit_tests.yml
+    secrets:
+      git_token: ${{ secrets.token || github.token }}
+
   unit_test:
     name: Unit test
+    needs: call_get_workflow_version
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/ledgerhq/ledger-app-builder/${{ inputs.builder }}:latest
@@ -67,6 +86,15 @@ jobs:
           ref: ${{ inputs.app_branch_name }}
           submodules: recursive
           token: ${{ secrets.token && secrets.token || github.token }}
+
+      # Checked out *after* the application (which lives at the workspace root)
+      # so the application checkout's `git clean` cannot wipe this subdirectory.
+      - name: Clone ledger-app-workflows repository (for scripts/)
+        uses: actions/checkout@v6
+        with:
+          repository: LedgerHQ/ledger-app-workflows
+          path: ./ledger-app-workflows
+          ref: ${{ needs.call_get_workflow_version.outputs.version }}
 
       - name: Deprecation warning for test_directory
         if: ${{ inputs.test_directory != '' }}
@@ -100,29 +128,13 @@ jobs:
       - name: Generate code coverage
         working-directory: ${{ env.WORK_DIR }}
         run: |
-          # --ignore-errors negative: gcov 14 occasionally emits negative
-          # branch-taken counts in instrumented .gcda files (upstream gcov
-          # regression). lcov 2.x rejects them as a fatal error and breaks
-          # the coverage step even though every test passed. Suppress only
-          # on the capture commands -- merge/remove operate on the already
-          # captured .info files so they can't hit this path.
-          # --branch-coverage replaces the deprecated --rc lcov_branch_coverage=1
-          # and is honoured by lcov 2.x on every subcommand (capture, merge,
-          # remove, genhtml) so the branch data survives the whole pipeline.
-          lcov --branch-coverage --ignore-errors negative --directory . -b "$(realpath build/)" --capture --initial -o coverage.base
-          lcov --branch-coverage --ignore-errors negative --directory . -b "$(realpath build/)" --capture -o coverage.capture
-          lcov --branch-coverage --directory . -b "$(realpath build/)" --add-tracefile coverage.base --add-tracefile coverage.capture -o coverage.info
-          lcov --branch-coverage --directory . -b "$(realpath build/)" --remove coverage.info "*/${TEST_DIRECTORY}/*" -o coverage.info
-          genhtml --branch-coverage coverage.info -o coverage
+          "${GITHUB_WORKSPACE}/ledger-app-workflows/scripts/generate_coverage.sh"
 
-      - uses: actions/upload-artifact@v6
+      - name: Upload coverage artifact
+        uses: actions/upload-artifact@v6
         with:
           name: code-coverage
           path: ${{ env.WORK_DIR }}/coverage
-
-      - name: Install codecov dependencies
-        run: |
-          apt-get -q update && apt-get -q install --no-install-recommends -y curl gpg
 
       - name: Upload to codecov.io
         uses: codecov/codecov-action@v6
@@ -133,3 +145,39 @@ jobs:
           name: codecov-${{ inputs.app_repository }}
           fail_ci_if_error: true
           verbose: true
+
+      # ----------------------------------------------------------------------
+      # Coverage report in the job summary (best-effort, never fails the job).
+      # Runs even if the Codecov upload above failed (fail_ci_if_error), as long
+      # as the run was not cancelled and coverage.info was produced.
+      # ----------------------------------------------------------------------
+      - name: Collect PR changed files
+        if: ${{ !cancelled() && github.event_name == 'pull_request' }}
+        continue-on-error: true
+        env:
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+          OUTPUT_FILE: ${{ runner.temp }}/pr_changed_files.txt
+        run: |
+          git config --global --add safe.directory "$(pwd)" || true
+          # Shallow-fetch only the PR base ref; a two-dot diff (base..HEAD)
+          # compares the two trees directly and works without a common
+          # ancestor, so fetch-depth=1 on both sides is enough.
+          git fetch --no-tags --depth=1 origin "${BASE_REF}" || true
+          git diff --name-only "origin/${BASE_REF}" HEAD > "${OUTPUT_FILE}" || true
+          echo "Changed files in PR:"
+          cat "${OUTPUT_FILE}" || true
+
+      - name: Write coverage summary
+        if: ${{ !cancelled() }}
+        continue-on-error: true
+        working-directory: ${{ env.WORK_DIR }}
+        env:
+          REPO_SLUG: ${{ inputs.app_repository }}
+          EVENT_NAME: ${{ github.event_name }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+          CHANGED_FILES: ${{ runner.temp }}/pr_changed_files.txt
+          WORKSPACE: ${{ github.workspace }}
+        run: |
+          "${GITHUB_WORKSPACE}/ledger-app-workflows/scripts/coverage_summary.py"

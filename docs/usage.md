@@ -181,6 +181,7 @@ In order to test an App, this workflow can use the following input parameters:
 | test_directory                       | ❌       | Auto-detected             | ⚠️ **DEPRECATED** - Automatically read from `ledger_app.toml` |
 | builder                              | ❌       | `ledger-app-builder-lite` | The docker image to build the application in |
 | additional_packages                  | ❌       |                           | Additional packages to install |
+| coverage_exclude_paths               | ❌       |                           | Space-separated glob patterns to exclude from the coverage result (`/usr/*`, `/opt/*` and the test directory are always excluded) |
 
 For this workflow, it is important to also set the secrets for called workflow. For example:
 
