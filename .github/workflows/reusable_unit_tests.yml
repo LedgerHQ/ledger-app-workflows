@@ -2,6 +2,13 @@ name: Unit testing with Codecov coverage checking and upload the result
 
 on:
   workflow_call:
+    secrets:
+      token:
+        description: 'A token passed from the caller workflow (defaults to `github.token`)'
+        required: false
+      codecov_token:
+        description: 'The Codecov token used to authorize the coverage upload and the develop-coverage API query'
+        required: false
     inputs:
       app_repository:
         description: 'The GIT repository to test (defaults to `github.repository`)'
@@ -118,10 +125,9 @@ jobs:
           apt-get -q update && apt-get -q install --no-install-recommends -y curl gpg
 
       - name: Upload to codecov.io
-        uses: codecov/codecov-action@v5
-        env:
-          CODECOV_TOKEN: ${{ secrets.codecov_token }}
+        uses: codecov/codecov-action@v6
         with:
+          token: ${{ secrets.codecov_token }}
           files: ${{ env.WORK_DIR }}/coverage.info
           flags: unittests
           name: codecov-${{ inputs.app_repository }}
