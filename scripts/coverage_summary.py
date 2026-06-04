@@ -13,13 +13,14 @@ lcov versions.
 Inputs (environment):
   EVENT_NAME             : GitHub event name (PR section runs on ``pull_request``)
   PR_NUMBER              : pull request number (for the Codecov link)
-  REPO_SLUG              : repository slug, "owner/repo" (for the Codecov link)
+  APP_REPOSITORY         : repository "owner/repo" (for the Codecov/GitHub links)
   CHANGED_FILES          : path to the newline-separated list of PR-changed files
   WORKSPACE              : workspace root, to display file paths relative to it
   TEST_DIRECTORY         : unit-test directory, excluded from the PR section
   COVERAGE_EXCLUDE_PATHS : extra exclude globs, excluded from the PR section
   BASE_REF               : PR base branch, for the Codecov explorer link
   DEFAULT_BRANCH         : repo default branch, fallback for the explorer link
+  HEAD_SHA               : PR head commit, to build clickable uncovered-line links
 """
 
 import fnmatch
@@ -45,6 +46,7 @@ def new_record():
     """Return a fresh per-file record with all counters zeroed."""
     rec = {key: 0 for key in KEYS}
     rec["file"] = None
+    rec["uncovered_lines"] = []  # line numbers with 0 hits (from DA: records)
     return rec
 
 
@@ -76,6 +78,14 @@ def parse_tracefile(path):
                 if cur:
                     records.append(cur)
                 cur = None
+            elif line.startswith("DA:") and cur is not None:
+                # DA:<line>,<hits>[,checksum] -- record lines that were never hit.
+                parts = line[3:].split(",")
+                try:
+                    if int(parts[1]) == 0:
+                        cur["uncovered_lines"].append(int(parts[0]))
+                except (ValueError, IndexError):
+                    pass
             elif cur is not None:
                 # Accumulate the counter lines we care about.
                 for key in KEYS:
@@ -96,11 +106,49 @@ def pct(hit, found):
 def fmt(hit, found):
     """Format a counter pair as ``"<pct>% (<hit> / <found>)"`` (or ``"n/a"``).
 
-    The covered/total meaning of the parenthesised numbers is documented by the
-    table header ("Coverage (covered / total)").
+    Used for the inline (prose) coverage figures; tables use the per-cell
+    helpers below.
     """
     value = pct(hit, found)
     return f"{value:.2f}% ({hit} / {found})" if value is not None else "n/a"
+
+
+def pct_cell(hit, found):
+    """Percentage cell for a table: ``"<pct>%"`` (or ``"n/a"``)."""
+    value = pct(hit, found)
+    return f"{value:.2f}%" if value is not None else "n/a"
+
+
+def ratio_cell(hit, found):
+    """Covered/total cell for a table: ``"<hit> / <found>"``."""
+    return f"{hit} / {found}"
+
+
+def to_ranges(numbers):
+    """Collapse a list of line numbers into contiguous (start, end) ranges."""
+    ranges = []
+    for n in sorted(set(numbers)):
+        if ranges and n == ranges[-1][1] + 1:
+            ranges[-1][1] = n
+        else:
+            ranges.append([n, n])
+    return [(start, end) for start, end in ranges]
+
+
+def line_links(path, ranges, slug, sha):
+    """Render line ranges as a comma-separated list of GitHub line links.
+
+    Falls back to plain numbers when slug/sha are unavailable.
+    """
+    parts = []
+    for start, end in ranges:
+        label = f"{start}" if start == end else f"{start}–{end}"
+        if slug and sha:
+            anchor = f"L{start}" if start == end else f"L{start}-L{end}"
+            parts.append(f"[{label}](https://github.com/{slug}/blob/{sha}/{path}#{anchor})")
+        else:
+            parts.append(label)
+    return ", ".join(parts)
 
 
 def exclude_patterns():
@@ -159,20 +207,21 @@ def main():
     # `out` collects Markdown lines that are joined and written at the end.
     out = []
     out.append("## Code coverage\n")
-    out.append("| Metric | Coverage (covered / total) |")
-    out.append("|---|---|")
-    out.append(f"| Lines | {fmt(tot['LH'], tot['LF'])} |")
-    out.append(f"| Functions | {fmt(tot['FNH'], tot['FNF'])} |")
-    out.append(f"| Branches | {fmt(tot['BRH'], tot['BRF'])} |")
+    out.append("### Overall\n")
+    out.append("| Metric | Coverage | Covered / Total |")
+    out.append("|---|---|---|")
+    out.append(f"| Lines | {pct_cell(tot['LH'], tot['LF'])} | {ratio_cell(tot['LH'], tot['LF'])} |")
+    out.append(f"| Functions | {pct_cell(tot['FNH'], tot['FNF'])} | {ratio_cell(tot['FNH'], tot['FNF'])} |")
+    out.append(f"| Branches | {pct_cell(tot['BRH'], tot['BRF'])} | {ratio_cell(tot['BRH'], tot['BRF'])} |")
     out.append("")
 
     # Note: only files compiled into the unit-test binary appear in the
     # tracefile. Source files not built by the unit tests are invisible to
     # gcov/lcov, hence absent from this count -- it is not the project total.
-    out.append(
-        f"**Files built into the unit tests:** {len(src_records)} "
-        f"({len(covered)} exercised, {len(uncovered)} with no line covered)\n"
-    )
+    out.append(f"**Files built into the unit tests:** {len(src_records)}\n")
+    out.append(f"- ✅ Exercised (≥ 1 line covered): {len(covered)}")
+    out.append(f"- ❌ No line covered: {len(uncovered)}")
+    out.append("")
     if uncovered:
         # Collapsible list so a long set of files does not flood the summary.
         out.append(f"<details><summary>Files with no line covered ({len(uncovered)})</summary>\n")
@@ -183,57 +232,97 @@ def main():
     # Pull-request-only coverage: restrict the report to the source files the PR
     # actually touches. The changed-files list is produced by the workflow step.
     changed_path = os.environ.get("CHANGED_FILES", "")
-    if os.environ.get("EVENT_NAME") == "pull_request" and os.path.exists(changed_path):
-        with open(changed_path, errors="replace") as handle:
-            changed = [line.strip() for line in handle if line.strip()]
-        # Keep source files, dropping those excluded from coverage (test sources,
-        # SDK, submodules) so they are not reported as "not exercised".
-        patterns = exclude_patterns()
-        changed_src = [
-            c for c in changed if c.endswith(SRC_EXT) and not is_excluded(c, patterns)
-        ]
-
-        def match(changed_file):
-            """Find the coverage record for a repo-relative changed file.
-
-            The changed file is relative to the repo root (e.g. "src/foo.c")
-            while lcov records hold absolute paths, so we match on a path suffix.
-            Returns the record, or ``None`` if the file is not in the report.
-            """
-            for rec in records:
-                if rec["file"] == changed_file or rec["file"].endswith("/" + changed_file):
-                    return rec
-            return None
-
-        matched = [(c, match(c)) for c in changed_src]
-        in_cov = [rec for _, rec in matched if rec is not None]
-        # Changed source files absent from the report were not compiled/run by
-        # the unit tests at all.
-        not_exercised = [c for c, rec in matched if rec is None]
-
+    if os.environ.get("EVENT_NAME") == "pull_request":
         out.append("### Pull request changes\n")
-        if in_cov:
-            pr_lf = sum(rec["LF"] for rec in in_cov)
-            pr_lh = sum(rec["LH"] for rec in in_cov)
-            out.append(
-                f"Coverage of source files modified in this PR: "
-                f"**{fmt(pr_lh, pr_lf)}** across {len(in_cov)} file(s)\n"
-            )
+
+        changed = []
+        if os.path.exists(changed_path):
+            with open(changed_path, errors="replace") as handle:
+                changed = [line.strip() for line in handle if line.strip()]
+
+        if not changed:
+            # Missing or empty list: the collection step was skipped or failed
+            # (a real PR always changes at least one file). Make it explicit
+            # rather than implying that nothing was modified.
+            out.append("_Changed-file list unavailable; skipping per-file PR coverage._\n")
         else:
-            out.append("No modified source file is part of the coverage report.\n")
-        if not_exercised:
-            out.append(
-                f"<details><summary>Modified source files not exercised by unit tests "
-                f"({len(not_exercised)})</summary>\n"
-            )
-            for c in sorted(not_exercised):
-                out.append(f"- `{c}`")
-            out.append("\n</details>\n")
+            # Keep source files, dropping those excluded from coverage (test
+            # sources, SDK, submodules) so they are not reported as "not
+            # exercised".
+            patterns = exclude_patterns()
+            changed_src = [
+                c for c in changed if c.endswith(SRC_EXT) and not is_excluded(c, patterns)
+            ]
+
+            def match(changed_file):
+                """Find the coverage record for a repo-relative changed file.
+
+                The changed file is relative to the repo root (e.g. "src/foo.c")
+                while lcov records hold absolute paths, so we match on a path suffix.
+                Returns the record, or ``None`` if the file is not in the report.
+                """
+                for rec in records:
+                    if rec["file"] == changed_file or rec["file"].endswith("/" + changed_file):
+                        return rec
+                return None
+
+            matched = [(c, match(c)) for c in changed_src]
+            in_cov = [(c, rec) for c, rec in matched if rec is not None]
+            # Changed source files absent from the report were not compiled/run
+            # by the unit tests at all.
+            not_exercised = [c for c, rec in matched if rec is None]
+
+            if in_cov:
+                pr_lf = sum(rec["LF"] for _, rec in in_cov)
+                pr_lh = sum(rec["LH"] for _, rec in in_cov)
+                # Visible status line: the aggregate *line* coverage of the
+                # modified files. Then a collapsible per-file breakdown (lines
+                # and branches, each cell is "<pct>% (covered / total)").
+                out.append(
+                    f"Line coverage of source files modified in this PR: "
+                    f"**{fmt(pr_lh, pr_lf)}**\n"
+                )
+                out.append(
+                    f"<details><summary>Coverage of modified source files "
+                    f"({len(in_cov)})</summary>\n"
+                )
+                out.append("| File | Lines | Branches |")
+                out.append("|---|---|---|")
+                for c, rec in sorted(in_cov):
+                    out.append(
+                        f"| `{c}` | {fmt(rec['LH'], rec['LF'])} | {fmt(rec['BRH'], rec['BRF'])} |"
+                    )
+                out.append("\n</details>\n")
+
+                # Clickable uncovered-line ranges for the modified files,
+                # collapsed so a long list never inflates the section.
+                slug = os.environ.get("APP_REPOSITORY", "")
+                sha = os.environ.get("HEAD_SHA", "")
+                uncovered_rows = [(c, rec) for c, rec in in_cov if rec["uncovered_lines"]]
+                if uncovered_rows:
+                    out.append(
+                        f"<details><summary>Uncovered lines in modified files "
+                        f"({len(uncovered_rows)})</summary>\n"
+                    )
+                    for c, rec in sorted(uncovered_rows):
+                        links = line_links(c, to_ranges(rec["uncovered_lines"]), slug, sha)
+                        out.append(f"- `{c}`: {links}")
+                    out.append("\n</details>\n")
+            else:
+                out.append("No modified source file is part of the coverage report.\n")
+            if not_exercised:
+                out.append(
+                    f"<details><summary>Modified source files not exercised by unit tests "
+                    f"({len(not_exercised)})</summary>\n"
+                )
+                for c in sorted(not_exercised):
+                    out.append(f"- `{c}`")
+                out.append("\n</details>\n")
 
     # Codecov links: the full report (PR page when on a PR) and the file
     # explorer of the reference branch (PR base, else the repo default branch)
     # to inspect its current coverage state.
-    slug = os.environ.get("REPO_SLUG", "")
+    slug = os.environ.get("APP_REPOSITORY", "")
     pr = os.environ.get("PR_NUMBER", "")
     if slug:
         links = []
