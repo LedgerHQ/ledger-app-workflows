@@ -2,6 +2,13 @@ name: Unit testing with Codecov coverage checking and upload the result
 
 on:
   workflow_call:
+    secrets:
+      token:
+        description: 'A token passed from the caller workflow (defaults to `github.token`)'
+        required: false
+      codecov_token:
+        description: 'The Codecov token used to authorize the coverage upload'
+        required: false
     inputs:
       app_repository:
         description: 'The GIT repository to test (defaults to `github.repository`)'
@@ -28,6 +35,11 @@ on:
         required: false
         default: ''
         type: string
+      coverage_exclude_paths:
+        description: "Space-separated glob patterns to exclude from the coverage result (artifact, Codecov upload and job summary), in addition to the always-excluded system/container paths (/usr/*, /opt/*) and the test directory"
+        required: false
+        default: ''
+        type: string
 
 permissions:
   contents: read
@@ -39,27 +51,60 @@ env:
   TEST_DIRECTORY: ${{ inputs.test_directory }}
   BUILDER: ${{ inputs.builder }}
   ADDITIONAL_PACKAGES: ${{ inputs.additional_packages }}
+  COVERAGE_EXCLUDE_PATHS: ${{ inputs.coverage_exclude_paths }}
 
 jobs:
+  # Resolve the ref this reusable workflow was called with, so the steps below
+  # can checkout the matching version of this repository (for its scripts/).
+  # Workaround for https://github.com/actions/toolkit/issues/1264
+  call_get_workflow_version:
+    name: Get workflow version
+    uses: ./.github/workflows/_get_workflow_version.yaml
+    with:
+      repository_name: LedgerHQ/ledger-app-workflows
+      file_name: reusable_unit_tests.yml
+    secrets:
+      git_token: ${{ secrets.token || github.token }}
+
   unit_test:
     name: Unit test
+    needs: call_get_workflow_version
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/ledgerhq/ledger-app-builder/${{ inputs.builder }}:latest
 
     steps:
-      - name: Installing required packages
-        if: ${{ inputs.additional_packages != '' }}
+      # Single install step:
+      #   - caller-provided build packages (ADDITIONAL_PACKAGES, may be empty);
+      #   - libjson-xs-perl: speeds up lcov and silences its JSON::PP warning;
+      #   - lcov_cobertura: produces the Cobertura coverage.xml.
+      # The apt packages are required (the step fails if they can't install);
+      # lcov_cobertura is optional, so a transient PyPI issue must not fail the
+      # build -- hence the `|| true` (the coverage step degrades gracefully).
+      # --break-system-packages: the builder image is debian-trixie based
+      # (externally-managed) and installs its own pip packages the same way.
+      - name: Install dependencies
         run: |
-          apt-get -q update && apt-get -q install --no-install-recommends -y ${ADDITIONAL_PACKAGES}
+          apt-get -q update
+          apt-get -q install --no-install-recommends -y ${ADDITIONAL_PACKAGES} libjson-xs-perl
+          pip install --break-system-packages --no-cache-dir lcov_cobertura || true
 
-      - name: Clone
+      - name: Clone app repository
         uses: actions/checkout@v6
         with:
           repository: ${{ inputs.app_repository }}
           ref: ${{ inputs.app_branch_name }}
           submodules: recursive
           token: ${{ secrets.token && secrets.token || github.token }}
+
+      # Checked out *after* the application (which lives at the workspace root)
+      # so the application checkout's `git clean` cannot wipe this subdirectory.
+      - name: Clone ledger-app-workflows repository
+        uses: actions/checkout@v6
+        with:
+          repository: LedgerHQ/ledger-app-workflows
+          path: ./ledger-app-workflows
+          ref: ${{ needs.call_get_workflow_version.outputs.version }}
 
       - name: Deprecation warning for test_directory
         if: ${{ inputs.test_directory != '' }}
@@ -91,39 +136,142 @@ jobs:
           CTEST_OUTPUT_ON_FAILURE=1 make -C build test
 
       - name: Generate code coverage
+        id: coverage
         working-directory: ${{ env.WORK_DIR }}
         run: |
-          # --ignore-errors negative: gcov 14 occasionally emits negative
-          # branch-taken counts in instrumented .gcda files (upstream gcov
-          # regression). lcov 2.x rejects them as a fatal error and breaks
-          # the coverage step even though every test passed. Suppress only
-          # on the capture commands -- merge/remove operate on the already
-          # captured .info files so they can't hit this path.
-          # --branch-coverage replaces the deprecated --rc lcov_branch_coverage=1
-          # and is honoured by lcov 2.x on every subcommand (capture, merge,
-          # remove, genhtml) so the branch data survives the whole pipeline.
-          lcov --branch-coverage --ignore-errors negative --directory . -b "$(realpath build/)" --capture --initial -o coverage.base
-          lcov --branch-coverage --ignore-errors negative --directory . -b "$(realpath build/)" --capture -o coverage.capture
-          lcov --branch-coverage --directory . -b "$(realpath build/)" --add-tracefile coverage.base --add-tracefile coverage.capture -o coverage.info
-          lcov --branch-coverage --directory . -b "$(realpath build/)" --remove coverage.info "*/${TEST_DIRECTORY}/*" -o coverage.info
-          genhtml --branch-coverage coverage.info -o coverage
+          "${GITHUB_WORKSPACE}/ledger-app-workflows/scripts/generate_coverage.sh"
 
-      - uses: actions/upload-artifact@v6
+      - name: Upload coverage artifact
+        uses: actions/upload-artifact@v6
         with:
           name: code-coverage
-          path: ${{ env.WORK_DIR }}/coverage
-
-      - name: Install codecov dependencies
-        run: |
-          apt-get -q update && apt-get -q install --no-install-recommends -y curl gpg
+          path: |
+            ${{ env.WORK_DIR }}/coverage
+            ${{ env.WORK_DIR }}/coverage.xml
 
       - name: Upload to codecov.io
-        uses: codecov/codecov-action@v5
-        env:
-          CODECOV_TOKEN: ${{ secrets.codecov_token }}
+        uses: codecov/codecov-action@v6
         with:
+          token: ${{ secrets.codecov_token }}
           files: ${{ env.WORK_DIR }}/coverage.info
           flags: unittests
           name: codecov-${{ inputs.app_repository }}
           fail_ci_if_error: true
           verbose: true
+
+      # ----------------------------------------------------------------------
+      # Coverage report in the job summary (best-effort, never fails the job).
+      # Gated on the coverage step succeeding (so they are skipped when there is
+      # no coverage to report), while `!cancelled()` keeps them running even if
+      # the Codecov upload above failed (fail_ci_if_error).
+      # ----------------------------------------------------------------------
+      - name: Collect PR changed files
+        if: ${{ !cancelled() && steps.coverage.outcome == 'success' && github.event_name == 'pull_request' }}
+        continue-on-error: true
+        env:
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+          OUTPUT_FILE: ${{ runner.temp }}/pr_changed_files.txt
+        run: |
+          git config --global --add safe.directory "$(pwd)" || true
+          # Shallow-fetch only the PR base ref; a two-dot diff (base..HEAD)
+          # compares the two trees directly and works without a common
+          # ancestor, so fetch-depth=1 on both sides is enough.
+          git fetch --no-tags --depth=1 origin "${BASE_REF}" || true
+          git diff --name-only "origin/${BASE_REF}" HEAD > "${OUTPUT_FILE}" || true
+          echo "Changed files in PR:"
+          cat "${OUTPUT_FILE}" || true
+
+      - name: Write coverage summary
+        if: ${{ !cancelled() && steps.coverage.outcome == 'success' }}
+        continue-on-error: true
+        working-directory: ${{ env.WORK_DIR }}
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          CHANGED_FILES: ${{ runner.temp }}/pr_changed_files.txt
+          WORKSPACE: ${{ github.workspace }}
+        run: |
+          "${GITHUB_WORKSPACE}/ledger-app-workflows/scripts/coverage_summary.py"
+
+  # Post the coverage stats as a sticky PR comment.
+  # Runs in a separate, non-containerised job because irongut/CodeCoverageSummary
+  # is a Docker action and the unit_test job runs inside the builder container
+  # (no Docker-in-Docker). It consumes coverage.xml via the artifact produced above.
+  coverage_comment:
+    name: Coverage report
+    needs: unit_test
+    if: ${{ !cancelled() && github.event_name == 'pull_request' }}
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read          # download the coverage artifact from this run
+      pull-requests: write   # create/update the PR comment
+      code-quality: write    # actions/upload-code-coverage (native PR coverage)
+    steps:
+      # Tolerant download: when unit_test failed before producing the artifact
+      # (build/coverage error), this fails softly and the steps below are skipped
+      # via `steps.download.outcome`, so no bogus comment is posted.
+      - name: Download coverage artifact
+        id: download
+        continue-on-error: true
+        uses: actions/download-artifact@v8
+        with:
+          name: code-coverage
+
+      # Native GitHub PR code coverage (public preview, 2026-05-26). Uploads the
+      # Cobertura report to GitHub's coverage API; results show up directly on
+      # the PR (no comment). Requires the repo's "Code Quality" feature enabled.
+      # Fork PRs and merge_group are skipped by the action.
+      - name: Upload coverage to GitHub
+        if: ${{ steps.download.outcome == 'success' }}
+        continue-on-error: true
+        uses: actions/upload-code-coverage@v1
+        with:
+          file: coverage.xml
+          language: C
+          label: code-coverage/unittests
+          fail-on-error: false
+
+      # `output: file` writes the markdown report to `code-coverage-results.md`
+      # (fixed name set by the action), consumed by the wrap step below.
+      - name: Build Cobertura coverage summary
+        if: ${{ steps.download.outcome == 'success' }}
+        continue-on-error: true  # coverage.xml is best-effort (may be absent)
+        uses: irongut/CodeCoverageSummary@51cc3a756ddcd398d447c044c02cb6aa83fdae95  # v1.3.0
+        with:
+          filename: coverage.xml
+          badge: true
+          format: markdown
+          output: file
+          hide_complexity: true
+          thresholds: '60 80'
+
+      # Wrap the irongut report in a collapsible block, with a visible title and
+      # the coverage badge above it, so the (potentially long) per-file table
+      # does not flood the PR. The badge is the first line of the irongut report;
+      # the rest (the table) goes inside the block.
+      - name: Wrap coverage report in a collapsible block
+        if: ${{ steps.download.outcome == 'success' }}
+        continue-on-error: true
+        run: |
+          {
+            echo "## Code coverage report"
+            echo ""
+            head -n 1 code-coverage-results.md 2>/dev/null || true
+            echo ""
+            echo "<details><summary>Per-file coverage</summary>"
+            echo ""
+            tail -n +2 code-coverage-results.md 2>/dev/null || echo "_Coverage report unavailable._"
+            echo ""
+            echo "</details>"
+          } > code-coverage-collapsible.md
+
+      - name: Post coverage comment on PR
+        if: ${{ steps.download.outcome == 'success' }}
+        continue-on-error: true  # PRs from forks get a read-only token
+        uses: marocchino/sticky-pull-request-comment@0ea0beb66eb9baf113663a64ec522f60e49231c0  # v3.0.4
+        with:
+          recreate: true
+          path: code-coverage-collapsible.md
