@@ -97,6 +97,12 @@ This workflow will generate the documentation, based on `doxygen`.
 - `reusable_clusterfuzz_tests.yml` \
 This workflow will run the application CI fuzzers, based on `ClusterFuzzLite`.
 
+- `reusable_memory_profiling.yml` \
+This workflow bundles the memory profiling pipeline: it builds the application with memory
+profiling enabled (at least `DEBUG=1 MEMORY_PROFILING=1`, through a dedicated `use_case`),
+runs the Ragger functional tests while capturing the Speculos output, then processes the
+captured logs with the `valground` tool to detect memory leaks.
+
 ## Example
 
 Please see an example on how to use the reusable workflows in the [`app-boilerplate`](https://github.com/LedgerHQ/app-boilerplate)

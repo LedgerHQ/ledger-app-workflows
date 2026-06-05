@@ -86,6 +86,30 @@ In addition, the following secret can be used:
 | ------------------- | -------- | ------------- | --------------------------------------- |
 | secret_test_options | ❌       |               | A token passed from the caller workflow |
 
+## Reusable Memory Profiling
+
+This workflow bundles the whole memory profiling pipeline: it builds the application with memory profiling enabled, runs the Ragger functional tests while capturing the Speculos output, then processes the captured logs with the SDK `valground` tool to detect memory leaks (the job fails if a leak is reported).
+
+It can use the following input parameters:
+
+| Parameter       | Required | Default value                | Comment                                                                    |
+| --------------- | -------- | ---------------------------- | -------------------------------------------------------------------------- |
+| app_repository  | ❌       | `github.repository`          | The GIT repository to test                                                 |
+| app_branch_name | ❌       | `github.ref`                 | The GIT branch to test                                                     |
+| flags           | ❌       | `DEBUG=1 MEMORY_PROFILING=1` | Compilation flags. Must enable at least `DEBUG=1 MEMORY_PROFILING=1`       |
+| run_for_devices | ❌       | *ALL*                        | The list of device(s) on which the CI will run                             |
+| builder         | ❌       | `ledger-app-builder-lite`    | The docker image to build the application in                               |
+| sdk_reference   | ❌       |                              | A SDK reference to checkout before building the app                        |
+| test_filter     | ❌       |                              | Specify an expression which implements a substring match on the test names |
+| test_options    | ❌       |                              | Specify optional parameters to be passed to the running test               |
+
+In addition, the following secrets can be used:
+
+| Parameter           | Required | Default value | Comment                                          |
+| ------------------- | -------- | ------------- | ------------------------------------------------ |
+| token               | ❌       |               | A token passed from the caller workflow          |
+| secret_test_options | ❌       |               | A string of secret options to be given to pytest |
+
 ## Reusable Guideline Enforcer
 
 In order to check an App, this workflow can use the following input parameters:

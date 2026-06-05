@@ -1,0 +1,116 @@
+---
+name: Memory profiling tests
+
+# This reusable workflow bundles the three steps needed to run memory profiling tests:
+#   1. Build the application with memory profiling enabled (at least `DEBUG=1 MEMORY_PROFILING=1`).
+#   2. Run the Ragger functional tests on the resulting binary, capturing the Speculos output.
+#   3. Process the captured logs with the SDK `valground` tool to detect memory leaks. The job
+#      fails if `valground` reports a leak.
+
+on:
+  workflow_call:
+    secrets:
+      token:
+        description: 'A token passed from the caller workflow (used to checkout/build the app)'
+        required: false
+      secret_test_options:
+        description: 'A string of secret options to be given to `pytest`'
+        required: false
+    inputs:
+      app_repository:
+        description: 'The GIT repository to test (defaults to `github.repository`)'
+        required: false
+        default: ${{ github.repository }}
+        type: string
+      app_branch_name:
+        description: 'The GIT branch to test (defaults to `github.ref`)'
+        required: false
+        default: ${{ github.ref }}
+        type: string
+      flags:
+        description: 'Compilation flags. Must enable at least `DEBUG=1 MEMORY_PROFILING=1` (the default)'
+        required: false
+        default: 'DEBUG=1 MEMORY_PROFILING=1'
+        type: string
+      run_for_devices:
+        description: |
+          The list of device(s) on which the build and tests will run.
+
+          Defaults to the full list of device(s) supported by the application as configured in the
+          'ledger_app.toml' manifest.
+        required: false
+        default: 'None'
+        type: string
+      builder:
+        description: "The docker image to build the application in (defaults to ledger-app-builder-lite)"
+        required: false
+        default: 'ledger-app-builder-lite'
+        type: string
+      sdk_reference:
+        description: 'A SDK reference to checkout before building the app (defaults to the builder image SDK)'
+        required: false
+        default: ''
+        type: string
+      test_filter:
+        description: 'Specify an expression which implements a substring match on the test names'
+        required: false
+        default: '""'
+        type: string
+      test_options:
+        description: 'Specify optional parameters to be passed to the running test'
+        required: false
+        default: ''
+        type: string
+
+jobs:
+  build_mem_app:
+    name: Build memory profiling application
+    uses: ./.github/workflows/reusable_build.yml
+    with:
+      app_repository: ${{ inputs.app_repository }}
+      app_branch_name: ${{ inputs.app_branch_name }}
+      flags: ${{ inputs.flags }}
+      upload_app_binaries_artifact: 'memory_profiling_elfs'
+      run_for_devices: ${{ inputs.run_for_devices }}
+      builder: ${{ inputs.builder }}
+      sdk_reference: ${{ inputs.sdk_reference }}
+    secrets:
+      token: ${{ secrets.token }}
+
+  ragger_mem_tests:
+    name: Run memory profiling tests
+    needs: build_mem_app
+    uses: ./.github/workflows/reusable_ragger_tests.yml
+    with:
+      app_repository: ${{ inputs.app_repository }}
+      app_branch_name: ${{ inputs.app_branch_name }}
+      download_app_binaries_artifact: 'memory_profiling_elfs'
+      run_for_devices: ${{ inputs.run_for_devices }}
+      upload_snapshots_on_failure: false
+      test_filter: ${{ inputs.test_filter }}
+      test_options: ${{ inputs.test_options }}
+      capture_file: 'pytest-logs-combined'
+    secrets:
+      secret_test_options: ${{ secrets.secret_test_options }}
+
+  ragger_mem_results:
+    name: Process pytest logs with valground
+    if: always()
+    needs: ragger_mem_tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Clone SDK
+        uses: actions/checkout@v6
+        with:
+          repository: LedgerHQ/ledger-secure-sdk
+
+      - name: Download captured pytest logs
+        uses: actions/download-artifact@v7
+        with:
+          name: 'pytest-logs-combined'
+          path: logs
+
+      - name: Process logs with valground
+        shell: bash
+        run: |
+          python3 tools/valground.py -q < logs/pytest-logs-combined.log
