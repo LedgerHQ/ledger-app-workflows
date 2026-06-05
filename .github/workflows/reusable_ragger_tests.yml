@@ -387,7 +387,8 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ inputs.capture_file != '' }}
     steps:
-      - uses: actions/download-artifact@v7
+      - name: Download pytest logs
+        uses: actions/download-artifact@v7
         with:
           pattern: pytest-logs-*
           path: logs
@@ -409,7 +410,8 @@ jobs:
     needs: ragger_tests
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/upload-artifact/merge@v6
+      - name: Merge snapshots artifacts
+        uses: actions/upload-artifact/merge@v6
         if: ${{ needs.ragger_tests.outputs.snapshot_artifact_uploaded == 'true' }}
         with:
           # Merge all basename-$device.zip into a single basename.zip
