@@ -10,12 +10,10 @@ on:
       version:
         description: "The clang-format version to use"
         required: false
-        type: number
-        default: 14
+        type: string
       extensions:
         description: "The file extensions to lint, comma-separated"
         required: false
-        default: 'h,c,proto'
         type: string
 
 permissions:
@@ -52,13 +50,19 @@ jobs:
             echo "✅ .clang-format file exists"
           fi
 
+      - name: Check for deprecated inputs
+        run: |
+          if [ -n "${{ inputs.version }}" ]; then
+            echo "::warning title=Deprecated 'version' input::It can be removed from your workflow"
+          fi
+          if [ -n "${{ inputs.extensions }}" ]; then
+            echo "::warning title=Deprecated 'extensions' input::It can be removed from your workflow"
+          fi
+
       - name: Lint check for C app
         if: ${{ needs.call_get_app_metadata.outputs.is_rust == 'false'}}
-        uses: DoozyX/clang-format-lint-action@c71d0bf4e21876ebec3e5647491186f8797fde31  # v0.18.2
-        with:
-          source: ${{ inputs.source }}
-          extensions: ${{ inputs.extensions }}
-          clangFormatVersion: ${{ inputs.version }}
+        run:
+          clang-format --dry-run --Werror $(find ${{ inputs.source }} -type f \( -name '*.c' -o -name '*.h' \))
 
       - name: Lint check for Rust app
         if: ${{ needs.call_get_app_metadata.outputs.is_rust == 'true'}}
