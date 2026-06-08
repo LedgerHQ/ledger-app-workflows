@@ -44,6 +44,7 @@ on:
 
 permissions:
   contents: read  # Needed to clone the repositories
+  actions: read   # Needed by get-workflow-version-action to query the Actions API
 
 env:
   REPOSITORY_NAME: ${{ inputs.repository_name }}
