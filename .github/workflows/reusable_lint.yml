@@ -10,12 +10,10 @@ on:
       version:
         description: "The clang-format version to use"
         required: false
-        type: number
-        default: 14
+        type: string
       extensions:
         description: "The file extensions to lint, comma-separated"
         required: false
-        default: 'h,c,proto'
         type: string
 
 permissions:
@@ -50,6 +48,15 @@ jobs:
             echo "⚠️ Warning: .clang-format file not found, using default configuration"
           else
             echo "✅ .clang-format file exists"
+          fi
+
+      - name: Check for deprecated inputs
+        run: |
+          if [ -n "${{ inputs.version }}" ]; then
+            echo "::warning title=Deprecated 'version' input::It can be removed from your workflow"
+          fi
+          if [ -n "${{ inputs.extensions }}" ]; then
+            echo "::warning title=Deprecated 'extensions' input::It can be removed from your workflow"
           fi
 
       - name: Lint check for C app
