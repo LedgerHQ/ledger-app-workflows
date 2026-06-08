@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.95.14] - 2026-06-08
+
+### Added
+
+- `reusable_memory_profiling.yml` : New reusable workflow bundling the memory profiling pipeline (build with `DEBUG=1` and `MEMORY_PROFILING=1`, run Ragger tests capturing the Speculos output, and process the logs with `valground` to detect memory leaks).
+
 ## [1.95.13] - 2026-06-04
 
 ### Fixed
