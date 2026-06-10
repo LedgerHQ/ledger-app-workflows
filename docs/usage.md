@@ -206,6 +206,7 @@ In order to test an App, this workflow can use the following input parameters:
 | builder                | ❌       | `ledger-app-builder-lite` | The docker image to build the application in                                                                                      |
 | additional_packages    | ❌       |                           | Additional packages to install                                                                                                    |
 | coverage_exclude_paths | ❌       |                           | Space-separated glob patterns to exclude from the coverage result (`/usr/*`, `/opt/*` and the test directory are always excluded) |
+| enable_codecov         | ❌       | `true`                    | Whether to upload coverage to Codecov; `false` for repos that can't use it, e.g. internal (also skipped without `codecov_token`)  |
 
 In addition, the following secrets can be used:
 

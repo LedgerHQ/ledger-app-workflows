@@ -40,6 +40,11 @@ on:
         required: false
         default: ''
         type: string
+      enable_codecov:
+        description: "Whether to upload the coverage result to Codecov (disable for repositories that cannot use Codecov, e.g. internal ones). The upload is also skipped when no codecov_token is provided."
+        required: false
+        default: true
+        type: boolean
 
 permissions:
   contents: read
@@ -52,6 +57,7 @@ env:
   BUILDER: ${{ inputs.builder }}
   ADDITIONAL_PACKAGES: ${{ inputs.additional_packages }}
   COVERAGE_EXCLUDE_PATHS: ${{ inputs.coverage_exclude_paths }}
+  CODECOV_TOKEN: ${{ secrets.codecov_token }}
 
 jobs:
   # Resolve the ref this reusable workflow was called with, so the steps below
@@ -149,7 +155,10 @@ jobs:
             ${{ env.WORK_DIR }}/coverage
             ${{ env.WORK_DIR }}/coverage.xml
 
+      # Skipped when disabled via `enable_codecov` (e.g. internal repositories
+      # that cannot use Codecov) or when no `codecov_token` is provided.
       - name: Upload to codecov.io
+        if: ${{ inputs.enable_codecov && env.CODECOV_TOKEN != '' }}
         uses: codecov/codecov-action@v6
         with:
           token: ${{ secrets.codecov_token }}
