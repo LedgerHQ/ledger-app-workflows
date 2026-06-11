@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.95.19] - 2026-06-11
+
+### Changed
+
+- `reusable_ragger_tests.yml` : Removed the hardcoded 8 KB max stack size for `nanox`. The maximum stack size is now always computed from the `_estack` and `_stack` symbols of the app binary, like for the other devices.
+
 ## [1.95.18] - 2026-06-11
 
 ### Changed

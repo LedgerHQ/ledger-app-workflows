@@ -489,14 +489,9 @@ jobs:
                 APP_PATH=$(find app_binaries/${DEVICE_NAME}/bin -name '*.elf' | head -n 1)
               fi
 
-              # hardcoded limit of 8kp for nanox
-              if [[ "$DEVICE_NAME" == "nanox" ]]; then
-                max_stack_size=8192
-              else
-                estack_addr=$(nm ${APP_PATH} | grep -w '_estack' | awk '{print "0x"$1}')
-                stack_addr=$(nm ${APP_PATH} | grep -w '_stack' | awk '{print "0x"$1}')
-                max_stack_size=$((estack_addr - stack_addr))
-              fi
+              estack_addr=$(nm ${APP_PATH} | grep -w '_estack' | awk '{print "0x"$1}')
+              stack_addr=$(nm ${APP_PATH} | grep -w '_stack' | awk '{print "0x"$1}')
+              max_stack_size=$((estack_addr - stack_addr))
 
               [ -z "$device" ] && device="unknown"
               while IFS= read -r line; do
