@@ -59,16 +59,14 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set up Rust
-        uses: actions-rs/toolchain@v1.0.7
+        uses: actions-rust-lang/setup-rust-toolchain@v1.16.1
         with:
-          profile: minimal
-          toolchain: stable
+          toolchain: 1.95.0 # because of https://github.com/rust-lang/cargo/issues/17086#issuecomment-4671848273
 
       - name: Get crate version
         working-directory: ${{ env.PACKAGE_DIRECTORY }}
         if: ${{ success() && inputs.publish && !inputs.dry_run }}
         run: |
-            cargo generate-lockfile 2>/dev/null || true
             TAG_VERSION=$(cargo pkgid | sed 's/.*#//; s/.*@//')
             echo "Tag version is ${TAG_VERSION}"
             echo "TAG_VERSION=${TAG_VERSION}" >> $GITHUB_ENV
@@ -114,5 +112,5 @@ jobs:
             echo "package ${PACKAGE_DIRECTORY} is already published with version ${TAG_VERSION}."
           else
             echo "package ${PACKAGE_DIRECTORY} with version ${TAG_VERSION} is not published."
-            cargo publish --no-verify --registry artifactory --token "${CARGO_TOKEN}"
+            cargo publish --no-verify --registry artifactory --token "${CARGO_TOKEN}" --locked
           fi
