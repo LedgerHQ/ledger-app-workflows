@@ -1,0 +1,107 @@
+---
+name: Functional tests coverage
+
+# This reusable workflow bundles the two steps needed to measure the firmware C coverage
+# exercised by the Ragger functional tests:
+#   1. Build the application with debug symbols (at least `dbg_use_test_keys`, the default).
+#   2. Run the Ragger functional tests with `--coverage`: the ARM app is traced inside
+#      Speculos/QEMU and the executed blocks are mapped back to source via DWARF, producing an
+#      lcov file (+ HTML report) uploaded as the 'coverage-<device>' artifact(s).
+
+on:
+  workflow_call:
+    secrets:
+      token:
+        description: 'A token passed from the caller workflow (used to checkout/build the app)'
+        required: false
+      secret_test_options:
+        description: 'A string of secret options to be given to `pytest`'
+        required: false
+      codecov_token:
+        description: 'Codecov token. If provided, the lcov file is uploaded to codecov.io under
+                     the `functionaltests` flag (in addition to the artifacts).'
+        required: false
+    inputs:
+      app_repository:
+        description: 'The GIT repository to test (defaults to `github.repository`)'
+        required: false
+        default: ${{ github.repository }}
+        type: string
+      app_branch_name:
+        description: 'The GIT branch to test (defaults to `github.ref`)'
+        required: false
+        default: ${{ github.ref }}
+        type: string
+      flags:
+        description: 'Compilation flags. Must produce an ELF with debug symbols (defaults to `DEBUG=1`)'
+        required: false
+        default: 'DEBUG=1'
+        type: string
+      run_for_devices:
+        description: |
+          The list of device(s) on which the build and tests will run.
+
+          Defaults to the full list of device(s) supported by the application as configured in the
+          'ledger_app.toml' manifest.
+        required: false
+        default: 'None'
+        type: string
+      builder:
+        description: "The docker image to build the application in (defaults to ledger-app-builder-lite)"
+        required: false
+        default: 'ledger-app-builder-lite'
+        type: string
+      sdk_reference:
+        description: 'A SDK reference to checkout before building the app (defaults to the builder image SDK)'
+        required: false
+        default: ''
+        type: string
+      test_filter:
+        description: 'Specify an expression which implements a substring match on the test names'
+        required: false
+        default: '""'
+        type: string
+      test_options:
+        description: 'Specify optional parameters to be passed to the running test'
+        required: false
+        default: ''
+        type: string
+      coverage_exclude:
+        description: "Comma-separated source paths to exclude from coverage (e.g. a vendored
+                     submodule like 'ethereum-plugin-sdk')."
+        required: false
+        default: ''
+        type: string
+
+jobs:
+  build_coverage_app:
+    name: Build coverage application
+    uses: ./.github/workflows/reusable_build.yml
+    with:
+      app_repository: ${{ inputs.app_repository }}
+      app_branch_name: ${{ inputs.app_branch_name }}
+      flags: ${{ inputs.flags }}
+      upload_app_binaries_artifact: 'coverage_elfs'
+      run_for_devices: ${{ inputs.run_for_devices }}
+      builder: ${{ inputs.builder }}
+      sdk_reference: ${{ inputs.sdk_reference }}
+    secrets:
+      token: ${{ secrets.token }}
+
+  ragger_coverage_tests:
+    name: Run coverage tests
+    needs: build_coverage_app
+    uses: ./.github/workflows/reusable_ragger_tests.yml
+    with:
+      app_repository: ${{ inputs.app_repository }}
+      app_branch_name: ${{ inputs.app_branch_name }}
+      download_app_binaries_artifact: 'coverage_elfs'
+      run_for_devices: ${{ inputs.run_for_devices }}
+      coverage: true
+      coverage_exclude: ${{ inputs.coverage_exclude }}
+      upload_snapshots_on_failure: false
+      test_filter: ${{ inputs.test_filter }}
+      test_options: ${{ inputs.test_options }}
+    secrets:
+      secret_test_options: ${{ secrets.secret_test_options }}
+      codecov_token: ${{ secrets.codecov_token }}

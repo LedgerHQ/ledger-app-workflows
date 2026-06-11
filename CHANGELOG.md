@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.96.0] - 2026-06-12
+
+### Added
+
+- `reusable_ragger_coverage.yml` : New reusable workflow bundling the firmware C coverage pipeline.
+- `reusable_ragger_tests.yml` : New `coverage` input (default `false`) to collect firmware C coverage during the functional tests and upload the lcov file + HTML report.
+
 ## [1.95.19] - 2026-06-11
 
 ### Changed
@@ -16,7 +23,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - `reusable_crates_deployment.yml` : Replaced deprecated `actions-rs/toolchain@v1.0.7` with `actions-rust-lang/setup-rust-toolchain@v1.16.1` to fix Node-related deprecation warnings.
-
 
 ## [1.95.17] - 2026-06-10
 
