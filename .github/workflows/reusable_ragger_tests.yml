@@ -103,9 +103,27 @@ on:
         required: false
         default: 'stack-consumption-summary'
         type: string
+      coverage:
+        description: "Collect firmware C coverage: trace the app inside Speculos/QEMU and upload an
+                     lcov file (+ HTML report) as artifacts ('coverage-<device>'). Requires a ragger
+                     version providing the `--coverage` option, an app built with debug symbols, and
+                     installs the 'lcov' package on the runner."
+        required: false
+        default: false
+        type: boolean
+      coverage_exclude:
+        description: "Comma-separated source paths to exclude from coverage (e.g. a vendored
+                     submodule like 'ethereum-plugin-sdk'). Only used when `coverage: true`."
+        required: false
+        default: ''
+        type: string
     secrets:
       secret_test_options:
         description: 'A string of secret options to be given to `pytest`'
+        required: false
+      codecov_token:
+        description: 'Codecov token. If provided together with `coverage: true`, the lcov file is
+                     uploaded to codecov.io under the `functionaltests` flag.'
         required: false
 
 permissions:
@@ -130,6 +148,9 @@ env:
   CONTAINER_IMAGE: ${{ inputs.container_image }}
   CAPTURE_FILE: ${{ inputs.capture_file }}
   POST_STACK_CONSUMPTION: ${{ inputs.post_stack_consumption }}
+  COVERAGE: ${{ inputs.coverage }}
+  COVERAGE_EXCLUDE: ${{ inputs.coverage_exclude }}
+  CODECOV_TOKEN: ${{ secrets.codecov_token }}
 
 jobs:
   call_get_app_metadata:
@@ -222,6 +243,10 @@ jobs:
       - name: Install tests dependencies
         run: |
           sudo apt-get update && sudo apt-get install -y qemu-user-static
+          # lcov provides genhtml, used by ragger's --coverage to render the HTML report.
+          if [ "${COVERAGE}" = "true" ]; then
+            sudo apt-get install -y lcov
+          fi
           pip install -U pip packaging setuptools
           pip install -r "${{ needs.call_get_test_metadata.outputs.pytest_directory }}/requirements.txt"
           if [ -f ${{ needs.call_get_test_metadata.outputs.pytest_directory }}/setup_script.sh ]; then
@@ -245,6 +270,13 @@ jobs:
 
           if [ "${POST_STACK_CONSUMPTION}" = "true" ]; then
             PYTEST_ARGS+=(--get-stack-consumption)
+          fi
+
+          if [ "${COVERAGE}" = "true" ]; then
+            PYTEST_ARGS+=(--coverage --coverage_output "coverage-${{ matrix.device }}.info")
+            if [ -n "${COVERAGE_EXCLUDE}" ]; then
+              PYTEST_ARGS+=(--coverage_exclude "${COVERAGE_EXCLUDE}")
+            fi
           fi
 
           if [ -n "${TEST_FILTER}" ] && [ "${TEST_FILTER}" != '""' ]; then
@@ -330,6 +362,26 @@ jobs:
         with:
           name: pytest-logs-${{ matrix.device }}
           path: pytest_output.log
+
+      - name: Upload coverage report
+        if: ${{ inputs.coverage && hashFiles(format('coverage-{0}.info', matrix.device)) != '' }}
+        uses: actions/upload-artifact@v6
+        with:
+          name: coverage-${{ matrix.device }}
+          path: |
+            coverage-${{ matrix.device }}.info
+            coverage-${{ matrix.device }}_html
+
+      - name: Upload coverage to codecov.io
+        if: ${{ inputs.coverage && env.CODECOV_TOKEN != '' && hashFiles(format('coverage-{0}.info', matrix.device)) != '' }}
+        uses: codecov/codecov-action@v6
+        with:
+          token: ${{ secrets.codecov_token }}
+          files: coverage-${{ matrix.device }}.info
+          flags: functionaltests
+          name: ragger-coverage-${{ matrix.device }}
+          fail_ci_if_error: false
+          verbose: true
 
       - name: Set upload flag
         id: upload-flag
