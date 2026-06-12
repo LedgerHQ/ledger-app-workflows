@@ -266,16 +266,23 @@ jobs:
         shell: bash
         run: |
           PYTEST_ARGS=("${{ needs.call_get_test_metadata.outputs.pytest_directory }}")
-          PYTEST_ARGS+=(--tb=short -v --device "${{ matrix.device }}")
+          PYTEST_ARGS+=(--tb=short -v "--device=${{ matrix.device }}")
 
           if [ "${POST_STACK_CONSUMPTION}" = "true" ]; then
             PYTEST_ARGS+=(--get-stack-consumption)
           fi
 
           if [ "${COVERAGE}" = "true" ]; then
-            PYTEST_ARGS+=(--coverage --coverage_output "coverage-${{ matrix.device }}.info")
+            # Use the `--opt=value` form (not `--opt value`): pytest resolves its
+            # rootdir before plugin options are registered, and at that point any
+            # bare token not starting with `-` is treated as a test path. A value
+            # that happens to be a real directory (e.g. COVERAGE_EXCLUDE pointing
+            # a submodule at the repo root) would then drag the rootdir up to the
+            # repo root, breaking ragger's snapshot path resolution.
+            # The `=` form keeps the value attached to the `-` token.
+            PYTEST_ARGS+=(--coverage "--coverage_output=coverage-${{ matrix.device }}.info")
             if [ -n "${COVERAGE_EXCLUDE}" ]; then
-              PYTEST_ARGS+=(--coverage_exclude "${COVERAGE_EXCLUDE}")
+              PYTEST_ARGS+=("--coverage_exclude=${COVERAGE_EXCLUDE}")
             fi
           fi
 

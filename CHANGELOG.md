@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.96.1] - 2026-06-12
+
+### Fixed
+
+- `reusable_ragger_tests.yml` : Pass pytest options in the `--opt=value` form, so an option value matching a real directory (e.g. `coverage_exclude`) cannot be taken as a test path and shift pytest's rootdir, which broke snapshot resolution.
+
 ## [1.96.0] - 2026-06-12
 
 ### Added
