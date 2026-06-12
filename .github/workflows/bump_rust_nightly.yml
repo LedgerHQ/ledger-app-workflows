@@ -1,0 +1,66 @@
+---
+name: Bump Rust nightly across all Rust apps
+
+# Orchestrator: discovers the Rust application repositories and fans out one
+# `rust-toolchain.toml` bump PR per repository. Trigger this (manually, or from
+# the ledger-app-builder image bump) after you have validated the new nightly,
+# so every app's committed pin catches up to the builder's blessed $RUST_NIGHTLY.
+
+on:
+  workflow_dispatch:
+    inputs:
+      new_nightly:
+        description: 'The nightly toolchain to pin everywhere (format: nightly-YYYY-MM-DD)'
+        required: true
+        type: string
+      repositories:
+        description: 'Optional: comma-separated owner/name list to target instead of topic discovery'
+        required: false
+        default: ''
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  discover:
+    name: Discover Rust app repositories
+    runs-on: ubuntu-latest
+    outputs:
+      repos: ${{ steps.list.outputs.repos }}
+    steps:
+      - name: Build repository list
+        id: list
+        env:
+          # PAT / GitHub App token with read access to the org and write access
+          # to the app repositories. Replace with your actual secret name.
+          GH_TOKEN: ${{ secrets.FLEET_PAT }}
+          REPOS_INPUT: ${{ inputs.repositories }}
+        run: |
+          if [ -n "${REPOS_INPUT}" ]; then
+            # Explicit list takes precedence: turn "a/b, c/d" into a JSON array
+            repos=$(echo "${REPOS_INPUT}" | tr ',' '\n' | sed '/^[[:space:]]*$/d' | sed 's/[[:space:]]//g' | jq -R . | jq -cs .)
+          else
+            # Discover by topic: tag each Rust app repo with the 'rust-app' topic
+            # (adjust the topic/owner to your conventions).
+            repos=$(gh search repos --owner LedgerHQ --topic rust-app \
+                     --json fullName --limit 100 | jq -c '[.[].fullName]')
+          fi
+          echo "Targeting repositories: ${repos}"
+          echo "repos=${repos}" >> "${GITHUB_OUTPUT}"
+
+  bump:
+    name: Open bump PR
+    needs: discover
+    if: ${{ needs.discover.outputs.repos != '' && needs.discover.outputs.repos != '[]' }}
+    strategy:
+      fail-fast: false
+      max-parallel: 5
+      matrix:
+        repo: ${{ fromJSON(needs.discover.outputs.repos) }}
+    uses: ./.github/workflows/_bump_rust_nightly.yml
+    with:
+      app_repository: ${{ matrix.repo }}
+      new_nightly: ${{ inputs.new_nightly }}
+    secrets:
+      token: ${{ secrets.FLEET_PAT }}
