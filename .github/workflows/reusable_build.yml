@@ -154,6 +154,31 @@ jobs:
           DEVICE=${{ matrix.device }}
           echo "ADDITIONAL_ARGS=TARGET=${DEVICE/sp/s2}" >> "${GITHUB_ENV}"
 
+      - name: Enforce Rust toolchain matches builder
+        # The app's `rust-toolchain.toml` is the single source of truth for the
+        # toolchain, so that the binary built here is reproducible by a developer
+        # or external verifier using the same pinned sources. This step fails if
+        # the committed pin has drifted from the builder's blessed `$RUST_NIGHTLY`,
+        # instead of silently overriding it with `cargo +$RUST_NIGHTLY`.
+        if: ${{ needs.call_get_app_metadata.outputs.is_rust == 'true' }}
+        working-directory: ${{ needs.call_get_app_metadata.outputs.build_directory }}
+        shell: bash
+        run: |
+          if [ -z "${RUST_NIGHTLY}" ]; then
+            echo "::warning::RUST_NIGHTLY is not set in the builder; skipping toolchain consistency check."
+            exit 0
+          fi
+          pinned=$(rustup show active-toolchain | awk '{print $1}' | grep -oE 'nightly-[0-9]{4}-[0-9]{2}-[0-9]{2}' || true)
+          if [ -z "${pinned}" ]; then
+            echo "::error::Could not determine a pinned nightly from rust-toolchain.toml. Pin 'channel = \"${RUST_NIGHTLY}\"' so CI builds are reproducible."
+            exit 1
+          fi
+          if [ "${pinned}" != "${RUST_NIGHTLY}" ]; then
+            echo "::error::rust-toolchain.toml pins ${pinned} but the builder's blessed nightly is ${RUST_NIGHTLY}. Update rust-toolchain.toml to ${RUST_NIGHTLY} (or align the builder) so the build is reproducible."
+            exit 1
+          fi
+          echo "Rust toolchain ${pinned} matches the builder's RUST_NIGHTLY; building from rust-toolchain.toml."
+
       - name: Build application
         id: "build"
         working-directory: ${{ needs.call_get_app_metadata.outputs.build_directory }}
@@ -163,14 +188,14 @@ jobs:
           then
               BUILD_DEVICE_NAME="$(echo "${{ matrix.device }}" | sed 's/nanosp/nanosplus/')"
               # Update the Rust SDK crate
-              cargo +$RUST_NIGHTLY update ledger_device_sdk
+              cargo update ledger_device_sdk
               # Build application
               RUST_FEATURES=""
               if [ "${ENABLE_STACK_CONSUMPTION}" = "true" ]; then
                 RUST_FEATURES="--features ledger_device_sdk/stack_usage"
               fi
-              cargo +$RUST_NIGHTLY ledger build "${BUILD_DEVICE_NAME}" -- ${RUST_FEATURES} ${CARGO_LEDGER_BUILD_ARGS}
-              binary_path=$(cargo +$RUST_NIGHTLY metadata --no-deps --format-version 1 | jq -r '.target_directory')
+              cargo ledger build "${BUILD_DEVICE_NAME}" -- ${RUST_FEATURES} ${CARGO_LEDGER_BUILD_ARGS}
+              binary_path=$(cargo metadata --no-deps --format-version 1 | jq -r '.target_directory')
               echo "binary_path=${binary_path}" >> "${GITHUB_OUTPUT}"
           else
               echo "Using BOLOS_SDK: ${BOLOS_SDK}"
@@ -204,7 +229,7 @@ jobs:
             echo "C_DEVICE_NAME=$C_DEVICE_NAME"
             RUST_DEVICE_NAME="$(echo "${{ matrix.device }}" | sed 's/sp/splus/')"
             echo "RUST_DEVICE_NAME=$RUST_DEVICE_NAME"
-            ELF_NAME=$(cargo +$RUST_NIGHTLY metadata --manifest-path ${{ needs.call_get_app_metadata.outputs.build_directory }}/Cargo.toml --no-deps --format-version 1 | jq -r '.packages[] | select(.metadata.ledger != null) | .name')
+            ELF_NAME=$(cargo metadata --manifest-path ${{ needs.call_get_app_metadata.outputs.build_directory }}/Cargo.toml --no-deps --format-version 1 | jq -r '.packages[] | select(.metadata.ledger != null) | .name')
             echo "ELF_NAME=$ELF_NAME"
             mv "${{ steps.build.outputs.binary_path }}/${RUST_DEVICE_NAME}/release/${ELF_NAME}" "${{ steps.build.outputs.binary_path }}/${UPLOAD_AS_LIB_ARTIFACT}_${C_DEVICE_NAME}.elf"
             rm -rf "${{ steps.build.outputs.binary_path }}/${RUST_DEVICE_NAME}"
@@ -280,6 +305,31 @@ jobs:
           DEVICE=${{ matrix.device }}
           echo "ADDITIONAL_ARGS=TARGET=${DEVICE/sp/s2}" >> "${GITHUB_ENV}"
 
+      - name: Enforce Rust toolchain matches builder
+        # The app's `rust-toolchain.toml` is the single source of truth for the
+        # toolchain, so that the binary built here is reproducible by a developer
+        # or external verifier using the same pinned sources. This step fails if
+        # the committed pin has drifted from the builder's blessed `$RUST_NIGHTLY`,
+        # instead of silently overriding it with `cargo +$RUST_NIGHTLY`.
+        if: ${{ needs.call_get_app_metadata.outputs.is_rust == 'true' }}
+        working-directory: ${{ needs.call_get_app_metadata.outputs.build_directory }}
+        shell: bash
+        run: |
+          if [ -z "${RUST_NIGHTLY}" ]; then
+            echo "::warning::RUST_NIGHTLY is not set in the builder; skipping toolchain consistency check."
+            exit 0
+          fi
+          pinned=$(rustup show active-toolchain | awk '{print $1}' | grep -oE 'nightly-[0-9]{4}-[0-9]{2}-[0-9]{2}' || true)
+          if [ -z "${pinned}" ]; then
+            echo "::error::Could not determine a pinned nightly from rust-toolchain.toml. Pin 'channel = \"${RUST_NIGHTLY}\"' so CI builds are reproducible."
+            exit 1
+          fi
+          if [ "${pinned}" != "${RUST_NIGHTLY}" ]; then
+            echo "::error::rust-toolchain.toml pins ${pinned} but the builder's blessed nightly is ${RUST_NIGHTLY}. Update rust-toolchain.toml to ${RUST_NIGHTLY} (or align the builder) so the build is reproducible."
+            exit 1
+          fi
+          echo "Rust toolchain ${pinned} matches the builder's RUST_NIGHTLY; building from rust-toolchain.toml."
+
       - name: Build application
         id: "build"
         working-directory: ${{ needs.call_get_app_metadata.outputs.build_directory }}
@@ -289,14 +339,14 @@ jobs:
           then
               BUILD_DEVICE_NAME="$(echo "${{ matrix.device }}" | sed 's/nanosp/nanosplus/')"
               # Update the Rust SDK crate
-              cargo +$RUST_NIGHTLY update ledger_device_sdk
+              cargo update ledger_device_sdk
               # Build application
               RUST_FEATURES=""
               if [ "${ENABLE_STACK_CONSUMPTION}" = "true" ]; then
                 RUST_FEATURES="--features ledger_device_sdk/stack_usage"
               fi
-              cargo +$RUST_NIGHTLY ledger build "${BUILD_DEVICE_NAME}" -- ${RUST_FEATURES} ${CARGO_LEDGER_BUILD_ARGS}
-              binary_path=$(cargo +$RUST_NIGHTLY metadata --no-deps --format-version 1 | jq -r '.target_directory')
+              cargo ledger build "${BUILD_DEVICE_NAME}" -- ${RUST_FEATURES} ${CARGO_LEDGER_BUILD_ARGS}
+              binary_path=$(cargo metadata --no-deps --format-version 1 | jq -r '.target_directory')
               echo "binary_path=${binary_path}" >> "${GITHUB_OUTPUT}"
           else
               echo "Using BOLOS_SDK: ${BOLOS_SDK}"
@@ -328,7 +378,7 @@ jobs:
           then
             C_DEVICE_NAME="$(echo "${{ matrix.device }}" | sed 's/nanosp/nanos2/')"
             RUST_DEVICE_NAME="$(echo "${{ matrix.device }}" | sed 's/sp/splus/')"
-            ELF_NAME=$(cargo +$RUST_NIGHTLY metadata --manifest-path ${{ needs.call_get_app_metadata.outputs.build_directory }}/Cargo.toml --no-deps --format-version 1 | jq -r '.packages[] | select(.metadata.ledger != null) | .name')
+            ELF_NAME=$(cargo metadata --manifest-path ${{ needs.call_get_app_metadata.outputs.build_directory }}/Cargo.toml --no-deps --format-version 1 | jq -r '.packages[] | select(.metadata.ledger != null) | .name')
             mv "${{ steps.build.outputs.binary_path }}/${RUST_DEVICE_NAME}/release/${ELF_NAME}" "${{ steps.build.outputs.binary_path }}/${UPLOAD_AS_LIB_ARTIFACT}_${C_DEVICE_NAME}.elf"
             rm -rf "${{ steps.build.outputs.binary_path }}/${RUST_DEVICE_NAME}"
           else
