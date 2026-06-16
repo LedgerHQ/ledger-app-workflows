@@ -17,13 +17,19 @@ if [ -z "$1" ]; then
 fi
 
 cd "$1"
-# Check that current nightly version is the same as the one set in $RUST_NIGHTLY
-if [ -n "$RUST_NIGHTLY" ]; then
-    current_nightly_version=$(rustup show active-toolchain | awk '{print $1}' | grep -oE 'nightly-[0-9]{4}-[0-9]{2}-[0-9]{2}')
-    if [[ "$current_nightly_version" != "$RUST_NIGHTLY" ]]; then
-        log_error "Current Rust nightly version is $current_nightly_version whereas $RUST_NIGHTLY is required;"
-        log_error "Please update the Rust toolchain in the rust-toolchain.toml file."
-        exit 1
+# Check that the pinned nightly version is the same as the one set in $RUSTUP_TOOLCHAIN.
+# The pinned version is read from rust-toolchain.toml; if the app does not ship one,
+# there is nothing to verify and the check is skipped.
+if [ -n "$RUSTUP_TOOLCHAIN" ]; then
+    if [ -f "rust-toolchain.toml" ]; then
+        rust_toolchain=$(grep -oE 'nightly-[0-9]{4}-[0-9]{2}-[0-9]{2}' rust-toolchain.toml | head -n 1)
+        if [[ "$rust_toolchain" != "$RUSTUP_TOOLCHAIN" ]]; then
+            log_error "Rust toolchain version in rust-toolchain.toml is $rust_toolchain whereas $RUSTUP_TOOLCHAIN shall be set"
+            log_error "Please update rust-toolchain.toml."
+            exit 1
+        fi
+    else
+        log_info "No rust-toolchain.toml found; skipping Rust toolchain version check."
     fi
 fi
 # Check if Rust SDK crate is last version
