@@ -22,7 +22,11 @@ cd "$1"
 # there is nothing to verify and the check is skipped.
 if [ -n "$RUSTUP_TOOLCHAIN" ]; then
     if [ -f "rust-toolchain.toml" ]; then
-        rust_toolchain=$(grep -oE 'nightly-[0-9]{4}-[0-9]{2}-[0-9]{2}' rust-toolchain.toml | head -n 1)
+        rust_toolchain=$(grep -oE 'nightly-[0-9]{4}-[0-9]{2}-[0-9]{2}' rust-toolchain.toml | head -n 1 || true)
+        if [ -z "$rust_toolchain" ]; then
+            log_error "Could not determine a pinned nightly in rust-toolchain.toml (expected e.g. channel = \"nightly-YYYY-MM-DD\")."
+            exit 1
+        fi
         if [[ "$rust_toolchain" != "$RUSTUP_TOOLCHAIN" ]]; then
             log_error "Rust toolchain version in rust-toolchain.toml is $rust_toolchain whereas $RUSTUP_TOOLCHAIN shall be set"
             log_error "Please update rust-toolchain.toml."
