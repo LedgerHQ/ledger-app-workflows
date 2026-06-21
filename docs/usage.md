@@ -129,11 +129,11 @@ In addition, the following secret can be used:
 
 In order to check an App, this workflow can use the following input parameters:
 
-| Parameter  | Required | Default value | Comment                                      |
-| ---------- | -------- | ------------- | -------------------------------------------- |
-| source     | ✅       |               | The source directory to lint                 |
-| version    | ❌       | 14            | The `clang-format` version to use            |
-| extensions | ❌       | `h,c,proto`   | The file extensions to lint, comma-separated |
+| Parameter  | Required | Default value | Comment                                                          |
+| ---------- | -------- | ------------- | ---------------------------------------------------------------- |
+| source     | ✅       |               | The source directory to lint (space-separated list is supported) |
+| version    | ❌       | 14            | ⚠️ **DEPRECATED** - The `clang-format` version to use            |
+| extensions | ❌       | `h,c,proto`   | ⚠️ **DEPRECATED** - The file extensions to lint, comma-separated |
 
 ## Reusable Python Checks
 

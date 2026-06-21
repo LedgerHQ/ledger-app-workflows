@@ -26,7 +26,6 @@ Having a correct and valid manifest is mandatory.
   - `_check_app_load_params.yml`\
     will perform some checks of your application parameters vs the `ledger-app-database` config.
 
-
 - `reusable_add_tag.yml` \
 this workflow will automate the creation of tags which versions are listed in `CHANGELOG.md`. It can also automate the creation and update of specific tag (e.g. `v1` in this repo).
 
