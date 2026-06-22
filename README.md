@@ -53,8 +53,9 @@ For Rust application, `cargo fmt` is used.
 
 - `reusable_python_checks.yml` \
 This workflow will check python formatting and linting. \
-For the linters, it supports either `pylint` or `flake8`. \
+For the linters, it supports `pylint`, `flake8`, `yapf` or `black`. \
 For the Types checking, it supports `mypy`. \
+For the security checking, it supports `bandit`. \
 This workflow is optional, but recommended.
 
 - `reusable_yaml_lint.yml` \
