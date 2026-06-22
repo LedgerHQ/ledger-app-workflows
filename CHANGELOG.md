@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.97.0] - 2026-06-22
+
+### Added
+
+- `reusable_python_checks.yml` : add `bandit` security check support, configurable through the `run_security_check`, `bandit_severity_level` and `bandit_non_blocking` inputs
+- `reusable_python_checks.yml` : add `black` as a `run_linter` option
+
+### Changed
+
+- `reusable_lint.yml` : the `source` input now accepts a space-separated list of directories
+
 ## [1.96.3] - 2026-06-16
 
 ### Changed
