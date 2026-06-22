@@ -13,7 +13,7 @@ VERBOSE=false
 IS_RUST=false
 
 # All available checks ('manifest' must be the first one)
-ALL_CHECKS="manifest icons app_load_params makefile readme scan"
+ALL_CHECKS="manifest icons app_load_params makefile readme changelog scan"
 
 #===============================================================================
 #
@@ -222,6 +222,11 @@ call_step() {
             ;;
         "readme")
             COMMAND="${dirName}/check_readme.sh ${APP_DIR} ${REPO_NAME}"
+            ;;
+        "changelog")
+            # CHANGELOG_BASE_REF/CHANGELOG_HEAD_REF are set by the CI (PR base/head).
+            # When unset (local run), check_changelog.sh guesses the base branch.
+            COMMAND="${dirName}/check_changelog.sh ${APP_DIR} ${CHANGELOG_BASE_REF:-} ${CHANGELOG_HEAD_REF:-}"
             ;;
         "scan")
             if [[ -n ${TARGET} ]]; then

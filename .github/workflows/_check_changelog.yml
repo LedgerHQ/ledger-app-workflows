@@ -1,0 +1,51 @@
+name: Check changelog
+
+on:
+  workflow_call:
+    inputs:
+      workflows_ref:
+        description: 'The current reference in use for the ledger-app-workflow repository'
+        required: true
+        type: string
+      app_repository:
+        description: 'The URL of the app repository to check. Defaults to the workflow caller repository URL'
+        required: false
+        default: ${{ github.repository }}
+        type: string
+
+permissions:
+  contents: read  # Needed to clone the repositories
+
+env:
+  WORKFLOWS_REF: ${{ inputs.workflows_ref }}
+  APP_REPOSITORY: ${{ inputs.app_repository }}
+
+jobs:
+  check_changelog:
+    name: Check changelog
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Clone ledger-app-workflows repository
+        uses: actions/checkout@v6
+        with:
+          repository: LedgerHQ/ledger-app-workflows
+          path: ./ledger-app-workflows
+          ref: ${{ inputs.workflows_ref }}
+
+      - name: Clone app repository
+        uses: actions/checkout@v6
+        with:
+          repository: ${{ inputs.app_repository }}
+          path: app-repository
+          submodules: recursive
+          # Full history is required to compute the diff between the PR base and head
+          fetch-depth: 0
+
+      - name: Run script
+        env:
+          # Provide the exact PR base/head so the check does not have to guess the base branch
+          CHANGELOG_BASE_REF: ${{ github.event.pull_request.base.sha }}
+          CHANGELOG_HEAD_REF: ${{ github.event.pull_request.head.sha }}
+        run: |
+            ./ledger-app-workflows/scripts/check_all.sh -c changelog -a ./app-repository
