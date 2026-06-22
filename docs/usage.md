@@ -125,6 +125,13 @@ In addition, the following secret can be used:
 | --------- | -------- | ------------- | ------------------------------------------------- |
 | git_token | ❌       |               | A token used as authentication for GIT operations |
 
+On pull requests, if the repository owns a `CHANGELOG` file, this workflow checks that it has been
+updated by the PR. This check can be bypassed by adding the `no_changelog` label to the PR.
+
+This check is also part of `check_all.sh` and can be run locally with `check_all.sh -c changelog`.
+When run locally, it compares the current branch against the default branch (`origin/HEAD`, falling
+back to `origin/main`/`origin/master`).
+
 ## Reusable Lint
 
 In order to check an App, this workflow can use the following input parameters:
