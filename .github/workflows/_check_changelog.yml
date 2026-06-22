@@ -43,8 +43,9 @@ jobs:
           fetch-depth: 0
 
       - name: Run script
+        env:
+          # Provide the exact PR base/head so the check does not have to guess the base branch
+          CHANGELOG_BASE_REF: ${{ github.event.pull_request.base.sha }}
+          CHANGELOG_HEAD_REF: ${{ github.event.pull_request.head.sha }}
         run: |
-            ./ledger-app-workflows/scripts/check_changelog.sh \
-              ./app-repository \
-              ${{ github.event.pull_request.base.sha }} \
-              ${{ github.event.pull_request.head.sha }}
+            ./ledger-app-workflows/scripts/check_all.sh -c changelog -a ./app-repository

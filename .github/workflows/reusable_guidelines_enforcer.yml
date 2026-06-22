@@ -102,6 +102,16 @@ jobs:
       app_repository: ${{ inputs.app_repository }}
       workflows_ref: ${{ needs.call_get_workflow_version.outputs.version }}
 
+  call_check_changelog:
+    name: Dispatch check
+    needs: call_get_workflow_version
+    # Only relevant on pull requests, and skipped when the 'no_changelog' label is set
+    if: github.event_name == 'pull_request' && !contains(github.event.pull_request.labels.*.name, 'no_changelog')
+    uses: ./.github/workflows/_check_changelog.yml
+    with:
+      app_repository: ${{ inputs.app_repository }}
+      workflows_ref: ${{ needs.call_get_workflow_version.outputs.version }}
+
   call_clang_static_analyzer:
     name: Dispatch check
     needs: [call_get_app_metadata, call_get_workflow_version]
