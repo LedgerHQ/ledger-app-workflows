@@ -26,7 +26,6 @@ Having a correct and valid manifest is mandatory.
   - `_check_app_load_params.yml`\
     will perform some checks of your application parameters vs the `ledger-app-database` config.
 
-
 - `reusable_add_tag.yml` \
 this workflow will automate the creation of tags which versions are listed in `CHANGELOG.md`. It can also automate the creation and update of specific tag (e.g. `v1` in this repo).
 
@@ -54,8 +53,9 @@ For Rust application, `cargo fmt` is used.
 
 - `reusable_python_checks.yml` \
 This workflow will check python formatting and linting. \
-For the linters, it supports either `pylint` or `flake8`. \
+For the linters, it supports `pylint`, `flake8`, `yapf` or `black`. \
 For the Types checking, it supports `mypy`. \
+For the security checking, it supports `bandit`. \
 This workflow is optional, but recommended.
 
 - `reusable_yaml_lint.yml` \

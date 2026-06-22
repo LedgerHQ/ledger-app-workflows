@@ -4,15 +4,15 @@ on:
   workflow_call:
     inputs:
       source:
-        description: "The source directory to lint"
+        description: "The source directory to lint (can be a space-separated list of directories)"
         required: true
         type: string
       version:
-        description: "The clang-format version to use"
+        description: "[DEPRECATED] The clang-format version to use"
         required: false
         type: string
       extensions:
-        description: "The file extensions to lint, comma-separated"
+        description: "[DEPRECATED] The file extensions to lint, comma-separated"
         required: false
         type: string
 
@@ -66,5 +66,9 @@ jobs:
 
       - name: Lint check for Rust app
         if: ${{ needs.call_get_app_metadata.outputs.is_rust == 'true'}}
-        run: cargo fmt --all -- --check
-        working-directory: ${{ env.SOURCE }}
+        run: |
+          for dir in ${{ inputs.source }}; do
+            echo "::group::cargo fmt --check in ${dir}"
+            (cd "${dir}" && cargo fmt --all -- --check)
+            echo "::endgroup::"
+          done

@@ -129,26 +129,29 @@ In addition, the following secret can be used:
 
 In order to check an App, this workflow can use the following input parameters:
 
-| Parameter  | Required | Default value | Comment                                      |
-| ---------- | -------- | ------------- | -------------------------------------------- |
-| source     | ✅       |               | The source directory to lint                 |
-| version    | ❌       | 14            | The `clang-format` version to use            |
-| extensions | ❌       | `h,c,proto`   | The file extensions to lint, comma-separated |
+| Parameter  | Required | Default value | Comment                                                          |
+| ---------- | -------- | ------------- | ---------------------------------------------------------------- |
+| source     | ✅       |               | The source directory to lint (space-separated list is supported) |
+| version    | ❌       | 14            | ⚠️ **DEPRECATED** - The `clang-format` version to use            |
+| extensions | ❌       | `h,c,proto`   | ⚠️ **DEPRECATED** - The file extensions to lint, comma-separated |
 
 ## Reusable Python Checks
 
 In order to check an App, this workflow can use the following input parameters:
 
-| Parameter           | Required | Default value       | Comment                                                                              |
-| ------------------- | -------- | ------------------- | ------------------------------------------------------------------------------------ |
-| app_repository      | ❌       | `github.repository` | The GIT repository to build                                                          |
-| app_branch_name     | ❌       | `github.ref`        | The GIT branch to build                                                              |
-| run_linter          | ✅       |                     | Select the Linter to run (`pylint`, `flake8` or `yapf`)                              |
-| run_type_check      | ✅       | `false`             | Whether to run mypy type check                                                       |
-| req_directory       | ❌       |                     | The directory containing the `requirements.txt`                                      |
-| setup_directory     | ❌       |                     | The directory containing the `setup.cfg`                                             |
-| src_directory       | ✅       |                     | The directory containing the python sources to check (relative to `setup_directory`) |
-| additional_packages | ❌       |                     | Additional packages to install                                                       |
+| Parameter             | Required | Default value       | Comment                                                                              |
+| --------------------- | -------- | ------------------- | ------------------------------------------------------------------------------------ |
+| app_repository        | ❌       | `github.repository` | The GIT repository to build                                                          |
+| app_branch_name       | ❌       | `github.ref`        | The GIT branch to build                                                              |
+| run_linter            | ✅       |                     | Select the Linter to run (`pylint`, `flake8`, `yapf` or `black`)                     |
+| run_type_check        | ✅       | `false`             | Whether to run mypy type check                                                       |
+| run_security_check    | ❌       | `false`             | Whether to run bandit security check                                                 |
+| bandit_severity_level | ❌       |                     | Minimum bandit severity level to report (`all`, `low`, `medium` or `high`)           |
+| bandit_non_blocking   | ❌       | `false`             | Whether the bandit check should never fail the workflow                              |
+| req_directory         | ❌       |                     | The directory containing the `requirements.txt`                                      |
+| setup_directory       | ❌       |                     | The directory containing the `setup.cfg`                                             |
+| src_directory         | ✅       |                     | The directory containing the python sources to check (relative to `setup_directory`) |
+| additional_packages   | ❌       |                     | Additional packages to install                                                       |
 
 ## Reusable Yaml Lint
 
