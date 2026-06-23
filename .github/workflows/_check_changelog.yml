@@ -12,6 +12,11 @@ on:
         required: false
         default: ${{ github.repository }}
         type: string
+      is_rust:
+        description: '"true" if the app is using Rust SDK, else "false" (narrows the app version lookup)'
+        required: false
+        default: 'false'
+        type: string
 
 permissions:
   contents: read  # Needed to clone the repositories
@@ -42,10 +47,21 @@ jobs:
           # Full history is required to compute the diff between the PR base and head
           fetch-depth: 0
 
-      - name: Run script
+      # The script never fails: it computes a verdict (ok / soft / hard / skip), prints a
+      # human-readable status, fills the job summary and emits warning/error annotations.
+      - name: Check changelog
+        id: check
         env:
-          # Provide the exact PR base/head so the check does not have to guess the base branch
-          CHANGELOG_BASE_REF: ${{ github.event.pull_request.base.sha }}
-          CHANGELOG_HEAD_REF: ${{ github.event.pull_request.head.sha }}
+          IS_RUST: ${{ inputs.is_rust }}
         run: |
-            ./ledger-app-workflows/scripts/check_all.sh -c changelog -a ./app-repository
+            ./ledger-app-workflows/scripts/check_changelog.sh \
+              ./app-repository \
+              "${{ github.event.pull_request.base.sha }}" \
+              "${{ github.event.pull_request.head.sha }}"
+
+      # A version bump that is not documented in the CHANGELOG is a blocking error.
+      - name: Fail when the version changed without a CHANGELOG update
+        if: steps.check.outputs.verdict == 'hard'
+        run: |
+            echo "The application version was changed but the CHANGELOG was not updated."
+            exit 1
