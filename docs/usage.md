@@ -125,12 +125,32 @@ In addition, the following secret can be used:
 | --------- | -------- | ------------- | ------------------------------------------------- |
 | git_token | ❌       |               | A token used as authentication for GIT operations |
 
-On pull requests, if the repository owns a `CHANGELOG` file, this workflow checks that it has been
-updated by the PR. This check can be bypassed by adding the `no_changelog` label to the PR.
+On pull requests, if the repository owns a `CHANGELOG` file, this workflow checks whether it has been
+updated by the PR. The verdict is always recorded in the job summary, and the check is **not blocking
+by default**:
+
+- if the `CHANGELOG` is updated, the check passes ;
+- if the `CHANGELOG` is **not** updated, a warning annotation is emitted but the workflow does **not**
+  fail (typo fixes, snapshot updates, ...) ;
+- if the PR **changes the application version** (`APPVERSION*` in the `Makefile` for C apps, or the
+  package `version` in `Cargo.toml` for Rust apps) **without** updating the `CHANGELOG`, the check
+  **fails**: a version bump must always be documented.
+
+| CHANGELOG present | updated | version changed | verdict | Local (VSCode) | CI                                    |
+| ----------------- | ------- | --------------- | ------- | -------------- | ------------------------------------- |
+| no                | –       | –               | `skip`  | ℹ️ status      | ℹ️ job summary                        |
+| yes               | yes     | –               | `ok`    | ✅ status      | ✅ job summary                        |
+| yes               | no      | no              | `soft`  | ⚠️ status      | ⚠️ job summary + annotation           |
+| yes               | no      | yes             | `hard`  | ❌ status      | ❌ job summary + annotation + failure |
+
+This check can be entirely bypassed by adding the `no_changelog` label to the PR. The label is read
+from the triggering event, so adding it does not, by itself, re-trigger the workflow: if the check
+already ran, push a new commit so a fresh run picks up the label (or make the caller workflow listen
+to the `labeled` pull-request activity type).
 
 This check is also part of `check_all.sh` and can be run locally with `check_all.sh -c changelog`.
-When run locally, it compares the current branch against the default branch (`origin/HEAD`, falling
-back to `origin/main`/`origin/master`).
+When run locally it is purely informational (it never fails) and compares the current branch against
+the default branch (`origin/HEAD`, falling back to `origin/main`/`origin/master`).
 
 ## Reusable Lint
 

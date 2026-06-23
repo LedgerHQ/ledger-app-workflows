@@ -226,7 +226,8 @@ call_step() {
         "changelog")
             # CHANGELOG_BASE_REF/CHANGELOG_HEAD_REF are set by the CI (PR base/head).
             # When unset (local run), check_changelog.sh guesses the base branch.
-            COMMAND="${dirName}/check_changelog.sh ${APP_DIR} ${CHANGELOG_BASE_REF:-} ${CHANGELOG_HEAD_REF:-}"
+            # IS_RUST narrows the app version lookup to the relevant file type.
+            COMMAND="IS_RUST=${IS_RUST} ${dirName}/check_changelog.sh ${APP_DIR} ${CHANGELOG_BASE_REF:-} ${CHANGELOG_HEAD_REF:-}"
             ;;
         "scan")
             if [[ -n ${TARGET} ]]; then
