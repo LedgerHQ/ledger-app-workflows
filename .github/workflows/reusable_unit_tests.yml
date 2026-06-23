@@ -95,7 +95,7 @@ jobs:
       - name: Install dependencies
         run: |
           apt-get -q update
-          apt-get -q install --no-install-recommends -y ${ADDITIONAL_PACKAGES} libjson-xs-perl
+          apt-get -q install --no-install-recommends -y ${ADDITIONAL_PACKAGES} libjson-xs-perl ruby
           pip install --break-system-packages --no-cache-dir lcov_cobertura || true
 
       - name: Clone app repository
