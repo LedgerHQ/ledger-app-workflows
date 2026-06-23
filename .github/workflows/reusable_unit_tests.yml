@@ -140,9 +140,9 @@ jobs:
           cmake -Bbuild -H. && make -C build
 
       - name: Run unit tests
-        working-directory: ${{ env.WORK_DIR }}
+        working-directory: ${{ env.WORK_DIR }}/build
         run: |
-          CTEST_OUTPUT_ON_FAILURE=1 make -C build test
+          ctest
 
       - name: Generate code coverage
         id: coverage
