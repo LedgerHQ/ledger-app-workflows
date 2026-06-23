@@ -45,6 +45,11 @@ on:
         required: false
         default: true
         type: boolean
+      use_cmake_ut_framework:
+        description: "Whether to use the CMake unit testing framework (default: false). If false the legacy UT framework is used."
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -58,6 +63,7 @@ env:
   ADDITIONAL_PACKAGES: ${{ inputs.additional_packages }}
   COVERAGE_EXCLUDE_PATHS: ${{ inputs.coverage_exclude_paths }}
   CODECOV_TOKEN: ${{ secrets.codecov_token }}
+  USE_CMAKE_UT_FRAMEWORK: ${{ inputs.use_cmake_ut_framework }}
 
 jobs:
   # Resolve the ref this reusable workflow was called with, so the steps below
@@ -92,7 +98,7 @@ jobs:
       - name: Install dependencies
         run: |
           apt-get -q update
-          apt-get -q install --no-install-recommends -y ${ADDITIONAL_PACKAGES} libjson-xs-perl
+          apt-get -q install --no-install-recommends -y ${ADDITIONAL_PACKAGES} libjson-xs-perl ruby
           pip install --break-system-packages --no-cache-dir lcov_cobertura || true
 
       - name: Clone app repository
@@ -123,12 +129,24 @@ jobs:
         run: |
           echo "TEST_DIRECTORY=$(ledger-manifest -otu ledger_app.toml)" >> "${GITHUB_ENV}"
 
+      # WORK_DIR is the test directory (where the build is launched from).
+      # RUN_DIR is where the tests are run and the coverage is generated:
+      #   - CMake framework: builds into a `build/` subdirectory -> WORK_DIR/build
+      #   - legacy framework: runs in place                      -> WORK_DIR
       - name: Set working directory
+        env:
+          USE_CMAKE_UT_FRAMEWORK: ${{ inputs.use_cmake_ut_framework }}
         run: |
           if [ -n "${TEST_DIRECTORY}" ]; then
-            echo "WORK_DIR=${TEST_DIRECTORY}" >> "${GITHUB_ENV}"
+            WORK_DIR="${TEST_DIRECTORY}"
           else
-            echo "WORK_DIR=." >> "${GITHUB_ENV}"
+            WORK_DIR="."
+          fi
+          echo "WORK_DIR=${WORK_DIR}" >> "${GITHUB_ENV}"
+          if [ "${USE_CMAKE_UT_FRAMEWORK}" = "true" ]; then
+            echo "RUN_DIR=${WORK_DIR}/build" >> "${GITHUB_ENV}"
+          else
+            echo "RUN_DIR=${WORK_DIR}" >> "${GITHUB_ENV}"
           fi
 
       - name: Build unit tests
@@ -137,23 +155,27 @@ jobs:
           cmake -Bbuild -H. && make -C build
 
       - name: Run unit tests
-        working-directory: ${{ env.WORK_DIR }}
+        working-directory: ${{ env.RUN_DIR }}
         run: |
-          CTEST_OUTPUT_ON_FAILURE=1 make -C build test
+          ctest
 
       - name: Generate code coverage
         id: coverage
-        working-directory: ${{ env.WORK_DIR }}
+        working-directory: ${{ env.RUN_DIR }}
         run: |
-          "${GITHUB_WORKSPACE}/ledger-app-workflows/scripts/generate_coverage.sh"
+          if [ "${USE_CMAKE_UT_FRAMEWORK}" = "true" ]; then
+            make generate_coverage
+          else
+            "${GITHUB_WORKSPACE}/ledger-app-workflows/scripts/generate_coverage.sh"
+          fi
 
       - name: Upload coverage artifact
         uses: actions/upload-artifact@v6
         with:
           name: code-coverage
           path: |
-            ${{ env.WORK_DIR }}/coverage
-            ${{ env.WORK_DIR }}/coverage.xml
+            ${{ env.RUN_DIR }}/coverage
+            ${{ env.RUN_DIR }}/coverage.xml
 
       # Skipped when disabled via `enable_codecov` (e.g. internal repositories
       # that cannot use Codecov) or when no `codecov_token` is provided.
@@ -162,7 +184,7 @@ jobs:
         uses: codecov/codecov-action@v6
         with:
           token: ${{ secrets.codecov_token }}
-          files: ${{ env.WORK_DIR }}/coverage.info
+          files: ${{ env.RUN_DIR }}/coverage.info
           flags: unittests
           name: codecov-${{ inputs.app_repository }}
           fail_ci_if_error: true
@@ -193,7 +215,7 @@ jobs:
       - name: Write coverage summary
         if: ${{ !cancelled() && steps.coverage.outcome == 'success' }}
         continue-on-error: true
-        working-directory: ${{ env.WORK_DIR }}
+        working-directory: ${{ env.RUN_DIR }}
         env:
           EVENT_NAME: ${{ github.event_name }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
