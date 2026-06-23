@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- `reusable_guidelines_enforcer.yml` : add a `changelog` check ensuring that a repository owning a `CHANGELOG` file updates it in the PR (can be bypassed with the `no_changelog` label). The check is also available locally through `check_all.sh -c changelog`.
+- `reusable_guidelines_enforcer.yml` : add a `changelog` check for repositories owning a `CHANGELOG` file. When the `CHANGELOG` is not updated, a warning annotation and a job summary are produced (non-blocking); the check only fails when the PR changes the application version without updating the `CHANGELOG`. Can be bypassed with the `no_changelog` label, and is also available locally through `check_all.sh -c changelog`.
 
 ## [1.97.0] - 2026-06-22
 
