@@ -77,7 +77,7 @@ jobs:
     needs: call_get_workflow_version
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/ledgerhq/ledger-app-builder/${{ inputs.builder }}:latest
+      image: ghcr.io/ledgerhq/ledger-app-builder/ledger-app-builder-lite-ledgerut:latest
 
     steps:
       # Single install step:
@@ -145,7 +145,7 @@ jobs:
         id: coverage
         working-directory: ${{ env.WORK_DIR }}
         run: |
-          "${GITHUB_WORKSPACE}/ledger-app-workflows/scripts/generate_coverage.sh"
+          make generate_coverage
 
       - name: Upload coverage artifact
         uses: actions/upload-artifact@v6
