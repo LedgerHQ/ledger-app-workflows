@@ -146,7 +146,7 @@ jobs:
 
       - name: Generate code coverage
         id: coverage
-        working-directory: ${{ env.WORK_DIR }}
+        working-directory: ${{ env.WORK_DIR }}/build
         run: |
           make generate_coverage
 
