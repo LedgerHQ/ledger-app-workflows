@@ -155,8 +155,8 @@ jobs:
         with:
           name: code-coverage
           path: |
-            ${{ env.WORK_DIR }}/coverage
-            ${{ env.WORK_DIR }}/coverage.xml
+            ${{ env.WORK_DIR }}/build/coverage
+            ${{ env.WORK_DIR }}/build/coverage.xml
 
       # Skipped when disabled via `enable_codecov` (e.g. internal repositories
       # that cannot use Codecov) or when no `codecov_token` is provided.
@@ -165,7 +165,7 @@ jobs:
         uses: codecov/codecov-action@v6
         with:
           token: ${{ secrets.codecov_token }}
-          files: ${{ env.WORK_DIR }}/coverage.info
+          files: ${{ env.WORK_DIR }}/build/coverage.info
           flags: unittests
           name: codecov-${{ inputs.app_repository }}
           fail_ci_if_error: true
@@ -196,7 +196,7 @@ jobs:
       - name: Write coverage summary
         if: ${{ !cancelled() && steps.coverage.outcome == 'success' }}
         continue-on-error: true
-        working-directory: ${{ env.WORK_DIR }}
+        working-directory: ${{ env.WORK_DIR }}/build
         env:
           EVENT_NAME: ${{ github.event_name }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
