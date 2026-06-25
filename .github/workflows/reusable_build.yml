@@ -191,6 +191,8 @@ jobs:
               fi
               # CARGO_LEDGER_BUILD_ARGS is the DEPRECATED raw escape hatch (expanded
               # unquoted on purpose); use `features` instead.
+              echo "Feature args: ${CARGO_FEATURE_ARGS[*]}"
+              echo "Extra (deprecated) args: ${CARGO_LEDGER_BUILD_ARGS}"
               cargo ledger build "${BUILD_DEVICE_NAME}" -- "${CARGO_FEATURE_ARGS[@]}" ${CARGO_LEDGER_BUILD_ARGS}
               binary_path=$(cargo metadata --no-deps --format-version 1 | jq -r '.target_directory')
               echo "binary_path=${binary_path}" >> "${GITHUB_OUTPUT}"
@@ -327,6 +329,8 @@ jobs:
               fi
               # CARGO_LEDGER_BUILD_ARGS is the DEPRECATED raw escape hatch (expanded
               # unquoted on purpose); use `features` instead.
+              echo "Feature args: ${CARGO_FEATURE_ARGS[*]}"
+              echo "Extra (deprecated) args: ${CARGO_LEDGER_BUILD_ARGS}"
               cargo ledger build "${BUILD_DEVICE_NAME}" -- "${CARGO_FEATURE_ARGS[@]}" ${CARGO_LEDGER_BUILD_ARGS}
               binary_path=$(cargo metadata --no-deps --format-version 1 | jq -r '.target_directory')
               echo "binary_path=${binary_path}" >> "${GITHUB_OUTPUT}"
