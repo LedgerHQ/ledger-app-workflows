@@ -170,7 +170,7 @@ In order to check an App, this workflow can use the following input parameters:
 | --------------------- | -------- | ------------------- | ------------------------------------------------------------------------------------ |
 | app_repository        | ❌       | `github.repository` | The GIT repository to build                                                          |
 | app_branch_name       | ❌       | `github.ref`        | The GIT branch to build                                                              |
-| run_linter            | ✅       |                     | Select the Linter to run (`pylint`, `flake8`, `yapf` or `black`)                     |
+| run_linter            | ❌       |                     | ⚠️ **DEPRECATED** - When set, runs the legacy linter (`pylint`, `flake8`, `yapf` or `black`) instead of `ruff` |
 | run_type_check        | ✅       | `false`             | Whether to run mypy type check                                                       |
 | run_security_check    | ❌       | `false`             | Whether to run bandit security check                                                 |
 | bandit_severity_level | ❌       |                     | Minimum bandit severity level to report (`all`, `low`, `medium` or `high`)           |

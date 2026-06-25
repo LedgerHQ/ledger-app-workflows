@@ -14,9 +14,9 @@ on:
         default: ${{ github.ref }}
         type: string
       run_linter:
-        description: "Select the Linter to run (pylint, flake8, yapf or black)"
+        description: "[DEPRECATED] Prefer omitting this input to use ruff. When set, runs the legacy linter (pylint, flake8, yapf or black) instead."
         type: string
-        required: true
+        required: false
       run_type_check:
         description: "Whether to run mypy type check (defaults to false)"
         required: true
@@ -80,9 +80,14 @@ env:
 
 jobs:
   linter:
-    name: Python Linting with ${{ inputs.run_linter }}
+    name: Python Linting with ${{ inputs.run_linter != '' && inputs.run_linter || 'ruff' }}
     runs-on: ubuntu-latest
     steps:
+      - name: Check deprecated input
+        if: ${{ inputs.run_linter != '' }}
+        run: |
+          echo ":warning The input 'run_linter' is deprecated and has no effect. Linter and formatter is now always ruff."
+
       - name: Installing required packages
         if: ${{ inputs.additional_packages != '' }}
         run: |
@@ -105,13 +110,17 @@ jobs:
         run: |
           python -m pip install --upgrade pip
 
-          # Install linter
-          case "${RUN_LINTER}" in
-            "pylint") pip install pylint ;;
-            "flake8") pip install flake8 flake8-pyproject ;;
-            "yapf") pip install yapf ;;
-            "black") pip install black ;;
-          esac
+          # Install linter / formatter
+          if [ -z "${RUN_LINTER}" ]; then
+            pip install ruff
+          else
+            case "${RUN_LINTER}" in
+              "pylint") pip install pylint ;;
+              "flake8") pip install flake8 flake8-pyproject ;;
+              "yapf") pip install yapf ;;
+              "black") pip install black ;;
+            esac
+          fi
 
           # Install project requirements
           if [ -n "${REQ_DIRECTORY}" ] && [ -f "${REQ_DIRECTORY}/requirements.txt" ]; then
@@ -126,7 +135,20 @@ jobs:
             echo "WORK_DIR=." >> "${GITHUB_ENV}"
           fi
 
-      - name: Run ${{ env.RUN_LINTER }}
+      - name: Run ruff formatting
+        if: ${{ inputs.run_linter == '' }}
+        working-directory: ${{ env.WORK_DIR }}
+        run: |
+          ruff format --check "${SRC_DIRECTORY}"
+
+      - name: Run ruff check
+        if: ${{ inputs.run_linter == '' }}
+        working-directory: ${{ env.WORK_DIR }}
+        run: |
+          ruff check "${SRC_DIRECTORY}"
+
+      - name: Run ${{ inputs.run_linter }}
+        if: ${{ inputs.run_linter != '' }}
         working-directory: ${{ env.WORK_DIR }}
         run: |
           case "${RUN_LINTER}" in
@@ -147,7 +169,6 @@ jobs:
               black --check --diff "${SRC_DIRECTORY}"
               ;;
           esac
-
   mypy:
     name: Type checking
     if: ${{ inputs.run_type_check == true }}
