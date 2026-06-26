@@ -29,6 +29,15 @@ on:
         description: 'The name of the artifact containing the built manifest'
         required: true
         type: string
+      download_app_binaries_artifact_name:
+        description: |
+          The name of the artifact containing the built application binaries (one
+          'build/<target>/bin/app.elf' per device). When provided, the glyph list
+          dumped in the manifest is reduced to the glyphs actually embedded in the
+          binary. If empty, the full glyph list is kept (legacy behavior).
+        required: false
+        default: ''
+        type: string
 
 permissions:
   contents: read  # Needed to clone the repositories
@@ -73,6 +82,23 @@ jobs:
             ./ledger-app-workflows/scripts/check_all.sh -r -c manifest -t "${{ matrix.device }}" \
               -a ./app-repository -b "${RELATIVE_APP_DIRECTORY}" \
               -m "../manifest_${{ matrix.device }}.json"
+
+      - name: Download app binaries
+        # Built once by the reusable_build job and reused here, so glyphs can be filtered
+        # down to the ones actually embedded in the binary. continue-on-error: if the build
+        # failed upstream the artifact is missing; the dumper step below then fails with an
+        # explicit "build the application first" error rather than failing here.
+        if: ${{ inputs.is_rust == 'false' && inputs.download_app_binaries_artifact_name != '' }}
+        continue-on-error: true
+        uses: actions/download-artifact@v7
+        with:
+          name: ${{ inputs.download_app_binaries_artifact_name }}
+          path: app-repository/${{ inputs.relative_app_directory }}/build
+
+      - name: Install ImageMagick
+        # Required by makefile_dump.py to extract glyph dimensions
+        if: ${{ inputs.is_rust == 'false' }}
+        run: apt-get update && apt-get install -y imagemagick
 
       - name: Call Makefile dumper script
         if: ${{ inputs.is_rust == 'false'}}

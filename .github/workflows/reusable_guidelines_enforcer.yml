@@ -25,7 +25,8 @@ on:
 
 permissions:
   contents: read
-  actions: write  # Needed for _get_app_manifest.yml and _check_*.yml workflows
+  actions: write        # Needed for _get_app_manifest.yml and _check_*.yml workflows
+  pull-requests: write  # Required by reusable_build.yml (for diff_elf_sizes job, unused here)
 
 env:
   APP_REPOSITORY: ${{ inputs.app_repository }}
@@ -54,9 +55,30 @@ jobs:
       app_repository: ${{ inputs.app_repository }}
       compatible_devices: ${{ inputs.run_for_devices }}
 
+  call_build:
+    # Build the application once, the canonical way, so that the manifest job can
+    # reduce the listed glyphs to the ones actually embedded in the binary (the SDK
+    # garbage-collects unreferenced glyphs at link time).
+    # Only relevant for C apps: glyph filtering is not (yet) implemented for Rust apps.
+    name: Build application
+    needs: call_get_app_metadata
+    if: ${{ needs.call_get_app_metadata.outputs.is_rust == 'false' }}
+    uses: ./.github/workflows/reusable_build.yml
+    with:
+      app_repository: ${{ inputs.app_repository }}
+      run_for_devices: ${{ needs.call_get_app_metadata.outputs.compatible_devices }}
+      upload_app_binaries_artifact: guidelines_enforcer_app_binaries
+    secrets:
+      token: ${{ secrets.git_token }}
+
   call_get_app_manifest:
     name: Dump app information
-    needs: [call_get_workflow_version, call_get_app_metadata]
+    needs: [call_get_workflow_version, call_get_app_metadata, call_build]
+    # Run regardless of call_build's result: it is skipped for Rust apps (no glyph
+    # filtering) and the explicit success checks below keep this job independent of it.
+    # For C apps the build is required: if it failed there is no binary, and the manifest
+    # dump will then fail with an explicit "build the application first" error.
+    if: ${{ always() && !cancelled() && needs.call_get_workflow_version.result == 'success' && needs.call_get_app_metadata.result == 'success' }}
     uses: ./.github/workflows/_get_app_manifest.yml
     with:
       app_repository: ${{ inputs.app_repository }}
@@ -65,6 +87,7 @@ jobs:
       relative_app_directory: ${{ needs.call_get_app_metadata.outputs.build_directory }}
       is_rust: ${{ needs.call_get_app_metadata.outputs.is_rust }}
       upload_manifest_artifact_name: manifests
+      download_app_binaries_artifact_name: guidelines_enforcer_app_binaries
 
   call_check_icons:
     name: Dispatch check
