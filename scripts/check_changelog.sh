@@ -53,13 +53,13 @@ set_output() {
 
 # Emit the human-readable report on every available channel:
 #  - stdout (console: local VSCode extension and CI logs)
-#  - GitHub Actions job summary
+#  - GitHub Actions job summary (pull_request events only)
 report() {
     local message="$1"
 
     echo -e "${message}"
 
-    if [[ -n "${GITHUB_STEP_SUMMARY:-}" ]]; then
+    if [[ -n "${GITHUB_STEP_SUMMARY:-}" && "${GITHUB_EVENT_NAME:-}" == "pull_request" ]]; then
         { echo "### Changelog check"; echo ""; echo "${message}"; } >> "${GITHUB_STEP_SUMMARY}"
     fi
 }
