@@ -62,8 +62,19 @@ on:
         required: false
         default: ""
         type: string
+      features:
+        description: >
+          Space-separated list of Cargo features to enable for Rust applications.
+          Each entry is passed as `--features <name>` to the `cargo ledger build`
+          command (e.g. app variants such as 'variant_testnet').
+        required: false
+        default: ""
+        type: string
       cargo_ledger_build_args:
-        description: "Additional arguments to pass to the cargo ledger build command for Rust applications"
+        description: >
+          DEPRECATED - use 'features' instead. Additional raw arguments appended after
+          '--' to the cargo ledger build command for Rust applications. Still honored for
+          backward compatibility but will be removed in a future version.
         required: false
         default: ""
         type: string
@@ -96,6 +107,7 @@ env:
   RUN_FOR_DEVICES: ${{ inputs.run_for_devices }}
   BUILDER: ${{ inputs.builder }}
   SDK_REFERENCE: ${{ inputs.sdk_reference }}
+  FEATURES: ${{ inputs.features }}
   CARGO_LEDGER_BUILD_ARGS: ${{ inputs.cargo_ledger_build_args }}
   ENABLE_STACK_CONSUMPTION: ${{ inputs.enable_stack_consumption }}
 
@@ -165,11 +177,23 @@ jobs:
               # Update the Rust SDK crate
               cargo update ledger_device_sdk
               # Build application
-              RUST_FEATURES=""
+              # Assemble everything passed to `cargo ledger build` after `--`.
+              # Features are literal names, so collect them in a quoted array to
+              # avoid glob expansion and keep argument boundaries explicit.
+              CARGO_FEATURE_ARGS=()
+              # Cargo features to enable (e.g. app variants such as `variant_*`).
+              for feature in ${FEATURES}; do
+                CARGO_FEATURE_ARGS+=(--features "${feature}")
+              done
+              # Stack consumption tracking is just another SDK feature.
               if [ "${ENABLE_STACK_CONSUMPTION}" = "true" ]; then
-                RUST_FEATURES="--features ledger_device_sdk/stack_usage"
+                CARGO_FEATURE_ARGS+=(--features ledger_device_sdk/stack_usage)
               fi
-              cargo ledger build "${BUILD_DEVICE_NAME}" -- ${RUST_FEATURES} ${CARGO_LEDGER_BUILD_ARGS}
+              # CARGO_LEDGER_BUILD_ARGS is the DEPRECATED raw escape hatch (expanded
+              # unquoted on purpose); use `features` instead.
+              echo "Feature args: ${CARGO_FEATURE_ARGS[*]}"
+              echo "Extra (deprecated) args: ${CARGO_LEDGER_BUILD_ARGS}"
+              cargo ledger build "${BUILD_DEVICE_NAME}" -- "${CARGO_FEATURE_ARGS[@]}" ${CARGO_LEDGER_BUILD_ARGS}
               binary_path=$(cargo metadata --no-deps --format-version 1 | jq -r '.target_directory')
               echo "binary_path=${binary_path}" >> "${GITHUB_OUTPUT}"
           else
@@ -291,11 +315,23 @@ jobs:
               # Update the Rust SDK crate
               cargo update ledger_device_sdk
               # Build application
-              RUST_FEATURES=""
+              # Assemble everything passed to `cargo ledger build` after `--`.
+              # Features are literal names, so collect them in a quoted array to
+              # avoid glob expansion and keep argument boundaries explicit.
+              CARGO_FEATURE_ARGS=()
+              # Cargo features to enable (e.g. app variants such as `variant_*`).
+              for feature in ${FEATURES}; do
+                CARGO_FEATURE_ARGS+=(--features "${feature}")
+              done
+              # Stack consumption tracking is just another SDK feature.
               if [ "${ENABLE_STACK_CONSUMPTION}" = "true" ]; then
-                RUST_FEATURES="--features ledger_device_sdk/stack_usage"
+                CARGO_FEATURE_ARGS+=(--features ledger_device_sdk/stack_usage)
               fi
-              cargo ledger build "${BUILD_DEVICE_NAME}" -- ${RUST_FEATURES} ${CARGO_LEDGER_BUILD_ARGS}
+              # CARGO_LEDGER_BUILD_ARGS is the DEPRECATED raw escape hatch (expanded
+              # unquoted on purpose); use `features` instead.
+              echo "Feature args: ${CARGO_FEATURE_ARGS[*]}"
+              echo "Extra (deprecated) args: ${CARGO_LEDGER_BUILD_ARGS}"
+              cargo ledger build "${BUILD_DEVICE_NAME}" -- "${CARGO_FEATURE_ARGS[@]}" ${CARGO_LEDGER_BUILD_ARGS}
               binary_path=$(cargo metadata --no-deps --format-version 1 | jq -r '.target_directory')
               echo "binary_path=${binary_path}" >> "${GITHUB_OUTPUT}"
           else
