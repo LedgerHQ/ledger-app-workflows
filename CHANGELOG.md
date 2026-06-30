@@ -5,11 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+
+## [1.101.0] - 2026-06-25
+
+### Changed
+
+- `reusable_python_checks.yml` : the formatting and linting now use `ruff` by default (`ruff format --check` and `ruff check`)
+
+### Deprecated
+
+- `reusable_python_checks.yml` : the `run_linter` input is now optional and deprecated. When omitted, `ruff` is used; when set, the legacy linter (`pylint`, `flake8`, `yapf` or `black`) is run instead for backward compatibility.
+
 ## [1.100.0] - 2026-06-26
 
 ### Changed
 
-- `reusable_build.yml` : allow callers to specify Cargo features when building Rust applications, while deprecating the previous cargo_ledger_build_args 
+- `reusable_build.yml` : allow callers to specify Cargo features when building Rust applications, while deprecating the previous cargo_ledger_build_args
 
 ## [1.99.0] - 2026-06-23
 
