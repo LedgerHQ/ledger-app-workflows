@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.102.0] - 2026-06-30
+
+### Added
+
+- Icons and glyphs are now checked against the sizes supported by each device, with separate size constraints for icons and glyphs.
+- Icons and glyphs must now be monochrome on Nano and Apex devices; grayscale is only allowed on Stax and Flex.
+
+### Changed
+
+- Glyphs are now filtered to those actually embedded in the application binary, so glyphs that are not shipped on the targeted device are no longer checked. The application must therefore be built before the check: when no binary is available the manifest dump now fails with an explicit error asking to build the application first.
+- The `CHANGELOG` check now only prints the GitHub summary in a PR context.
+
+### Fixed
+
+- Fixed a variable reference bug in the icons check that caused incorrect error reporting.
 
 ## [1.101.0] - 2026-06-25
 
