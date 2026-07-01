@@ -190,7 +190,7 @@ def get_accepted_geometries_for_target(target: str) -> Set[str]:
     if target_lower == 'nanos':
         return {"16x16"}
     if target_lower in ('nanox', 'nanos2'):
-        return {"14x14"}
+        return {"14x14", "16x16"}
     if target_lower in ('apex', 'apex_m', 'apex_p'):
         return {"24x24", "32x32", "48x48"}
     if target_lower == 'flex':
