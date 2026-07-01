@@ -40,7 +40,7 @@ check_geometry() (
                     geometries="16x16"
                     ;;
                 nanox | nanos2)
-                    geometries="14x14"
+                    geometries="14x14 16x16"
                     ;;
                 apex | apex_m | apex_p)
                     geometries="24x24 32x32 48x48"
