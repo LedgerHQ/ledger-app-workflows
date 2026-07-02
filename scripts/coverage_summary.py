@@ -142,7 +142,7 @@ def line_links(path, ranges, slug, sha):
     """
     parts = []
     for start, end in ranges:
-        label = f"{start}" if start == end else f"{start}–{end}"
+        label = f"{start}" if start == end else f"{start}-{end}"
         if slug and sha:
             anchor = f"L{start}" if start == end else f"L{start}-L{end}"
             parts.append(f"[{label}](https://github.com/{slug}/blob/{sha}/{path}#{anchor})")
@@ -192,7 +192,7 @@ def main():
     def rel(path):
         """Strip the workspace prefix from an absolute source path, if present."""
         if workspace and path.startswith(workspace + "/"):
-            return path[len(workspace) + 1:]
+            return path[len(workspace) + 1 :]
         return path
 
     # Project-wide totals: sum each counter across every file record.
@@ -250,9 +250,7 @@ def main():
             # sources, SDK, submodules) so they are not reported as "not
             # exercised".
             patterns = exclude_patterns()
-            changed_src = [
-                c for c in changed if c.endswith(SRC_EXT) and not is_excluded(c, patterns)
-            ]
+            changed_src = [c for c in changed if c.endswith(SRC_EXT) and not is_excluded(c, patterns)]
 
             def match(changed_file):
                 """Find the coverage record for a repo-relative changed file.
@@ -278,20 +276,12 @@ def main():
                 # Visible status line: the aggregate *line* coverage of the
                 # modified files. Then a collapsible per-file breakdown (lines
                 # and branches, each cell is "<pct>% (covered / total)").
-                out.append(
-                    f"Line coverage of source files modified in this PR: "
-                    f"**{fmt(pr_lh, pr_lf)}**\n"
-                )
-                out.append(
-                    f"<details><summary>Coverage of modified source files "
-                    f"({len(in_cov)})</summary>\n"
-                )
+                out.append(f"Line coverage of source files modified in this PR: **{fmt(pr_lh, pr_lf)}**\n")
+                out.append(f"<details><summary>Coverage of modified source files ({len(in_cov)})</summary>\n")
                 out.append("| File | Lines | Branches |")
                 out.append("|---|---|---|")
                 for c, rec in sorted(in_cov):
-                    out.append(
-                        f"| `{c}` | {fmt(rec['LH'], rec['LF'])} | {fmt(rec['BRH'], rec['BRF'])} |"
-                    )
+                    out.append(f"| `{c}` | {fmt(rec['LH'], rec['LF'])} | {fmt(rec['BRH'], rec['BRF'])} |")
                 out.append("\n</details>\n")
 
                 # Clickable uncovered-line ranges for the modified files,
@@ -300,10 +290,7 @@ def main():
                 sha = os.environ.get("HEAD_SHA", "")
                 uncovered_rows = [(c, rec) for c, rec in in_cov if rec["uncovered_lines"]]
                 if uncovered_rows:
-                    out.append(
-                        f"<details><summary>Uncovered lines in modified files "
-                        f"({len(uncovered_rows)})</summary>\n"
-                    )
+                    out.append(f"<details><summary>Uncovered lines in modified files ({len(uncovered_rows)})</summary>\n")
                     for c, rec in sorted(uncovered_rows):
                         links = line_links(c, to_ranges(rec["uncovered_lines"]), slug, sha)
                         out.append(f"- `{c}`: {links}")
@@ -312,8 +299,7 @@ def main():
                 out.append("No modified source file is part of the coverage report.\n")
             if not_exercised:
                 out.append(
-                    f"<details><summary>Modified source files not exercised by unit tests "
-                    f"({len(not_exercised)})</summary>\n"
+                    f"<details><summary>Modified source files not exercised by unit tests ({len(not_exercised)})</summary>\n"
                 )
                 for c in sorted(not_exercised):
                     out.append(f"- `{c}`")
