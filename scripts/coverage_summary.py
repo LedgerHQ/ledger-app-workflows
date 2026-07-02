@@ -145,7 +145,9 @@ def line_links(path, ranges, slug, sha):
         label = f"{start}" if start == end else f"{start}–{end}"
         if slug and sha:
             anchor = f"L{start}" if start == end else f"L{start}-L{end}"
-            parts.append(f"[{label}](https://github.com/{slug}/blob/{sha}/{path}#{anchor})")
+            parts.append(
+                f"[{label}](https://github.com/{slug}/blob/{sha}/{path}#{anchor})"
+            )
         else:
             parts.append(label)
     return ", ".join(parts)
@@ -192,7 +194,7 @@ def main():
     def rel(path):
         """Strip the workspace prefix from an absolute source path, if present."""
         if workspace and path.startswith(workspace + "/"):
-            return path[len(workspace) + 1:]
+            return path[len(workspace) + 1 :]
         return path
 
     # Project-wide totals: sum each counter across every file record.
@@ -210,9 +212,15 @@ def main():
     out.append("### Overall\n")
     out.append("| Metric | Coverage | Covered / Total |")
     out.append("|---|---|---|")
-    out.append(f"| Lines | {pct_cell(tot['LH'], tot['LF'])} | {ratio_cell(tot['LH'], tot['LF'])} |")
-    out.append(f"| Functions | {pct_cell(tot['FNH'], tot['FNF'])} | {ratio_cell(tot['FNH'], tot['FNF'])} |")
-    out.append(f"| Branches | {pct_cell(tot['BRH'], tot['BRF'])} | {ratio_cell(tot['BRH'], tot['BRF'])} |")
+    out.append(
+        f"| Lines | {pct_cell(tot['LH'], tot['LF'])} | {ratio_cell(tot['LH'], tot['LF'])} |"
+    )
+    out.append(
+        f"| Functions | {pct_cell(tot['FNH'], tot['FNF'])} | {ratio_cell(tot['FNH'], tot['FNF'])} |"
+    )
+    out.append(
+        f"| Branches | {pct_cell(tot['BRH'], tot['BRF'])} | {ratio_cell(tot['BRH'], tot['BRF'])} |"
+    )
     out.append("")
 
     # Note: only files compiled into the unit-test binary appear in the
@@ -224,7 +232,9 @@ def main():
     out.append("")
     if uncovered:
         # Collapsible list so a long set of files does not flood the summary.
-        out.append(f"<details><summary>Files with no line covered ({len(uncovered)})</summary>\n")
+        out.append(
+            f"<details><summary>Files with no line covered ({len(uncovered)})</summary>\n"
+        )
         for rec in sorted(uncovered, key=lambda r: r["file"]):
             out.append(f"- `{rel(rec['file'])}`")
         out.append("\n</details>\n")
@@ -244,14 +254,18 @@ def main():
             # Missing or empty list: the collection step was skipped or failed
             # (a real PR always changes at least one file). Make it explicit
             # rather than implying that nothing was modified.
-            out.append("_Changed-file list unavailable; skipping per-file PR coverage._\n")
+            out.append(
+                "_Changed-file list unavailable; skipping per-file PR coverage._\n"
+            )
         else:
             # Keep source files, dropping those excluded from coverage (test
             # sources, SDK, submodules) so they are not reported as "not
             # exercised".
             patterns = exclude_patterns()
             changed_src = [
-                c for c in changed if c.endswith(SRC_EXT) and not is_excluded(c, patterns)
+                c
+                for c in changed
+                if c.endswith(SRC_EXT) and not is_excluded(c, patterns)
             ]
 
             def match(changed_file):
@@ -262,7 +276,9 @@ def main():
                 Returns the record, or ``None`` if the file is not in the report.
                 """
                 for rec in records:
-                    if rec["file"] == changed_file or rec["file"].endswith("/" + changed_file):
+                    if rec["file"] == changed_file or rec["file"].endswith(
+                        "/" + changed_file
+                    ):
                         return rec
                 return None
 
@@ -298,14 +314,18 @@ def main():
                 # collapsed so a long list never inflates the section.
                 slug = os.environ.get("APP_REPOSITORY", "")
                 sha = os.environ.get("HEAD_SHA", "")
-                uncovered_rows = [(c, rec) for c, rec in in_cov if rec["uncovered_lines"]]
+                uncovered_rows = [
+                    (c, rec) for c, rec in in_cov if rec["uncovered_lines"]
+                ]
                 if uncovered_rows:
                     out.append(
                         f"<details><summary>Uncovered lines in modified files "
                         f"({len(uncovered_rows)})</summary>\n"
                     )
                     for c, rec in sorted(uncovered_rows):
-                        links = line_links(c, to_ranges(rec["uncovered_lines"]), slug, sha)
+                        links = line_links(
+                            c, to_ranges(rec["uncovered_lines"]), slug, sha
+                        )
                         out.append(f"- `{c}`: {links}")
                     out.append("\n</details>\n")
             else:
