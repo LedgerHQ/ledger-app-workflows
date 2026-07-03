@@ -72,6 +72,11 @@ on:
         required: false
         default: ''
         type: string
+      container_image:
+        description: 'Optional container image to run ragger tests'
+        required: false
+        default: ''
+        type: string
 
 jobs:
   build_coverage_app:
@@ -99,6 +104,7 @@ jobs:
       run_for_devices: ${{ inputs.run_for_devices }}
       coverage: true
       coverage_exclude: ${{ inputs.coverage_exclude }}
+      container_image: ${{ inputs.container_image }}
       upload_snapshots_on_failure: false
       test_filter: ${{ inputs.test_filter }}
       test_options: ${{ inputs.test_options }}
