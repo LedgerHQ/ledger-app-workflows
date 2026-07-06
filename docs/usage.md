@@ -86,6 +86,33 @@ In addition, the following secret can be used:
 | ------------------- | -------- | ------------- | --------------------------------------- |
 | secret_test_options | ❌       |               | A token passed from the caller workflow |
 
+## Reusable Ragger tests coverage
+
+This workflow measures the firmware C code coverage exercised by the Ragger functional tests: it builds the application with debug symbols, then runs the Ragger tests with coverage tracing enabled, producing an lcov file and an HTML report as the `coverage-<device>` artifact(s). When a Codecov token is provided, the lcov file is also uploaded to codecov.io under the `functionaltests` flag.
+
+It can use the following input parameters:
+
+| Parameter        | Required | Default value             | Comment                                                                           |
+| ---------------- | -------- | ------------------------- | --------------------------------------------------------------------------------- |
+| app_repository   | ❌       | `github.repository`       | The GIT repository to test                                                        |
+| app_branch_name  | ❌       | `github.ref`              | The GIT branch to test                                                            |
+| flags            | ❌       | `DEBUG=1`                 | Compilation flags. Must produce an ELF with debug symbols                         |
+| run_for_devices  | ❌       | *ALL*                     | The list of device(s) on which the CI will run                                    |
+| builder          | ❌       | `ledger-app-builder-lite` | The docker image to build the application in                                      |
+| sdk_reference    | ❌       |                           | A SDK reference to checkout before building the app                               |
+| test_filter      | ❌       |                           | Specify an expression which implements a substring match on the test names        |
+| test_options     | ❌       |                           | Specify optional parameters to be passed to the running test                      |
+| coverage_exclude | ❌       |                           | Comma-separated source paths to exclude from coverage (e.g. a vendored submodule) |
+| container_image  | ❌       |                           | Optional container image to run the ragger tests                                  |
+
+In addition, the following secrets can be used:
+
+| Parameter           | Required | Default value | Comment                                                                                              |
+| ------------------- | -------- | ------------- | ---------------------------------------------------------------------------------------------------- |
+| token               | ❌       |               | A token passed from the caller workflow (used to checkout/build the app)                             |
+| secret_test_options | ❌       |               | A string of secret options to be given to pytest                                                     |
+| codecov_token       | ❌       |               | Codecov token; if provided, the lcov file is uploaded to codecov.io under the `functionaltests` flag |
+
 ## Reusable Memory Profiling
 
 This workflow bundles the whole memory profiling pipeline: it builds the application with memory profiling enabled, runs the Ragger functional tests while capturing the Speculos output, then processes the captured logs with the SDK `valground` tool to detect memory leaks (the job fails if a leak is reported).
