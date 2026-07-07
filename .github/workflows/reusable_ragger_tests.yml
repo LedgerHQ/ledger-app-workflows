@@ -242,10 +242,13 @@ jobs:
 
       - name: Install tests dependencies
         run: |
-          sudo apt-get update && sudo apt-get install -y qemu-user-static
-          # lcov provides genhtml, used by ragger's --coverage to render the HTML report.
+          SUDO=""
+          if [ "$(id -u)" -ne 0 ] && command -v sudo >/dev/null 2>&1; then SUDO="sudo"; fi
+          $SUDO apt-get update && $SUDO apt-get install -y qemu-user-static
           if [ "${COVERAGE}" = "true" ]; then
-            sudo apt-get install -y lcov
+            # lcov provides genhtml, used by ragger's --coverage to render the HTML report.
+            # gpg is required to upload to codecov.io.
+            $SUDO apt-get install -y lcov gpg
           fi
           pip install -U pip packaging setuptools
           pip install -r "${{ needs.call_get_test_metadata.outputs.pytest_directory }}/requirements.txt"
