@@ -157,7 +157,11 @@ jobs:
       - name: Run unit tests
         working-directory: ${{ env.RUN_DIR }}
         run: |
-          ctest
+          if [ "${USE_CMAKE_UT_FRAMEWORK}" = "true" ]; then
+            ctest
+          else
+            CTEST_OUTPUT_ON_FAILURE=1 make -C build test
+          fi
 
       - name: Generate code coverage
         id: coverage
