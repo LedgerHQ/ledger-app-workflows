@@ -157,3 +157,12 @@ jobs:
       relative_app_directory: ${{ needs.call_get_app_metadata.outputs.build_directory }}
       is_rust: ${{ needs.call_get_app_metadata.outputs.is_rust }}
       workflows_ref: ${{ needs.call_get_workflow_version.outputs.version }}
+
+  call_check_cargo_audit:
+    name: Dispatch check
+    needs: [call_get_app_metadata]
+    if: ${{ needs.call_get_app_metadata.outputs.is_rust == 'true' }}
+    uses: ./.github/workflows/_check_cargo_audit.yml
+    with:
+      app_repository: ${{ inputs.app_repository }}
+      relative_app_directory: ${{ needs.call_get_app_metadata.outputs.build_directory }}
