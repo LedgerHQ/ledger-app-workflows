@@ -30,6 +30,11 @@ jobs:
           path: app-repository
           submodules: recursive
 
+      - name: Set up Rust
+        uses: actions-rust-lang/setup-rust-toolchain@v1.16.1
+        with:
+          toolchain: stable
+
       - name: Install cargo-binstall
         uses: cargo-bins/cargo-binstall@v1
 
@@ -38,4 +43,6 @@ jobs:
 
       - name: Run cargo audit
         working-directory: app-repository/${{ inputs.relative_app_directory }}
+        env:
+          RUSTUP_TOOLCHAIN: stable
         run: cargo audit
