@@ -264,6 +264,7 @@ In order to test an App, this workflow can use the following input parameters:
 | additional_packages    | ❌       |                           | Additional packages to install                                                                                                    |
 | coverage_exclude_paths | ❌       |                           | Space-separated glob patterns to exclude from the coverage result (`/usr/*`, `/opt/*` and the test directory are always excluded) |
 | enable_codecov         | ❌       | `true`                    | Whether to upload coverage to Codecov; `false` for repos that can't use it, e.g. internal (also skipped without `codecov_token`)  |
+| use_cmake_ut_framework | ❌       | `false`                   | Use the CMake UT framework: tests run and coverage generated in a `build/` subdirectory (else directly in the test directory) |
 
 In addition, the following secrets can be used:
 
