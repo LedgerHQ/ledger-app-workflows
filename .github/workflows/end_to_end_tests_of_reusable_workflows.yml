@@ -58,13 +58,13 @@ jobs:
             repo: 'LedgerHQ/app-ethereum'
             branch: 'develop'
           - name: litecoin
-            repo: 'LedgerHQ/app-bitcoin'
+            repo: 'LedgerHQ/app-bitcoin-legacy'
             branch: 'develop'
           - name: bitcoin_legacy
-            repo: 'LedgerHQ/app-bitcoin'
+            repo: 'LedgerHQ/app-bitcoin-legacy'
             branch: 'develop'
           - name: bitcoin
-            repo: 'LedgerHQ/app-bitcoin-new'
+            repo: 'LedgerHQ/app-bitcoin'
             branch: 'develop'
           - name: solana
             repo: 'LedgerHQ/app-solana'
