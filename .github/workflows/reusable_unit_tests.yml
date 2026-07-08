@@ -157,7 +157,26 @@ jobs:
       - name: Run unit tests
         working-directory: ${{ env.RUN_DIR }}
         run: |
+          # Unset GCOV_PREFIX/GCOV_PREFIX_STRIP so that gcov data files (.gcda)
+          # are written beside the .gcno files in the build tree, which is where
+          # lcov expects to find them.  Some builder images set GCOV_PREFIX,
+          # which would redirect the .gcda files to a different path and make the
+          # coverage step fail with "no .gcda files found".
+          unset GCOV_PREFIX GCOV_PREFIX_STRIP
           ctest
+
+      - name: Diagnose coverage data files
+        working-directory: ${{ env.RUN_DIR }}
+        continue-on-error: true
+        run: |
+          echo "GCOV_PREFIX='${GCOV_PREFIX:-}'"
+          echo "GCOV_PREFIX_STRIP='${GCOV_PREFIX_STRIP:-}'"
+          echo "=== .gcda files under $(pwd) ==="
+          find . -name "*.gcda" 2>/dev/null | sort || true
+          if [ -n "${GCOV_PREFIX:-}" ]; then
+            echo "=== .gcda files under GCOV_PREFIX (${GCOV_PREFIX}) ==="
+            find "${GCOV_PREFIX}" -name "*.gcda" 2>/dev/null | sort || true
+          fi
 
       - name: Generate code coverage
         id: coverage
