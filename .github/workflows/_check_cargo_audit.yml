@@ -36,7 +36,7 @@ jobs:
           toolchain: stable
 
       - name: Install cargo-binstall
-        uses: cargo-bins/cargo-binstall@v1
+        uses: cargo-bins/cargo-binstall@v1.20.1
 
       - name: Install cargo-audit
         run: cargo binstall --no-confirm cargo-audit
