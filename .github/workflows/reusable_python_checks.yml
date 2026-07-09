@@ -88,11 +88,16 @@ jobs:
         run: |
           echo ":warning The input 'run_linter' is deprecated and has no effect. Linter and formatter is now always ruff."
 
+      - name: Checkout ledger-app-workflows
+        uses: actions/checkout@v6
+        with:
+          repository: LedgerHQ/ledger-app-workflows
+          path: ./ledger-app-workflows
+          ref: ${{ fromJSON(toJSON(job)).workflow_sha }}
+
       - name: Installing required packages
         if: ${{ inputs.additional_packages != '' }}
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y ${ADDITIONAL_PACKAGES}
+        run: ./ledger-app-workflows/scripts/apt_install.sh ${{ env.ADDITIONAL_PACKAGES }}
 
       - name: Clone
         uses: actions/checkout@v6
@@ -174,11 +179,16 @@ jobs:
     if: ${{ inputs.run_type_check == true }}
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout ledger-app-workflows
+        uses: actions/checkout@v6
+        with:
+          repository: LedgerHQ/ledger-app-workflows
+          path: ./ledger-app-workflows
+          ref: ${{ fromJSON(toJSON(job)).workflow_sha }}
+
       - name: Installing required packages
         if: ${{ inputs.additional_packages != '' }}
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y ${ADDITIONAL_PACKAGES}
+        run: ./ledger-app-workflows/scripts/apt_install.sh ${{ env.ADDITIONAL_PACKAGES }}
 
       - name: Clone
         uses: actions/checkout@v6
@@ -218,11 +228,16 @@ jobs:
     if: ${{ inputs.run_security_check == true }}
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout ledger-app-workflows
+        uses: actions/checkout@v6
+        with:
+          repository: LedgerHQ/ledger-app-workflows
+          path: ./ledger-app-workflows
+          ref: ${{ fromJSON(toJSON(job)).workflow_sha }}
+
       - name: Installing required packages
         if: ${{ inputs.additional_packages != '' }}
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y ${ADDITIONAL_PACKAGES}
+        run: ./ledger-app-workflows/scripts/apt_install.sh ${{ env.ADDITIONAL_PACKAGES }}
 
       - name: Clone
         uses: actions/checkout@v6

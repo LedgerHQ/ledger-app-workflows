@@ -66,40 +66,19 @@ env:
   USE_CMAKE_UT_FRAMEWORK: ${{ inputs.use_cmake_ut_framework }}
 
 jobs:
-  # Resolve the ref this reusable workflow was called with, so the steps below
-  # can checkout the matching version of this repository (for its scripts/).
-  # Workaround for https://github.com/actions/toolkit/issues/1264
-  call_get_workflow_version:
-    name: Get workflow version
-    uses: ./.github/workflows/_get_workflow_version.yaml
-    with:
-      repository_name: LedgerHQ/ledger-app-workflows
-      file_name: reusable_unit_tests.yml
-    secrets:
-      git_token: ${{ secrets.token || github.token }}
-
   unit_test:
     name: Unit test
-    needs: call_get_workflow_version
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/ledgerhq/ledger-app-builder/${{ inputs.builder }}:latest
 
     steps:
-      # Single install step:
-      #   - caller-provided build packages (ADDITIONAL_PACKAGES, may be empty);
-      #   - libjson-xs-perl: speeds up lcov and silences its JSON::PP warning;
-      #   - lcov_cobertura: produces the Cobertura coverage.xml.
-      # The apt packages are required (the step fails if they can't install);
-      # lcov_cobertura is optional, so a transient PyPI issue must not fail the
-      # build -- hence the `|| true` (the coverage step degrades gracefully).
       # --break-system-packages: the builder image is debian-trixie based
       # (externally-managed) and installs its own pip packages the same way.
-      - name: Install dependencies
-        run: |
-          apt-get -q update
-          apt-get -q install --no-install-recommends -y ${ADDITIONAL_PACKAGES} libjson-xs-perl ruby
-          pip install --break-system-packages --no-cache-dir lcov_cobertura || true
+      # lcov_cobertura is optional, so a transient PyPI issue must not fail the
+      # build -- hence the `|| true` (the coverage step degrades gracefully).
+      - name: Install Python dependencies
+        run: pip install --break-system-packages --no-cache-dir lcov_cobertura || true
 
       - name: Clone app repository
         uses: actions/checkout@v6
@@ -116,7 +95,13 @@ jobs:
         with:
           repository: LedgerHQ/ledger-app-workflows
           path: ./ledger-app-workflows
-          ref: ${{ needs.call_get_workflow_version.outputs.version }}
+          ref: ${{ fromJSON(toJSON(job)).workflow_sha }}
+
+      # Single install step:
+      #   - caller-provided build packages (ADDITIONAL_PACKAGES, may be empty);
+      #   - libjson-xs-perl: speeds up lcov and silences its JSON::PP warning.
+      - name: Install system dependencies
+        run: ./ledger-app-workflows/scripts/apt_install.sh -R $ADDITIONAL_PACKAGES libjson-xs-perl ruby
 
       - name: Deprecation warning for test_directory
         if: ${{ inputs.test_directory != '' }}
