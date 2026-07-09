@@ -66,6 +66,7 @@ jobs:
       app_repository: ${{ inputs.app_repository }}
       run_for_devices: ${{ needs.call_get_app_metadata.outputs.compatible_devices }}
       upload_app_binaries_artifact: guidelines_enforcer_app_binaries
+      builder: ledger-app-builder
     secrets:
       token: ${{ secrets.git_token }}
 
