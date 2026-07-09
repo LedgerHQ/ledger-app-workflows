@@ -59,10 +59,8 @@ jobs:
     # Build the application once, the canonical way, so that the manifest job can
     # reduce the listed glyphs to the ones actually embedded in the binary (the SDK
     # garbage-collects unreferenced glyphs at link time).
-    # Only relevant for C apps: glyph filtering is not (yet) implemented for Rust apps.
     name: Build application
     needs: call_get_app_metadata
-    if: ${{ needs.call_get_app_metadata.outputs.is_rust == 'false' }}
     uses: ./.github/workflows/reusable_build.yml
     with:
       app_repository: ${{ inputs.app_repository }}
