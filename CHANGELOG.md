@@ -5,12 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.105.0] - 2026-07-09
+
+### Added
+
+- `scripts/apt_install.sh`: install apt packages with automatic retry (and deactivating `unattended-upgrades`). Retries up to 3 times with a 60s dpkg lock timeout and 30s delay between attempts.
+
+### Fixed
+
+- All workflows: replaced bare `apt-get` calls with `scripts/apt_install.sh`. Fixes intermittent CI hangs caused by `unattended-upgrades` holding the dpkg lock on GitHub-hosted runners.
+
 ## [1.104.2] - 2026-07-09
 
 ### Fixed
 
 - `reusable_guidelines_enforcer.yml` : fix `call_build` job shall be called for all apps as subsequent jobs depends on it
-
 ## [1.104.1] - 2026-07-08
 
 ### Fixed
