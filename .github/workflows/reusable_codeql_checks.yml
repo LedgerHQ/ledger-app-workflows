@@ -33,6 +33,10 @@ on:
         required: false
         default: ''
         type: string
+    secrets:
+      token:
+        description: 'A token used to checkout private repositories'
+        required: false
 
 permissions:
   contents: read
