@@ -98,7 +98,7 @@ jobs:
       - name: Install ImageMagick
         # Required by makefile_dump.py to extract glyph dimensions
         if: ${{ inputs.is_rust == 'false' }}
-        run: apt-get update && apt-get install -y imagemagick
+        run: ./ledger-app-workflows/scripts/apt_install.sh imagemagick
 
       - name: Call Makefile dumper script
         if: ${{ inputs.is_rust == 'false'}}

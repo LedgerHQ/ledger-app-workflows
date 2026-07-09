@@ -240,16 +240,22 @@ jobs:
         if: ${{ inputs.lib_binaries_artifact != '' }}
         run: ls -1 ${LIB_BINARIES_ARTIFACT_DIR}
 
+      - name: Checkout ledger-app-workflows
+        uses: actions/checkout@v6
+        with:
+          repository: LedgerHQ/ledger-app-workflows
+          path: ./ledger-app-workflows
+          ref: ${{ fromJSON(toJSON(job)).workflow_sha }}
+
+      - name: Install system dependencies
+        run: ./ledger-app-workflows/scripts/apt_install.sh qemu-user-static
+
+      - name: Install coverage system dependencies
+        if: ${{ inputs.coverage }}
+        run: ./ledger-app-workflows/scripts/apt_install.sh -n lcov gpg
+
       - name: Install tests dependencies
         run: |
-          SUDO=""
-          if [ "$(id -u)" -ne 0 ] && command -v sudo >/dev/null 2>&1; then SUDO="sudo"; fi
-          $SUDO apt-get update && $SUDO apt-get install -y qemu-user-static
-          if [ "${COVERAGE}" = "true" ]; then
-            # lcov provides genhtml, used by ragger's --coverage to render the HTML report.
-            # gpg is required to upload to codecov.io.
-            $SUDO apt-get install -y lcov gpg
-          fi
           pip install -U pip packaging setuptools
           pip install -r "${{ needs.call_get_test_metadata.outputs.pytest_directory }}/requirements.txt"
           if [ -f ${{ needs.call_get_test_metadata.outputs.pytest_directory }}/setup_script.sh ]; then
@@ -517,8 +523,15 @@ jobs:
           name: ${{ inputs.additional_app_binaries_artifact != '' && inputs.additional_app_binaries_artifact || inputs.download_app_binaries_artifact }}
           path: app_binaries/
 
+      - name: Checkout ledger-app-workflows
+        uses: actions/checkout@v6
+        with:
+          repository: LedgerHQ/ledger-app-workflows
+          path: ./ledger-app-workflows
+          ref: ${{ fromJSON(toJSON(job)).workflow_sha }}
+
       - name: Install dependencies for comment generation
-        run: sudo apt-get install -y --no-install-recommends binutils
+        run: ./ledger-app-workflows/scripts/apt_install.sh -n -R binutils
 
       - name: Build PR comment body
         id: build_comment

@@ -89,11 +89,15 @@ jobs:
           echo "Error: 'container' and 'docker_image_artifact' inputs are mutually exclusive. Please provide only one of them."
           exit 1
 
+      - name: Checkout ledger-app-workflows
+        uses: actions/checkout@v6
+        with:
+          repository: LedgerHQ/ledger-app-workflows
+          path: ./ledger-app-workflows
+          ref: ${{ fromJSON(toJSON(job)).workflow_sha }}
+
       - name: Install dependencies
-        run: |
-          command -v sudo >/dev/null 2>&1 && SUDO="sudo"
-          $SUDO apt-get update
-          $SUDO apt-get install -y git python3 python3-pip
+        run: ./ledger-app-workflows/scripts/apt_install.sh git python3 python3-pip
 
       - name: Download Docker image artifact
         if: ${{ inputs.docker_image_artifact != '' }}
