@@ -79,6 +79,15 @@ on:
         required: false
         default: false
         type: boolean
+      also_delete_snapshots:
+        description: |
+          Only relevant when `regenerate_snapshots == true`.
+
+          When true, the existing snapshots directory is wiped before the freshly generated
+          snapshots are laid down in the PR.
+        required: false
+        default: false
+        type: boolean
       container_image:
         description: 'Optional container image to run the ragger_tests job'
         required: false
@@ -145,6 +154,7 @@ env:
   TEST_FILTER: ${{ inputs.test_filter }}
   TEST_OPTIONS: ${{ inputs.test_options }}
   REGENERATE_SNAPSHOTS: ${{ inputs.regenerate_snapshots }}
+  ALSO_DELETE_SNAPSHOTS: ${{ inputs.also_delete_snapshots }}
   CONTAINER_IMAGE: ${{ inputs.container_image }}
   CAPTURE_FILE: ${{ inputs.capture_file }}
   POST_STACK_CONSUMPTION: ${{ inputs.post_stack_consumption }}
@@ -261,11 +271,6 @@ jobs:
           if [ -f ${{ needs.call_get_test_metadata.outputs.pytest_directory }}/setup_script.sh ]; then
             ./${{ needs.call_get_test_metadata.outputs.pytest_directory }}/setup_script.sh
           fi
-
-      - name: Clear legacy snapshots
-        if: ${{ inputs.regenerate_snapshots == true }}
-        run: |
-          rm -rf ${{ needs.call_get_test_metadata.outputs.pytest_directory }}/snapshots
 
       - name: Run test
         env:
@@ -502,6 +507,7 @@ jobs:
       app_branch_name: ${{ inputs.app_branch_name }}
       snapshots_artifact_name: ${{ needs.merge_artifacts_if_needed.outputs.snapshot_artifact_name }}
       snapshots_directory: ${{ needs.call_get_test_metadata.outputs.pytest_directory }}/snapshots
+      also_delete_snapshots: ${{ inputs.also_delete_snapshots }}
 
   post_stack_consumption:
     name: Post stack consumption summary on PR
