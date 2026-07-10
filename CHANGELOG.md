@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.105.1] - 2026-07-09
+
+### Fixed
+
+- `reusable_codeql_checks.yml`: add missing `secrets` declaration in `workflow_call` trigger for the `token` secret.
+
 ## [1.105.0] - 2026-07-09
 
 ### Added
