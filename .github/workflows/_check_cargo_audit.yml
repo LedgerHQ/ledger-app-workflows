@@ -1,0 +1,48 @@
+name: Run Cargo Audit
+
+on:
+  workflow_call:
+    inputs:
+      app_repository:
+        description: 'The URL of the app repository to check. Defaults to the workflow caller repository URL'
+        required: false
+        default: ${{ github.repository }}
+        type: string
+      relative_app_directory:
+        description: 'The relative path in the repository where the application is built from (defaults to ".")'
+        required: false
+        default: '.'
+        type: string
+
+permissions:
+  contents: read  # Needed to clone the repositories
+
+jobs:
+  cargo_audit:
+    name: Cargo Audit
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Clone app repository
+        uses: actions/checkout@v6
+        with:
+          repository: ${{ inputs.app_repository }}
+          path: app-repository
+          submodules: recursive
+
+      - name: Set up Rust
+        uses: actions-rust-lang/setup-rust-toolchain@v1.16.1
+        with:
+          toolchain: stable
+
+      - name: Install cargo-binstall
+        uses: cargo-bins/cargo-binstall@v1.20.1
+
+      - name: Install cargo-audit
+        run: cargo binstall --no-confirm cargo-audit
+
+      - name: Run cargo audit
+        working-directory: app-repository/${{ inputs.relative_app_directory }}
+        env:
+          RUSTUP_TOOLCHAIN: stable
+        run: cargo audit
