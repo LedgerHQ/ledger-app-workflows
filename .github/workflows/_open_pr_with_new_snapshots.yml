@@ -22,6 +22,13 @@ on:
         description: 'The directory in which the snapshots are extracted'
         required: true
         type: string
+      also_delete_snapshots:
+        description: |
+          When true, wipe the existing snapshots directory before extracting the freshly
+          generated snapshots.
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: write       # Needed to commits/push
@@ -57,6 +64,10 @@ jobs:
           # needed, else the push inside the action will use default credentials
           # instead of provided ones
           persist-credentials: false
+
+      - name: Clear existing snapshots
+        if: ${{ inputs.also_delete_snapshots == true }}
+        run: rm -rf "${SNAPSHOTS_DIRECTORY}"
 
       - name: Download new snapshots
         uses: actions/download-artifact@v7
