@@ -54,9 +54,8 @@ on:
         type: string
       sdk_reference:
         description: |
-          A SDK reference to checkout before building the app. Does not apply on Rust application
+          A C SDK reference to checkout before building the app.
           Default behavior is to build on the current version of the app-builder Docker image.
-
           As the branch `master` exists locally, `origin/master` should be used to checkout the
           actual, current SDK master branch.
         required: false
@@ -130,15 +129,14 @@ jobs:
           token: ${{ secrets.token && secrets.token || github.token }}
 
       - name: Set device-specific environment variables
-        if: ${{ needs.call_get_app_metadata.outputs.is_rust == 'false' }}
         shell: bash
         run: |
           eval "BOLOS_SDK=\$$(echo ${{ matrix.device }} | tr '[:lower:]' '[:upper:]')_SDK"
           echo "BOLOS_SDK=${BOLOS_SDK}" >> "${GITHUB_ENV}"
           echo "BOLOS_SDK will be set to: ${BOLOS_SDK}"
 
-      - name: Checkout SDK
-        if: ${{ needs.call_get_app_metadata.outputs.is_rust == 'false' && inputs.sdk_reference != '' }}
+      - name: Use provided C SDK ref
+        if: ${{ inputs.sdk_reference != '' }}
         working-directory: ${{ env.BOLOS_SDK }}
         shell: bash
         run: |
@@ -260,15 +258,14 @@ jobs:
           token: ${{ secrets.token && secrets.token || github.token }}
 
       - name: Set device-specific environment variables
-        if: ${{ needs.call_get_app_metadata.outputs.is_rust == 'false' }}
         shell: bash
         run: |
           eval "BOLOS_SDK=\$$(echo ${{ matrix.device }} | tr '[:lower:]' '[:upper:]')_SDK"
           echo "BOLOS_SDK=${BOLOS_SDK}" >> "${GITHUB_ENV}"
           echo "BOLOS_SDK will be set to: ${BOLOS_SDK}"
 
-      - name: Checkout SDK
-        if: ${{ needs.call_get_app_metadata.outputs.is_rust == 'false' && inputs.sdk_reference != '' }}
+      - name: Use provided C SDK ref
+        if: ${{ inputs.sdk_reference != '' }}
         working-directory: ${{ env.BOLOS_SDK }}
         shell: bash
         run: |
