@@ -80,18 +80,6 @@ permissions:
   actions: write        # Needed for upload-artifact
   pull-requests: write  # Needed to post PR comments
 
-env:
-  APP_REPOSITORY: ${{ inputs.app_repository }}
-  APP_BRANCH_NAME: ${{ inputs.app_branch_name }}
-  FLAGS: ${{ inputs.flags }}
-  USE_CASE: ${{ inputs.use_case }}
-  UPLOAD_APP_BINARIES_ARTIFACT: ${{ inputs.upload_app_binaries_artifact }}
-  UPLOAD_AS_LIB_ARTIFACT: ${{ inputs.upload_as_lib_artifact }}
-  RUN_FOR_DEVICES: ${{ inputs.run_for_devices }}
-  BUILDER: ${{ inputs.builder }}
-  SDK_REFERENCE: ${{ inputs.sdk_reference }}
-  ENABLE_STACK_CONSUMPTION: ${{ inputs.enable_stack_consumption }}
-
 jobs:
   call_get_app_metadata:
     # This job digests inputs and repository metadata provided by the `ledger_app.toml` manifest
@@ -115,113 +103,21 @@ jobs:
       fail-fast: false
       matrix:
         device: ${{ fromJSON(needs.call_get_app_metadata.outputs.compatible_devices) }}
-    runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/ledgerhq/ledger-app-builder/${{ inputs.builder }}:latest
-
-    steps:
-      - name: Clone
-        uses: actions/checkout@v6
-        with:
-          repository: ${{ inputs.app_repository }}
-          ref: ${{ inputs.app_branch_name }}
-          submodules: recursive
-          token: ${{ secrets.token && secrets.token || github.token }}
-
-      - name: Set device-specific environment variables
-        shell: bash
-        run: |
-          eval "BOLOS_SDK=\$$(echo ${{ matrix.device }} | tr '[:lower:]' '[:upper:]')_SDK"
-          echo "BOLOS_SDK=${BOLOS_SDK}" >> "${GITHUB_ENV}"
-          echo "BOLOS_SDK will be set to: ${BOLOS_SDK}"
-
-      - name: Use provided C SDK ref
-        if: ${{ inputs.sdk_reference != '' }}
-        working-directory: ${{ env.BOLOS_SDK }}
-        shell: bash
-        run: |
-          echo "Using BOLOS_SDK: ${BOLOS_SDK}"
-          echo "Checking out reference '${SDK_REFERENCE}'..."
-          git fetch -apt && git checkout ${SDK_REFERENCE}
-          DEVICE=${{ matrix.device }}
-          echo "ADDITIONAL_ARGS=TARGET=${DEVICE/sp/s2}" >> "${GITHUB_ENV}"
-
-      - name: Build application
-        id: "build"
-        working-directory: ${{ needs.call_get_app_metadata.outputs.build_directory }}
-        shell: bash
-        run: |
-          if [ "${{ needs.call_get_app_metadata.outputs.is_rust }}" = "true" ];
-          then
-              BUILD_DEVICE_NAME="$(echo "${{ matrix.device }}" | sed 's/nanosp/nanosplus/')"
-              # Update the Rust SDK crate
-              cargo update ledger_device_sdk
-              # Build application
-              # Assemble everything passed to `cargo ledger build` after `--`.
-              CARGO_ADD_ARGS=()
-              CARGO_ADD_ARGS+=(${{ needs.call_get_app_metadata.outputs.flags }})
-              # Stack consumption tracking is just another SDK feature.
-              if [ "${ENABLE_STACK_CONSUMPTION}" = "true" ]; then
-                CARGO_ADD_ARGS+=(--features ledger_device_sdk/stack_usage)
-              fi
-              echo "Feature args: ${CARGO_ADD_ARGS[*]}"
-              cargo ledger build "${BUILD_DEVICE_NAME}" -- "${CARGO_ADD_ARGS[@]}"
-              binary_path=$(cargo metadata --no-deps --format-version 1 | jq -r '.target_directory')
-              echo "binary_path=${binary_path}" >> "${GITHUB_OUTPUT}"
-          else
-              echo "Using BOLOS_SDK: ${BOLOS_SDK}"
-              STACK_FLAG=""
-              if [ "${ENABLE_STACK_CONSUMPTION}" = "true" ]; then
-                STACK_FLAG="DEBUG_OS_STACK_CONSUMPTION=1"
-              fi
-              make -j ${{ needs.call_get_app_metadata.outputs.flags }} ${ADDITIONAL_ARGS} ${STACK_FLAG} BOLOS_SDK="${BOLOS_SDK}"
-              echo "binary_path=${{ needs.call_get_app_metadata.outputs.build_directory }}/build" >> "${GITHUB_OUTPUT}"
-          fi
-          echo "binary_path=${binary_path}"
-          echo "Build complete"
-
-      - name: Remove build artifacts before upload
-        run: |
-          if [ "${{ needs.call_get_app_metadata.outputs.is_rust }}" = "true" ];
-          then
-              find ${{ steps.build.outputs.binary_path }} -mindepth 3 -maxdepth 3 -type d -exec rm -rf {} +
-              rm -rf ${{ steps.build.outputs.binary_path }}/release
-          else
-              find ${{ steps.build.outputs.binary_path }} -mindepth 2 -maxdepth 2 -type d ! -name 'bin' -exec rm -r {} +
-          fi
-
-      - name: Prepare to upload as lib
-        if: ${{ inputs.upload_as_lib_artifact != '' }}
-        shell: bash
-        run: |
-          if [ "${{ needs.call_get_app_metadata.outputs.is_rust }}" = "true" ];
-          then
-            C_DEVICE_NAME="$(echo "${{ matrix.device }}" | sed 's/nanosp/nanos2/')"
-            echo "C_DEVICE_NAME=$C_DEVICE_NAME"
-            RUST_DEVICE_NAME="$(echo "${{ matrix.device }}" | sed 's/sp/splus/')"
-            echo "RUST_DEVICE_NAME=$RUST_DEVICE_NAME"
-            ELF_NAME=$(cargo metadata --manifest-path ${{ needs.call_get_app_metadata.outputs.build_directory }}/Cargo.toml --no-deps --format-version 1 | jq -r '.packages[] | select(.metadata.ledger != null) | .name')
-            echo "ELF_NAME=$ELF_NAME"
-            mv "${{ steps.build.outputs.binary_path }}/${RUST_DEVICE_NAME}/release/${ELF_NAME}" "${{ steps.build.outputs.binary_path }}/${UPLOAD_AS_LIB_ARTIFACT}_${C_DEVICE_NAME}.elf"
-            rm -rf "${{ steps.build.outputs.binary_path }}/${RUST_DEVICE_NAME}"
-          else
-            DEVICE_NAME="$(echo "${{ matrix.device }}" | sed 's/nanosp/nanos2/')"
-            find "${{ needs.call_get_app_metadata.outputs.build_directory }}/build/${DEVICE_NAME}/" -type f -name 'app.elf' -exec mv {} "${UPLOAD_AS_LIB_ARTIFACT}_${DEVICE_NAME}.elf" \;
-            rm -r ${{ needs.call_get_app_metadata.outputs.build_directory }}/build/*
-            mv "${UPLOAD_AS_LIB_ARTIFACT}_${DEVICE_NAME}.elf" "${{ needs.call_get_app_metadata.outputs.build_directory }}/build/"
-          fi
-
-      - name: Display structure of binary files
-        run: |
-          ls -1 ${{ steps.build.outputs.binary_path }}
-
-      - name: Upload app binary
-        if: ${{ inputs.upload_app_binaries_artifact != '' }}
-        uses: actions/upload-artifact@v6
-        with:
-          name: ${{ inputs.upload_app_binaries_artifact }}-${{ matrix.device }}
-          path: ${{ steps.build.outputs.binary_path }}
-          if-no-files-found: error
+    uses: ./.github/workflows/_build_app.yml
+    with:
+      app_repository: ${{ inputs.app_repository }}
+      ref: ${{ inputs.app_branch_name }}
+      device: ${{ matrix.device }}
+      builder: ${{ inputs.builder }}
+      is_rust: ${{ needs.call_get_app_metadata.outputs.is_rust }}
+      build_directory: ${{ needs.call_get_app_metadata.outputs.build_directory }}
+      flags: ${{ needs.call_get_app_metadata.outputs.flags }}
+      sdk_reference: ${{ inputs.sdk_reference }}
+      enable_stack_consumption: ${{ inputs.enable_stack_consumption }}
+      upload_as_lib_artifact: ${{ inputs.upload_as_lib_artifact }}
+      artifact_name: ${{ inputs.upload_app_binaries_artifact }}
+    secrets:
+      token: ${{ secrets.token }}
 
   merge_artifacts:
     name: Merge build artifacts
@@ -244,110 +140,21 @@ jobs:
       fail-fast: false
       matrix:
         device: ${{ fromJSON(needs.call_get_app_metadata.outputs.compatible_devices) }}
-    runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/ledgerhq/ledger-app-builder/${{ inputs.builder }}:latest
-
-    steps:
-      - name: Clone
-        uses: actions/checkout@v6
-        with:
-          repository: ${{ inputs.app_repository }}
-          ref: ${{ github.base_ref }}
-          submodules: recursive
-          token: ${{ secrets.token && secrets.token || github.token }}
-
-      - name: Set device-specific environment variables
-        shell: bash
-        run: |
-          eval "BOLOS_SDK=\$$(echo ${{ matrix.device }} | tr '[:lower:]' '[:upper:]')_SDK"
-          echo "BOLOS_SDK=${BOLOS_SDK}" >> "${GITHUB_ENV}"
-          echo "BOLOS_SDK will be set to: ${BOLOS_SDK}"
-
-      - name: Use provided C SDK ref
-        if: ${{ inputs.sdk_reference != '' }}
-        working-directory: ${{ env.BOLOS_SDK }}
-        shell: bash
-        run: |
-          echo "Using BOLOS_SDK: ${BOLOS_SDK}"
-          echo "Checking out reference '${SDK_REFERENCE}'..."
-          git fetch -apt && git checkout ${SDK_REFERENCE}
-          DEVICE=${{ matrix.device }}
-          echo "ADDITIONAL_ARGS=TARGET=${DEVICE/sp/s2}" >> "${GITHUB_ENV}"
-
-      - name: Build application
-        id: "build"
-        working-directory: ${{ needs.call_get_app_metadata.outputs.build_directory }}
-        shell: bash
-        run: |
-          if [ "${{ needs.call_get_app_metadata.outputs.is_rust }}" = "true" ];
-          then
-              BUILD_DEVICE_NAME="$(echo "${{ matrix.device }}" | sed 's/nanosp/nanosplus/')"
-              # Update the Rust SDK crate
-              cargo update ledger_device_sdk
-              # Build application
-              # Assemble everything passed to `cargo ledger build` after `--`.
-              CARGO_ADD_ARGS=()
-              CARGO_ADD_ARGS+=(${{ needs.call_get_app_metadata.outputs.flags }})
-              # Stack consumption tracking is just another SDK feature.
-              if [ "${ENABLE_STACK_CONSUMPTION}" = "true" ]; then
-                CARGO_ADD_ARGS+=(--features ledger_device_sdk/stack_usage)
-              fi
-              echo "Feature args: ${CARGO_ADD_ARGS[*]}"
-              cargo ledger build "${BUILD_DEVICE_NAME}" -- "${CARGO_ADD_ARGS[@]}"
-              binary_path=$(cargo metadata --no-deps --format-version 1 | jq -r '.target_directory')
-              echo "binary_path=${binary_path}" >> "${GITHUB_OUTPUT}"
-          else
-              echo "Using BOLOS_SDK: ${BOLOS_SDK}"
-              STACK_FLAG=""
-              if [ "${ENABLE_STACK_CONSUMPTION}" = "true" ]; then
-                STACK_FLAG="DEBUG_OS_STACK_CONSUMPTION=1"
-              fi
-              make -j ${{ needs.call_get_app_metadata.outputs.flags }} ${ADDITIONAL_ARGS} ${STACK_FLAG} BOLOS_SDK="${BOLOS_SDK}"
-              echo "binary_path=${{ needs.call_get_app_metadata.outputs.build_directory }}/build" >> "${GITHUB_OUTPUT}"
-          fi
-          echo "binary_path=${binary_path}"
-          echo "Build complete"
-
-      - name: Remove build artifacts before upload
-        run: |
-          if [ "${{ needs.call_get_app_metadata.outputs.is_rust }}" = "true" ];
-          then
-              find ${{ steps.build.outputs.binary_path }} -mindepth 3 -maxdepth 3 -type d -exec rm -rf {} +
-              rm -rf ${{ steps.build.outputs.binary_path }}/release
-          else
-              find ${{ steps.build.outputs.binary_path }} -mindepth 2 -maxdepth 2 -type d ! -name 'bin' -exec rm -r {} +
-          fi
-
-      - name: Prepare to upload as lib
-        if: ${{ inputs.upload_as_lib_artifact != '' }}
-        shell: bash
-        run: |
-          if [ "${{ needs.call_get_app_metadata.outputs.is_rust }}" = "true" ];
-          then
-            C_DEVICE_NAME="$(echo "${{ matrix.device }}" | sed 's/nanosp/nanos2/')"
-            RUST_DEVICE_NAME="$(echo "${{ matrix.device }}" | sed 's/sp/splus/')"
-            ELF_NAME=$(cargo metadata --manifest-path ${{ needs.call_get_app_metadata.outputs.build_directory }}/Cargo.toml --no-deps --format-version 1 | jq -r '.packages[] | select(.metadata.ledger != null) | .name')
-            mv "${{ steps.build.outputs.binary_path }}/${RUST_DEVICE_NAME}/release/${ELF_NAME}" "${{ steps.build.outputs.binary_path }}/${UPLOAD_AS_LIB_ARTIFACT}_${C_DEVICE_NAME}.elf"
-            rm -rf "${{ steps.build.outputs.binary_path }}/${RUST_DEVICE_NAME}"
-          else
-            DEVICE_NAME="$(echo "${{ matrix.device }}" | sed 's/nanosp/nanos2/')"
-            find "${{ needs.call_get_app_metadata.outputs.build_directory }}/build/${DEVICE_NAME}/" -type f -name 'app.elf' -exec mv {} "${UPLOAD_AS_LIB_ARTIFACT}_${DEVICE_NAME}.elf" \;
-            rm -r ${{ needs.call_get_app_metadata.outputs.build_directory }}/build/*
-            mv "${UPLOAD_AS_LIB_ARTIFACT}_${DEVICE_NAME}.elf" "${{ needs.call_get_app_metadata.outputs.build_directory }}/build/"
-          fi
-
-      - name: Display structure of binary files
-        run: |
-          ls -1 ${{ steps.build.outputs.binary_path }}
-
-      - name: Upload app binary
-        if: ${{ inputs.upload_app_binaries_artifact != '' }}
-        uses: actions/upload-artifact@v6
-        with:
-          name: ${{ inputs.upload_app_binaries_artifact }}_target-${{ matrix.device }}
-          path: ${{ steps.build.outputs.binary_path }}
-          if-no-files-found: error
+    uses: ./.github/workflows/_build_app.yml
+    with:
+      app_repository: ${{ inputs.app_repository }}
+      ref: ${{ github.base_ref }}
+      device: ${{ matrix.device }}
+      builder: ${{ inputs.builder }}
+      is_rust: ${{ needs.call_get_app_metadata.outputs.is_rust }}
+      build_directory: ${{ needs.call_get_app_metadata.outputs.build_directory }}
+      flags: ${{ needs.call_get_app_metadata.outputs.flags }}
+      sdk_reference: ${{ inputs.sdk_reference }}
+      enable_stack_consumption: ${{ inputs.enable_stack_consumption }}
+      upload_as_lib_artifact: ${{ inputs.upload_as_lib_artifact }}
+      artifact_name: ${{ inputs.upload_app_binaries_artifact }}_target
+    secrets:
+      token: ${{ secrets.token }}
 
   merge_artifacts_target_branch:
     name: Merge build artifacts (target branch)

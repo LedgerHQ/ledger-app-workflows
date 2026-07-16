@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `reusable_build.yml`: for Rust applications, Cargo build arguments (e.g. `--features <name>`) are now passed through the `flags` input, consistent with the C build path.
 - `reusable_build.yml`: when the `sdk_reference` input is provided, the referenced C SDK is now checked out and used for both C and Rust application builds (previously it was ignored for Rust apps).
+- `reusable_build.yml`: internal refactor. The per-device build logic now lives in a private `_build_app.yml` reusable workflow, called once per device for both the source and target branches, removing the duplication between the `build` and `build_target_branch` jobs. No change to inputs, secrets, or produced artifacts.
 
 ### Removed
 
