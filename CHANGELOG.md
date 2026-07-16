@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+
+- `reusable_build.yml`: for Rust applications, Cargo build arguments (e.g. `--features <name>`) are now passed through the `flags` input, consistent with the C build path.
+
+### Removed
+
+- `reusable_build.yml`: removed the `features` and `cargo_ledger_build_args` inputs. Pass Cargo build arguments through `flags` instead.
+
 ## [1.106.0] - 2026-07-10
 
 ### Added

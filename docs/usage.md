@@ -21,14 +21,13 @@ In order to build an App, this workflow can use the following input parameters:
 | ---------------------------- | -------- | ------------------------- | ----------------------------------------------------------------------------------------------------------- |
 | app_repository               | ❌       | `github.repository`       | The GIT repository to build                                                                                 |
 | app_branch_name              | ❌       | `github.ref`              | The GIT branch to build                                                                                     |
-| flags                        | ❌       |                           | Additional compilation flags                                                                                |
+| flags                        | ❌       |                           | Additional compilation flags. For Rust apps, pass Cargo build arguments here (e.g. `--features variant_x`)  |
 | use_case                     | ❌       |                           | The use case to build the application for                                                                   |
 | upload_app_binaries_artifact | ❌       |                           | The name of the artifact containing the built app binaries                                                  |
 | upload_as_lib_artifact       | ❌       |                           | Prefixes for the built app binaries                                                                         |
 | run_for_devices              | ❌       | *ALL*                     | The list of device(s) on which the CI will run                                                              |
 | builder                      | ❌       | `ledger-app-builder-lite` | The docker image to build the application in                                                                |
 | sdk_reference                | ❌       |                           | A SDK reference to checkout before building the app                                                         |
-| cargo_ledger_build_args      | ❌       |                           | Additional arguments to pass to the cargo                                                                   |
 | build_comparison             | ❌       | `false`                   | Whether to build the target branch and report ELF size diffs on PRs                                         |
 | enable_stack_consumption     | ❌       | `false`                   | Enable stack consumption tracking (`DEBUG_OS_STACK_CONSUMPTION=1` for C, `--features stack_usage` for Rust) |
 
