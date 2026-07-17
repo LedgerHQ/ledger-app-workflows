@@ -18,12 +18,21 @@ on:
         default: ${{ github.ref }}
         type: string
       flags:
-        description: "Additional compilation flags (default to none)"
+        description: "Additional compilation flags for C applications, passed to `make` (default to none)"
+        required: false
+        default: ''
+        type: string
+      cargo_additional:
+        description: >
+          Additional arguments for Rust applications, passed to `cargo ledger build`
+          (e.g. `--features variant_x`). Ignored for C applications. Default to none.
         required: false
         default: ''
         type: string
       use_case:
-        description: "The use case to build the application for. Ignored if 'flags' is set"
+        description: >
+          The use case to build the application for.
+          Ignored if 'flags' (C apps) or 'cargo_additional' (Rust apps) is set.
         required: false
         default: ''
         type: string
@@ -92,6 +101,7 @@ jobs:
       app_branch_name: ${{ inputs.app_branch_name }}
       compatible_devices: ${{ inputs.run_for_devices }}
       flags: ${{ inputs.flags }}
+      cargo_additional: ${{ inputs.cargo_additional }}
       use_case: ${{ inputs.use_case }}
     secrets:
       token: ${{ secrets.token }}
@@ -112,6 +122,7 @@ jobs:
       is_rust: ${{ needs.call_get_app_metadata.outputs.is_rust }}
       build_directory: ${{ needs.call_get_app_metadata.outputs.build_directory }}
       flags: ${{ needs.call_get_app_metadata.outputs.flags }}
+      cargo_additional: ${{ needs.call_get_app_metadata.outputs.cargo_additional }}
       sdk_reference: ${{ inputs.sdk_reference }}
       enable_stack_consumption: ${{ inputs.enable_stack_consumption }}
       upload_as_lib_artifact: ${{ inputs.upload_as_lib_artifact }}
@@ -149,6 +160,7 @@ jobs:
       is_rust: ${{ needs.call_get_app_metadata.outputs.is_rust }}
       build_directory: ${{ needs.call_get_app_metadata.outputs.build_directory }}
       flags: ${{ needs.call_get_app_metadata.outputs.flags }}
+      cargo_additional: ${{ needs.call_get_app_metadata.outputs.cargo_additional }}
       sdk_reference: ${{ inputs.sdk_reference }}
       enable_stack_consumption: ${{ inputs.enable_stack_consumption }}
       upload_as_lib_artifact: ${{ inputs.upload_as_lib_artifact }}

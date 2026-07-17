@@ -21,7 +21,8 @@ In order to build an App, this workflow can use the following input parameters:
 | ---------------------------- | -------- | ------------------------- | ----------------------------------------------------------------------------------------------------------- |
 | app_repository               | ❌       | `github.repository`       | The GIT repository to build                                                                                 |
 | app_branch_name              | ❌       | `github.ref`              | The GIT branch to build                                                                                     |
-| flags                        | ❌       |                           | Additional compilation flags. For Rust apps, pass Cargo build arguments here (e.g. `--features variant_x`)  |
+| flags                        | ❌       |                           | Additional compilation flags for C applications (passed to `make`). Ignored for Rust applications           |
+| cargo_additional             | ❌       |                           | Additional arguments for Rust applications, passed to `cargo ledger build` (e.g. `--features variant_x`)    |
 | use_case                     | ❌       |                           | The use case to build the application for                                                                   |
 | upload_app_binaries_artifact | ❌       |                           | The name of the artifact containing the built app binaries                                                  |
 | upload_as_lib_artifact       | ❌       |                           | Prefixes for the built app binaries                                                                         |

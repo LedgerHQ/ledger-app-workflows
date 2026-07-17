@@ -36,7 +36,12 @@ on:
         required: true
         type: string
       flags:
-        description: 'Additional compilation flags (Cargo build args for Rust apps)'
+        description: 'Additional compilation flags for C applications (passed to `make`)'
+        required: false
+        default: ''
+        type: string
+      cargo_additional:
+        description: 'Additional arguments for Rust applications (passed to `cargo ledger build`)'
         required: false
         default: ''
         type: string
@@ -117,7 +122,7 @@ jobs:
               # Build application
               # Assemble everything passed to `cargo ledger build` after `--`.
               CARGO_ADD_ARGS=()
-              CARGO_ADD_ARGS+=(${{ inputs.flags }})
+              CARGO_ADD_ARGS+=(${{ inputs.cargo_additional }})
               # Stack consumption tracking is just another SDK feature.
               if [ "${ENABLE_STACK_CONSUMPTION}" = "true" ]; then
                 CARGO_ADD_ARGS+=(--features ledger_device_sdk/stack_usage)

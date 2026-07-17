@@ -7,15 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `reusable_build.yml`: new `cargo_additional` input to pass arguments to `cargo ledger build` for Rust applications (e.g. `--features variant_x`).
+
 ### Changed
 
-- `reusable_build.yml`: for Rust applications, Cargo build arguments (e.g. `--features <name>`) are now passed through the `flags` input, consistent with the C build path.
+- `reusable_build.yml`: Rust and C build arguments are now separated. The `flags` input is C-only (passed to `make`) and is ignored for Rust builds; Rust arguments go through the new `cargo_additional` input. A `use_case` still resolves to the appropriate arguments per language. This prevents generic C `flags` (as passed by multi-app pipelines) from breaking Rust builds.
 - `reusable_build.yml`: when the `sdk_reference` input is provided, the referenced C SDK is now checked out and used for both C and Rust application builds (previously it was ignored for Rust apps).
 - `reusable_build.yml`: internal refactor. The per-device build logic now lives in a private `_build_app.yml` reusable workflow, called once per device for both the source and target branches, removing the duplication between the `build` and `build_target_branch` jobs. No change to inputs, secrets, or produced artifacts.
 
 ### Removed
 
-- `reusable_build.yml`: removed the `features` and `cargo_ledger_build_args` inputs. Pass Cargo build arguments through `flags` instead.
+- `reusable_build.yml`: removed the `features` and `cargo_ledger_build_args` inputs. Pass Cargo build arguments through the `cargo_additional` input instead.
 
 ## [1.106.0] - 2026-07-10
 
