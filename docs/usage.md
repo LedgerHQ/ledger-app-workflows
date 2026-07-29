@@ -21,14 +21,14 @@ In order to build an App, this workflow can use the following input parameters:
 | ---------------------------- | -------- | ------------------------- | ----------------------------------------------------------------------------------------------------------- |
 | app_repository               | ❌       | `github.repository`       | The GIT repository to build                                                                                 |
 | app_branch_name              | ❌       | `github.ref`              | The GIT branch to build                                                                                     |
-| flags                        | ❌       |                           | Additional compilation flags                                                                                |
+| flags                        | ❌       |                           | Additional compilation flags for C applications (passed to `make`). Ignored for Rust applications           |
+| cargo_additional             | ❌       |                           | Additional arguments for Rust applications, passed to `cargo ledger build` (e.g. `--features variant_x`)    |
 | use_case                     | ❌       |                           | The use case to build the application for                                                                   |
 | upload_app_binaries_artifact | ❌       |                           | The name of the artifact containing the built app binaries                                                  |
 | upload_as_lib_artifact       | ❌       |                           | Prefixes for the built app binaries                                                                         |
 | run_for_devices              | ❌       | *ALL*                     | The list of device(s) on which the CI will run                                                              |
 | builder                      | ❌       | `ledger-app-builder-lite` | The docker image to build the application in                                                                |
-| sdk_reference                | ❌       |                           | A SDK reference to checkout before building the app                                                         |
-| cargo_ledger_build_args      | ❌       |                           | Additional arguments to pass to the cargo                                                                   |
+| sdk_reference                | ❌       |                           | A C SDK reference to checkout before building the app. Used for both C and Rust application builds          |
 | build_comparison             | ❌       | `false`                   | Whether to build the target branch and report ELF size diffs on PRs                                         |
 | enable_stack_consumption     | ❌       | `false`                   | Enable stack consumption tracking (`DEBUG_OS_STACK_CONSUMPTION=1` for C, `--features stack_usage` for Rust) |
 
@@ -99,7 +99,7 @@ It can use the following input parameters:
 | flags            | ❌       | `DEBUG=1`                 | Compilation flags. Must produce an ELF with debug symbols                         |
 | run_for_devices  | ❌       | *ALL*                     | The list of device(s) on which the CI will run                                    |
 | builder          | ❌       | `ledger-app-builder-lite` | The docker image to build the application in                                      |
-| sdk_reference    | ❌       |                           | A SDK reference to checkout before building the app                               |
+| sdk_reference    | ❌       |                           | A C SDK reference to checkout before building the app (used for C and Rust builds) |
 | test_filter      | ❌       |                           | Specify an expression which implements a substring match on the test names        |
 | test_options     | ❌       |                           | Specify optional parameters to be passed to the running test                      |
 | coverage_exclude | ❌       |                           | Comma-separated source paths to exclude from coverage (e.g. a vendored submodule) |
@@ -126,7 +126,7 @@ It can use the following input parameters:
 | flags           | ❌       | `DEBUG=1 MEMORY_PROFILING=1` | Compilation flags. Must enable at least `DEBUG=1 MEMORY_PROFILING=1`       |
 | run_for_devices | ❌       | *ALL*                        | The list of device(s) on which the CI will run                             |
 | builder         | ❌       | `ledger-app-builder-lite`    | The docker image to build the application in                               |
-| sdk_reference   | ❌       |                              | A SDK reference to checkout before building the app                        |
+| sdk_reference   | ❌       |                              | A C SDK reference to checkout before building the app (used for C and Rust builds) |
 | test_filter     | ❌       |                              | Specify an expression which implements a substring match on the test names |
 | test_options    | ❌       |                              | Specify optional parameters to be passed to the running test               |
 
