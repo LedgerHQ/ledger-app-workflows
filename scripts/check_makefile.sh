@@ -37,7 +37,7 @@ main() (
         variants_list=$(cat "$manifest" | jq ".VARIANTS | keys[]" | sed 's/"//g')
         while IFS= read -r variant; do
             log_info "Checking variant $variant"
-            appname="$(cat "$manifest" | jq ".VARIANTS.\"$variant\".APPNAME" | sed 's/"//g')"
+            appname="$(jq -r --arg v "$variant" '.VARIANTS[$v].APPNAME' "$manifest")"
 
             # Store the variant as key of an associative array to auto remove duplicates from variants
             variants_array["$variant"]=1
@@ -130,7 +130,7 @@ main() (
         if [ -n "${build_dir}" ]; then
             for cur_manifest in $manifests_list; do
                 for variant in "${!variants_array[@]}"; do
-                    build_target=$(jq -r ".VARIANTS.${variant}.TARGET" "${cur_manifest}")
+                    build_target=$(jq -r --arg v "${variant}" '.VARIANTS[$v].TARGET' "${cur_manifest}")
                     eval "BOLOS_SDK=\$$(echo "${build_target/s2/sp}" | tr '[:lower:]' '[:upper:]')_SDK"
 
                     log_info "Trying to make --dry-run for rule build/${build_target}/obj/app/${entrypoint_filepath}. Using $BOLOS_SDK"
