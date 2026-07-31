@@ -26,3 +26,10 @@ jobs:
   yamllint:
     name: Check yaml files
     uses: ./.github/workflows/reusable_yaml_lint.yml
+
+  pythonlint:
+    name: Check python scripts
+    uses: ./.github/workflows/reusable_python_checks.yml
+    with:
+      run_type_check: true
+      src_directory: scripts
