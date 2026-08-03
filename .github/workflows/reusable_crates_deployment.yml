@@ -61,7 +61,7 @@ jobs:
       - name: Set up Rust
         uses: actions-rust-lang/setup-rust-toolchain@v1.16.1
         with:
-          toolchain: 1.95.0 # because of https://github.com/rust-lang/cargo/issues/17086#issuecomment-4671848273
+          toolchain: 1.95.0  # because of https://github.com/rust-lang/cargo/issues/17086#issuecomment-4671848273
 
       - name: Get crate version
         working-directory: ${{ env.PACKAGE_DIRECTORY }}
