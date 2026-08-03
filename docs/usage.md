@@ -183,11 +183,12 @@ the default branch (`origin/HEAD`, falling back to `origin/main`/`origin/master`
 
 In order to check an App, this workflow can use the following input parameters:
 
-| Parameter  | Required | Default value | Comment                                                          |
-| ---------- | -------- | ------------- | ---------------------------------------------------------------- |
-| source     | ✅       |               | The source directory to lint (space-separated list is supported) |
-| version    | ❌       | 14            | ⚠️ **DEPRECATED** - The `clang-format` version to use            |
-| extensions | ❌       | `h,c,proto`   | ⚠️ **DEPRECATED** - The file extensions to lint, comma-separated |
+| Parameter    | Required | Default value | Comment                                                                                             |
+| ------------ | -------- | ------------- | --------------------------------------------------------------------------------------------------- |
+| source       | ✅       |               | The source directory to lint (space-separated list is supported)                                    |
+| repo_is_tool | ❌       | `false`       | Set to `true` for tool repos (no manifest file): skips language detection and always runs C linting |
+| version      | ❌       | 14            | ⚠️ **DEPRECATED** - The `clang-format` version to use                                               |
+| extensions   | ❌       | `h,c,proto`   | ⚠️ **DEPRECATED** - The file extensions to lint, comma-separated                                    |
 
 ## Reusable Python Checks
 
