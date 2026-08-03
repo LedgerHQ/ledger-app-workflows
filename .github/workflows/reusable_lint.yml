@@ -7,6 +7,11 @@ on:
         description: "The source directory to lint (can be a space-separated list of directories)"
         required: true
         type: string
+      repo_is_tool:
+        description: "The repository is a tool (and doesn't have a manifest file). Skips metadata detection and always runs C linting"
+        required: false
+        type: boolean
+        default: false
       version:
         description: "[DEPRECATED] The clang-format version to use"
         required: false
@@ -21,6 +26,7 @@ permissions:
 
 env:
   SOURCE: ${{ inputs.source }}
+  REPOSITORY_IS_TOOL: ${{ inputs.repo_is_tool }}
   VERSION: ${{ inputs.version }}
   EXTENSIONS: ${{ inputs.extensions }}
 
@@ -28,11 +34,13 @@ jobs:
   call_get_app_metadata:
     # Call this job to infer the application language (C or Rust)
     name: Retrieve application metadata
+    if: ${{ inputs.repo_is_tool == false }}
     uses: ./.github/workflows/_get_app_metadata.yml
 
   job_lint:
     name: Lint check
     needs: call_get_app_metadata
+    if: ${{ always() && (needs.call_get_app_metadata.result == 'success' || needs.call_get_app_metadata.result == 'skipped') }}
     runs-on: ubuntu-22.04
     container:
       image: ghcr.io/ledgerhq/ledger-app-builder/ledger-app-builder:latest
@@ -42,7 +50,7 @@ jobs:
         uses: actions/checkout@v6
 
       - name: Ensure clang-format is customized
-        if: ${{ needs.call_get_app_metadata.outputs.is_rust == 'false'}}
+        if: ${{ needs.call_get_app_metadata.outputs.is_rust == 'false' || inputs.repo_is_tool }}
         run: |
           if [ ! -f ".clang-format" ]; then
             echo "⚠️ Warning: .clang-format file not found, using default configuration"
@@ -60,7 +68,7 @@ jobs:
           fi
 
       - name: Lint check for C app
-        if: ${{ needs.call_get_app_metadata.outputs.is_rust == 'false'}}
+        if: ${{ needs.call_get_app_metadata.outputs.is_rust == 'false' || inputs.repo_is_tool }}
         run:
           clang-format --dry-run --Werror $(find ${{ inputs.source }} -type f \( -name '*.c' -o -name '*.h' \))
 
