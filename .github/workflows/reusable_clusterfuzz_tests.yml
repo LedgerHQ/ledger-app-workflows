@@ -1,7 +1,16 @@
 name: ClusterFuzzLite Reusable Fuzzing
 
+# Expects .clusterfuzzlite/{Dockerfile,build.sh,project.yaml} in the calling repository.
+# Coverage additionally needs the per-target seed corpus zips that the SDK's
+# fuzzing/scripts/cfl-build.sh ships alongside the fuzzers; a build.sh that predates it
+# reports no coverage data instead of failing the job.
+
 on:
   workflow_call:
+    secrets:
+      codecov_token:
+        description: 'The Codecov token used to authorize the coverage upload'
+        required: false
     inputs:
       exec_mode:
         description: 'Execution mode: github.event_name ("pull_request", "push", "schedule", "workflow_dispatch")'
@@ -22,6 +31,16 @@ on:
         required: false
         type: number
         default: 18000  # 5 hours for schedule cron
+      seconds_prune:
+        description: 'Upper bound in seconds for the prune run (corpus minimization, finishes in minutes).'
+        required: false
+        type: number
+        default: 1800
+      enable_codecov:
+        description: 'Whether to upload the fuzzing coverage result to Codecov (disable for repositories that cannot use Codecov, e.g. internal ones). The upload is also skipped when no codecov_token is provided.'
+        required: false
+        default: true
+        type: boolean
 
 permissions:
   contents: read
@@ -31,23 +50,34 @@ env:
   SECONDS_PR: ${{ inputs.seconds_pr }}
   SECONDS_PUSH: ${{ inputs.seconds_push }}
   SECONDS_SCHEDULE: ${{ inputs.seconds_schedule }}
+  CODECOV_TOKEN: ${{ secrets.codecov_token }}
 
 jobs:
   prepare_matrix:
     runs-on: ubuntu-latest
     outputs:
       matrix_json: ${{ steps.set_matrix.outputs.matrix }}
+      fuzz_seconds: ${{ steps.set_matrix.outputs.fuzz_seconds }}
 
     steps:
       - name: Set Dynamic Matrix
         id: set_matrix
         run: |
+          # Duration follows the TRIGGER (that is what the SECONDS_* inputs are named
+          # for) and applies to the fuzzing run: code-change on PRs, batch otherwise.
           if [ "${EXEC_MODE}" = "pull_request" ]; then
-            MATRIX='[{"sanitizer":"address","mode_cflite":"code-change"},{"sanitizer":"undefined","mode_cflite":"code-change"},{"sanitizer":"memory","mode_cflite":"code-change"}]'
+            FUZZ_SECONDS=${SECONDS_PR}
+            MODE="code-change"
           else
-            MATRIX='[{"sanitizer":"address","mode_cflite":"batch"},{"sanitizer":"memory","mode_cflite":"batch"},{"sanitizer":"address","mode_cflite":"prune"},{"sanitizer":"coverage","mode_cflite":"coverage"}]'
+            case "${EXEC_MODE}" in
+              schedule|workflow_dispatch) FUZZ_SECONDS=${SECONDS_SCHEDULE} ;;
+              *)                          FUZZ_SECONDS=${SECONDS_PUSH} ;;
+            esac
+            MODE="batch"
           fi
+          MATRIX="[{\"sanitizer\":\"address\",\"mode_cflite\":\"${MODE}\"},{\"sanitizer\":\"undefined\",\"mode_cflite\":\"${MODE}\"},{\"sanitizer\":\"memory\",\"mode_cflite\":\"${MODE}\"}]"
           echo "matrix=${MATRIX}" >> "${GITHUB_OUTPUT}"
+          echo "fuzz_seconds=${FUZZ_SECONDS}" >> "${GITHUB_OUTPUT}"
 
   fuzzing:
     name: ${{ matrix.mode_cflite }} (${{ matrix.sanitizer }})
@@ -62,20 +92,8 @@ jobs:
       cancel-in-progress: true
 
     steps:
-      - name: Set Fuzz Seconds
-        id: set_seconds
-        run: |
-          # Duration follows the TRIGGER (that is what the SECONDS_* inputs are
-          # named for) and applies to the fuzzing run: code-change on PRs, batch
-          # on push/schedule/dispatch. prune/coverage are corpus-bounded and
-          # finish early regardless of this value.
-          case "${EXEC_MODE}" in
-            pull_request)               FUZZ_SECONDS=${SECONDS_PR} ;;       # code-change (diff)
-            schedule|workflow_dispatch) FUZZ_SECONDS=${SECONDS_SCHEDULE} ;; # deep batch (e.g. 5h)
-            *)                          FUZZ_SECONDS=${SECONDS_PUSH} ;;      # push: quick batch
-          esac
-          echo "fuzz_seconds=${FUZZ_SECONDS}" >> "${GITHUB_OUTPUT}"
-
+      # Every mode seeds itself from the newest `cifuzz-corpus-<target>` artifact, so a
+      # batch run continues from the corpus the last campaign published.
       - name: Build Fuzzers (${{ matrix.mode_cflite }}/${{ matrix.sanitizer }})
         id: build
         uses: google/clusterfuzzlite/actions/build_fuzzers@v1
@@ -89,7 +107,145 @@ jobs:
         uses: google/clusterfuzzlite/actions/run_fuzzers@v1
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          fuzz-seconds: ${{ steps.set_seconds.outputs.fuzz_seconds }}
+          language: c
+          fuzz-seconds: ${{ needs.prepare_matrix.outputs.fuzz_seconds }}
           mode: ${{ matrix.mode_cflite }}
           sanitizer: ${{ matrix.sanitizer }}
           output-sarif: ${{ inputs.exec_mode == 'pull_request' }}
+
+  # `cifuzz-corpus-<target>` resolves to the newest artifact of that name, so the last
+  # uploader owns the corpus every later run starts from. Beside the batch jobs prune
+  # lost that race (it finishes in minutes, they fuzz for hours) and its minimized
+  # corpus was discarded, so it runs after them instead.
+  prune:
+    name: prune (address)
+    runs-on: ubuntu-latest
+    needs: fuzzing
+    # `!cancelled()` and not the default `success()`: a batch job that finds a crash
+    # fails by design, and that must not stop the corpus being maintained.
+    if: ${{ !cancelled() && inputs.exec_mode != 'pull_request' }}
+    concurrency:
+      group: ${{ github.workflow }}-${{ inputs.exec_mode }}-prune-${{ github.ref }}
+      cancel-in-progress: true
+
+    steps:
+      - name: Build Fuzzers (prune/address)
+        uses: google/clusterfuzzlite/actions/build_fuzzers@v1
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          language: c
+          sanitizer: address
+
+      - name: Run Fuzzers (prune/address)
+        uses: google/clusterfuzzlite/actions/run_fuzzers@v1
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          language: c
+          fuzz-seconds: ${{ inputs.seconds_prune }}
+          mode: prune
+          sanitizer: address
+
+  # ClusterFuzzLite builds with coverage instrumentation, replays the promoted corpus and
+  # writes one profile per target, but never merges them and, for C, only ever emits an
+  # HTML report. Merging and the lcov export are therefore done here.
+  coverage:
+    name: Fuzzing coverage
+    runs-on: ubuntu-latest
+    # Last, so the replayed corpus is the one this run grew and prune minimised
+    # rather than the previous run's. Coverage mode only downloads the corpus, so
+    # this is about reporting a current number, not about contention.
+    # !cancelled(): prune is skipped on pull requests, and fuzzing fails when it
+    # finds a crash -- neither should suppress the coverage report.
+    needs: [fuzzing, prune]
+    if: ${{ !cancelled() }}
+    permissions:
+      contents: read
+      actions: read  # For the corpus download
+    env:
+      IMAGE: gcr.io/oss-fuzz-base/clusterfuzzlite-run-fuzzers:v1
+
+    steps:
+      - name: Clone
+        uses: actions/checkout@v6
+
+      - name: Build Fuzzers (coverage)
+        uses: google/clusterfuzzlite/actions/build_fuzzers@v1
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          language: c
+          sanitizer: coverage
+          # Coverage measures the whole project, not the subset a diff touched.
+          keep-unaffected-fuzz-targets: true
+
+      - name: Run Fuzzers (coverage)
+        uses: google/clusterfuzzlite/actions/run_fuzzers@v1
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          language: c
+          fuzz-seconds: 600  # Unused: coverage mode replays, but the value must be > 0
+          mode: coverage
+          sanitizer: coverage
+
+      - name: Export lcov
+        id: lcov
+        run: |
+          shopt -s nullglob
+          DUMPS="${GITHUB_WORKSPACE}/cifuzz-coverage/dumps"
+          # One profile per target, named "<target>." by this image, so select on being a
+          # file rather than on a suffix and skip the empty directories left alongside.
+          PROFILES=()
+          for entry in "${DUMPS}"/*; do
+            if [ -f "${entry}" ]; then PROFILES+=("/prof/$(basename "${entry}")"); fi
+          done
+          # build.sh ships each target beside its <target>_seed_corpus.zip.
+          OBJECTS=()
+          for zip in "${GITHUB_WORKSPACE}"/build-out/*_seed_corpus.zip; do
+            target="$(basename "${zip}" _seed_corpus.zip)"
+            OBJECTS+=("-object=/out/${target}")
+          done
+          echo "${#PROFILES[@]} profile(s), ${#OBJECTS[@]} target(s)"
+
+          # A build.sh predating the SDK's fuzzing/scripts/cfl-build.sh ships no
+          # per-target seed corpus zip, so there is nothing to attribute coverage
+          # to. Say so instead of failing a job the repository never opted into.
+          if [ "${#PROFILES[@]}" -eq 0 ] || [ "${#OBJECTS[@]}" -eq 0 ]; then
+            {
+              echo "No fuzzing coverage data:" \
+                   "${#PROFILES[@]} profile(s), ${#OBJECTS[@]} target(s)."
+              echo "Have .clusterfuzzlite/build.sh delegate to the SDK's" \
+                   "fuzzing/scripts/cfl-build.sh to enable it."
+            } >> "${GITHUB_STEP_SUMMARY}"
+            exit 0
+          fi
+
+          # The llvm tooling must be the one that wrote the profiles.
+          mkdir -p out
+          docker run --rm -v "${DUMPS}:/prof:ro" -v "${RUNNER_TEMP}:/work" \
+            --entrypoint llvm-profdata "${IMAGE}" \
+            merge -sparse "${PROFILES[@]}" -o /work/merged.profdata
+          docker run --rm -v "${GITHUB_WORKSPACE}/build-out:/out:ro" \
+            -v "${RUNNER_TEMP}:/work:ro" --entrypoint llvm-cov "${IMAGE}" \
+            export "${OBJECTS[@]}" -instr-profile=/work/merged.profdata \
+            -ignore-filename-regex='^/usr/' -format=lcov > out/coverage.lcov
+
+          # Codecov matches coverage to a PR by repo-relative path, llvm-cov records the
+          # build path, so strip whichever root the Dockerfile copied the checkout to.
+          sed -i -E 's#^SF:(/app/|/src/[^/]+/)#SF:#' out/coverage.lcov
+          awk -F: '/^LF:/ {f += $2} /^LH:/ {h += $2}
+                   END {if (f == 0) {print "Fuzzing coverage: no instrumented lines found"}
+                        else {printf "Fuzzing line coverage: **%.2f%%** (%d/%d lines)\n",
+                              100*h/f, h, f}}' out/coverage.lcov | tee -a "${GITHUB_STEP_SUMMARY}"
+          echo "generated=true" >> "${GITHUB_OUTPUT}"
+
+      # Skipped when there was no coverage data to export, when disabled via
+      # `enable_codecov` (e.g. internal repositories that cannot use Codecov), or
+      # when no `codecov_token` is provided.
+      - name: Upload to codecov.io
+        if: ${{ steps.lcov.outputs.generated == 'true' && inputs.enable_codecov && env.CODECOV_TOKEN != '' }}
+        uses: codecov/codecov-action@v6
+        with:
+          token: ${{ secrets.codecov_token }}
+          files: ./out/coverage.lcov
+          flags: fuzzing
+          name: codecov-${{ github.event.repository.name }}-fuzzing
+          fail_ci_if_error: true
