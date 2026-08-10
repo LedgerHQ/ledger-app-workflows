@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.108.0] - 2026-08-10
+
+### Added
+
+- `reusable_unit_tests.yml` : new `repo_is_tool` boolean input for SDK or tool repositories
+  (no manifest file). When set, `test_directory` is used directly instead of reading from
+  `ledger_app.toml`.
+- `reusable_unit_tests.yml` : multi-module support for CMake-based tool/SDK repos. When
+  `repo_is_tool: true` and `use_cmake_ut_framework: true`, subdirectories containing a
+  `CMakeLists.txt` are auto-detected and built/tested/covered independently.
+- `reusable_unit_tests.yml` : cache Unity/CMock FetchContent sources between runs, keyed on
+  `cmake/LedgerUT.cmake` to invalidate when pinned tags change.
+
+### Changed
+
+- `check_changelog.sh` : Restrict the `CHANGELOG` check to only files at the repo root level
+- `reusable_unit_tests.yml` : artifact upload paths, Codecov `files`, and CodeCoverageSummary
+  `filename` now use globs (`**/coverage`, `**/coverage.xml`, `**/coverage.info`) to collect
+  outputs from all modules in multi-module builds.
+- `reusable_unit_tests.yml` : GitHub coverage upload uses a `find_xml` step to locate the first
+  `coverage.xml` dynamically, supporting nested multi-module output trees.
+
 ## [1.107.1] - 2026-08-10
 
 ### Fixed
