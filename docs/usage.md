@@ -267,12 +267,13 @@ In order to test an App, this workflow can use the following input parameters:
 | ---------------------- | -------- | ------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
 | app_repository         | ❌       | `github.repository`       | The GIT repository to test                                                                                                        |
 | app_branch_name        | ❌       | `github.ref`              | The GIT branch to test                                                                                                            |
-| test_directory         | ❌       | Auto-detected             | ⚠️ **DEPRECATED** - Automatically read from `ledger_app.toml`                                                                     |
+| test_directory         | ❌       |                           | Only used (and required) for tool/SDK repos with `repo_is_tool: true`                                                             |
 | builder                | ❌       | `ledger-app-builder-lite` | The docker image to build the application in                                                                                      |
 | additional_packages    | ❌       |                           | Additional packages to install                                                                                                    |
 | coverage_exclude_paths | ❌       |                           | Space-separated glob patterns to exclude from the coverage result (`/usr/*`, `/opt/*` and the test directory are always excluded) |
 | enable_codecov         | ❌       | `true`                    | Whether to upload coverage to Codecov; `false` for repos that can't use it, e.g. internal (also skipped without `codecov_token`)  |
 | use_cmake_ut_framework | ❌       | `false`                   | Use the CMake UT framework: tests run and coverage generated in a `build/` subdirectory (else directly in the test directory)     |
+| repo_is_tool           | ❌       | `false`                   | Set to `true` for tool/SDK repos (no `ledger_app.toml`): uses `test_directory` directly instead of reading from the manifest      |
 
 In addition, the following secrets can be used:
 

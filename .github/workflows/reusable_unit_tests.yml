@@ -21,7 +21,7 @@ on:
         default: ${{ github.ref }}
         type: string
       test_directory:
-        description: "[DEPRECATED] The directory containing the unit-tests to run. If not provided, will be read from ledger_app.toml via ledger-manifest"
+        description: "Only used (and required) for tool/SDK repos with `repo_is_tool: true`"
         required: false
         default: ''
         type: string
@@ -50,6 +50,11 @@ on:
         required: false
         default: false
         type: boolean
+      repo_is_tool:
+        description: "The repository is a tool or SDK (no manifest file). Uses test_directory input directly instead of reading from ledger_app.toml."
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -64,6 +69,7 @@ env:
   COVERAGE_EXCLUDE_PATHS: ${{ inputs.coverage_exclude_paths }}
   CODECOV_TOKEN: ${{ secrets.codecov_token }}
   USE_CMAKE_UT_FRAMEWORK: ${{ inputs.use_cmake_ut_framework }}
+  REPO_IS_TOOL: ${{ inputs.repo_is_tool }}
 
 jobs:
   unit_test:
@@ -97,6 +103,15 @@ jobs:
           path: ./ledger-app-workflows
           ref: ${{ fromJSON(toJSON(job)).workflow_sha }}
 
+      # Cache Unity and CMock sources fetched by FetchContent at configure time.
+      # Keyed on LedgerUT.cmake so a change in pinned tags busts the cache.
+      - name: Cache Unity/CMock (FetchContent)
+        if: ${{ inputs.use_cmake_ut_framework }}
+        uses: actions/cache@v6
+        with:
+          path: /tmp/cmake-fetch-deps
+          key: cmake-fetch-deps-${{ hashFiles('cmake/LedgerUT.cmake') }}
+
       # Single install step:
       #   - caller-provided build packages (ADDITIONAL_PACKAGES, may be empty);
       #   - libjson-xs-perl: speeds up lcov and silences its JSON::PP warning.
@@ -104,23 +119,26 @@ jobs:
         run: ./ledger-app-workflows/scripts/apt_install.sh -R $ADDITIONAL_PACKAGES libjson-xs-perl ruby
 
       - name: Deprecation warning for test_directory
-        if: ${{ inputs.test_directory != '' }}
+        if: ${{ inputs.test_directory != '' && !inputs.repo_is_tool }}
         run: |
           MSG="Parameter 'test_directory' is deprecated. It will be automatically read from ledger_app.toml using ledger-manifest. Please remove this parameter from your workflow."
           echo ":warning:${MSG}"
           echo ":warning: **Warning**: ${MSG}" >> "${GITHUB_STEP_SUMMARY}"
 
       - name: Determine test directory
+        if: ${{ !inputs.repo_is_tool }}
         run: |
           echo "TEST_DIRECTORY=$(ledger-manifest -otu ledger_app.toml)" >> "${GITHUB_ENV}"
 
       # WORK_DIR is the test directory (where the build is launched from).
-      # RUN_DIR is where the tests are run and the coverage is generated:
-      #   - CMake framework: builds into a `build/` subdirectory -> WORK_DIR/build
-      #   - legacy framework: runs in place                      -> WORK_DIR
+      # RUN_DIR is where single-module coverage lives (used by upload/codecov/summary):
+      #   - CMake mono-module (app):  WORK_DIR/build
+      #   - CMake multi-module (SDK): WORK_DIR  (coverage files in per-module subdirs)
+      #   - legacy:                   WORK_DIR
+      # TEST_MODULES: space-separated list of module paths relative to WORK_DIR.
+      #   - repo_is_tool + cmake: auto-detected subdirectories with CMakeLists.txt
+      #   - otherwise: "." (single module, loop runs once, identical to old behaviour)
       - name: Set working directory
-        env:
-          USE_CMAKE_UT_FRAMEWORK: ${{ inputs.use_cmake_ut_framework }}
         run: |
           if [ -n "${TEST_DIRECTORY}" ]; then
             WORK_DIR="${TEST_DIRECTORY}"
@@ -128,32 +146,62 @@ jobs:
             WORK_DIR="."
           fi
           echo "WORK_DIR=${WORK_DIR}" >> "${GITHUB_ENV}"
-          if [ "${USE_CMAKE_UT_FRAMEWORK}" = "true" ]; then
+
+          if [ "${USE_CMAKE_UT_FRAMEWORK}" = "true" ] && [ "${REPO_IS_TOOL}" != "true" ]; then
             echo "RUN_DIR=${WORK_DIR}/build" >> "${GITHUB_ENV}"
           else
             echo "RUN_DIR=${WORK_DIR}" >> "${GITHUB_ENV}"
           fi
 
+          if [ "${USE_CMAKE_UT_FRAMEWORK}" = "true" ] && [ "${REPO_IS_TOOL}" = "true" ]; then
+            MODULES=$(find "${WORK_DIR}" -mindepth 2 -maxdepth 2 -name CMakeLists.txt \
+              -exec dirname {} \; | sed "s|^${WORK_DIR}/||" | sort | tr '\n' ' ')
+            MODULES="${MODULES:-"."}"
+          else
+            MODULES="."
+          fi
+          echo "TEST_MODULES=${MODULES}" >> "${GITHUB_ENV}"
+
       - name: Build unit tests
         working-directory: ${{ env.WORK_DIR }}
         run: |
-          cmake -Bbuild -H. && make -C build
+          if [ "${USE_CMAKE_UT_FRAMEWORK}" = "true" ]; then
+            for dir in ${TEST_MODULES}; do
+              echo "::group::Building ${dir}"
+              cmake -B "${dir}/build" -S "${dir}" \
+                -DCMAKE_BUILD_TYPE=Debug \
+                -DFETCHCONTENT_BASE_DIR=/tmp/cmake-fetch-deps
+              cmake --build "${dir}/build"
+              echo "::endgroup::"
+            done
+          else
+            cmake -B build -S .
+            cmake --build build
+          fi
 
       - name: Run unit tests
-        working-directory: ${{ env.RUN_DIR }}
+        working-directory: ${{ env.WORK_DIR }}
         run: |
           if [ "${USE_CMAKE_UT_FRAMEWORK}" = "true" ]; then
-            ctest
+            for dir in ${TEST_MODULES}; do
+              echo "::group::Testing ${dir}"
+              ctest --test-dir "${dir}/build" --output-on-failure
+              echo "::endgroup::"
+            done
           else
             CTEST_OUTPUT_ON_FAILURE=1 make -C build test
           fi
 
       - name: Generate code coverage
         id: coverage
-        working-directory: ${{ env.RUN_DIR }}
+        working-directory: ${{ env.WORK_DIR }}
         run: |
           if [ "${USE_CMAKE_UT_FRAMEWORK}" = "true" ]; then
-            make generate_coverage
+            for dir in ${TEST_MODULES}; do
+              echo "::group::Coverage for ${dir}"
+              cmake --build "${dir}/build" --target generate_coverage
+              echo "::endgroup::"
+            done
           else
             "${GITHUB_WORKSPACE}/ledger-app-workflows/scripts/generate_coverage.sh"
           fi
@@ -163,8 +211,8 @@ jobs:
         with:
           name: code-coverage
           path: |
-            ${{ env.RUN_DIR }}/coverage
-            ${{ env.RUN_DIR }}/coverage.xml
+            ${{ env.WORK_DIR }}/**/coverage
+            ${{ env.WORK_DIR }}/**/coverage.xml
 
       # Skipped when disabled via `enable_codecov` (e.g. internal repositories
       # that cannot use Codecov) or when no `codecov_token` is provided.
@@ -173,7 +221,7 @@ jobs:
         uses: codecov/codecov-action@v6
         with:
           token: ${{ secrets.codecov_token }}
-          files: ${{ env.RUN_DIR }}/coverage.info
+          files: ${{ env.WORK_DIR }}/**/coverage.info
           flags: unittests
           name: codecov-${{ inputs.app_repository }}
           fail_ci_if_error: true
@@ -244,24 +292,35 @@ jobs:
       # Cobertura report to GitHub's coverage API; results show up directly on
       # the PR (no comment). Requires the repo's "Code Quality" feature enabled.
       # Fork PRs and merge_group are skipped by the action.
-      - name: Upload coverage to GitHub
+      # coverage.xml may be nested (multi-module repos produce one per module);
+      # pick the first one found so the action gets a concrete path.
+      - name: Find coverage.xml
+        id: find_xml
         if: ${{ steps.download.outcome == 'success' }}
+        continue-on-error: true
+        run: |
+          FILE=$(find . -name 'coverage.xml' | head -1)
+          echo "file=${FILE}" >> "${GITHUB_OUTPUT}"
+
+      - name: Upload coverage to GitHub
+        if: ${{ steps.download.outcome == 'success' && steps.find_xml.outputs.file != '' }}
         continue-on-error: true
         uses: actions/upload-code-coverage@v1
         with:
-          file: coverage.xml
+          file: ${{ steps.find_xml.outputs.file }}
           language: C
           label: code-coverage/unittests
           fail-on-error: false
 
       # `output: file` writes the markdown report to `code-coverage-results.md`
       # (fixed name set by the action), consumed by the wrap step below.
+      # filename accepts globs: aggregate all per-module coverage.xml files.
       - name: Build Cobertura coverage summary
         if: ${{ steps.download.outcome == 'success' }}
         continue-on-error: true  # coverage.xml is best-effort (may be absent)
         uses: irongut/CodeCoverageSummary@51cc3a756ddcd398d447c044c02cb6aa83fdae95  # v1.3.0
         with:
-          filename: coverage.xml
+          filename: "**/coverage.xml"
           badge: true
           format: markdown
           output: file
