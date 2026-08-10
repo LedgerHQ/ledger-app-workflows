@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.107.1] - 2026-08-10
+
+### Fixed
+
+- `reusable_clusterfuzz_tests.yml` : write the exported lcov to `RUNNER_TEMP` instead of
+  the workspace. The coverage container runs as root, so the workspace directory it
+  leaves behind was not writable by the runner user and the export failed.
+
 ## [1.107.0] - 2026-08-06
 
 ### Added
