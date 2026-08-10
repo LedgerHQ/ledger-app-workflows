@@ -218,23 +218,25 @@ jobs:
             exit 0
           fi
 
-          # The llvm tooling must be the one that wrote the profiles.
-          mkdir -p out
+          # The llvm tooling must be the one that wrote the profiles. Output goes
+          # to RUNNER_TEMP: the coverage container runs as root and leaves the
+          # workspace directories it creates unwritable by the runner user.
+          LCOV="${RUNNER_TEMP}/coverage.lcov"
           docker run --rm -v "${DUMPS}:/prof:ro" -v "${RUNNER_TEMP}:/work" \
             --entrypoint llvm-profdata "${IMAGE}" \
             merge -sparse "${PROFILES[@]}" -o /work/merged.profdata
           docker run --rm -v "${GITHUB_WORKSPACE}/build-out:/out:ro" \
             -v "${RUNNER_TEMP}:/work:ro" --entrypoint llvm-cov "${IMAGE}" \
             export "${OBJECTS[@]}" -instr-profile=/work/merged.profdata \
-            -ignore-filename-regex='^/usr/' -format=lcov > out/coverage.lcov
+            -ignore-filename-regex='^/usr/' -format=lcov > "${LCOV}"
 
           # Codecov matches coverage to a PR by repo-relative path, llvm-cov records the
           # build path, so strip whichever root the Dockerfile copied the checkout to.
-          sed -i -E 's#^SF:(/app/|/src/[^/]+/)#SF:#' out/coverage.lcov
+          sed -i -E 's#^SF:(/app/|/src/[^/]+/)#SF:#' "${LCOV}"
           awk -F: '/^LF:/ {f += $2} /^LH:/ {h += $2}
                    END {if (f == 0) {print "Fuzzing coverage: no instrumented lines found"}
                         else {printf "Fuzzing line coverage: **%.2f%%** (%d/%d lines)\n",
-                              100*h/f, h, f}}' out/coverage.lcov | tee -a "${GITHUB_STEP_SUMMARY}"
+                              100*h/f, h, f}}' "${LCOV}" | tee -a "${GITHUB_STEP_SUMMARY}"
           echo "generated=true" >> "${GITHUB_OUTPUT}"
 
       # Skipped when there was no coverage data to export, when disabled via
@@ -245,7 +247,7 @@ jobs:
         uses: codecov/codecov-action@v6
         with:
           token: ${{ secrets.codecov_token }}
-          files: ./out/coverage.lcov
+          files: ${{ runner.temp }}/coverage.lcov
           flags: fuzzing
           name: codecov-${{ github.event.repository.name }}-fuzzing
           fail_ci_if_error: true
