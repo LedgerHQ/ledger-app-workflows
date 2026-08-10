@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.107.0] - 2026-08-06
+
+### Added
+
+- `reusable_clusterfuzz_tests.yml` : export the fuzzing coverage as lcov and upload it to
+  Codecov under the `fuzzing` flag, controlled by `enable_codecov` and `codecov_token`.
+
+### Changed
+
+- `reusable_clusterfuzz_tests.yml` : batch runs also fuzz with the undefined sanitizer,
+  previously pull-request only. New `seconds_prune` input bounds the prune run.
+
+### Fixed
+
+- `reusable_clusterfuzz_tests.yml` : run `prune` after the batch jobs, so the corpus later
+  runs start from is the minimized one rather than whichever sanitizer uploaded last.
+
 ## [1.106.4] - 2026-08-03
 
 ### Changed
