@@ -21,7 +21,7 @@ on:
         default: ${{ github.ref }}
         type: string
       test_directory:
-        description: "[DEPRECATED] The directory containing the unit-tests to run. If not provided, will be read from ledger_app.toml via ledger-manifest"
+        description: "Only used (and required) for tool/SDK repos with `repo_is_tool: true`"
         required: false
         default: ''
         type: string
@@ -47,6 +47,11 @@ on:
         type: boolean
       use_cmake_ut_framework:
         description: "Whether to use the CMake unit testing framework (default: false). If false the legacy UT framework is used."
+        required: false
+        default: false
+        type: boolean
+      repo_is_tool:
+        description: "The repository is a tool or SDK (no manifest file). Uses test_directory input directly instead of reading from ledger_app.toml."
         required: false
         default: false
         type: boolean
@@ -113,13 +118,14 @@ jobs:
         run: ./ledger-app-workflows/scripts/apt_install.sh -R $ADDITIONAL_PACKAGES libjson-xs-perl ruby
 
       - name: Deprecation warning for test_directory
-        if: ${{ inputs.test_directory != '' }}
+        if: ${{ inputs.test_directory != '' && !inputs.repo_is_tool }}
         run: |
           MSG="Parameter 'test_directory' is deprecated. It will be automatically read from ledger_app.toml using ledger-manifest. Please remove this parameter from your workflow."
           echo ":warning:${MSG}"
           echo ":warning: **Warning**: ${MSG}" >> "${GITHUB_STEP_SUMMARY}"
 
       - name: Determine test directory
+        if: ${{ !inputs.repo_is_tool }}
         run: |
           echo "TEST_DIRECTORY=$(ledger-manifest -otu ledger_app.toml)" >> "${GITHUB_ENV}"
 
