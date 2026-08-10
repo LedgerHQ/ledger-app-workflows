@@ -119,8 +119,6 @@ jobs:
       #   - CMake framework: builds into a `build/` subdirectory -> WORK_DIR/build
       #   - legacy framework: runs in place                      -> WORK_DIR
       - name: Set working directory
-        env:
-          USE_CMAKE_UT_FRAMEWORK: ${{ inputs.use_cmake_ut_framework }}
         run: |
           if [ -n "${TEST_DIRECTORY}" ]; then
             WORK_DIR="${TEST_DIRECTORY}"
