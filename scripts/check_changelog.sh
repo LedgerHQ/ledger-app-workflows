@@ -70,7 +70,7 @@ main() (
     head_ref="${3:-HEAD}"
 
     # Look for any tracked CHANGELOG* file (CHANGELOG, CHANGELOG.md, CHANGELOG.rst, ...)
-    changelog_files=$(git -C "${repo}" ls-files | grep -E '(^|/)CHANGELOG[^/]*$' || true)
+    changelog_files=$(git -C "${repo}" ls-files | grep -E '^CHANGELOG[^/]*$' || true)
 
     if [[ -z "${changelog_files}" ]]; then
         set_output "verdict" "skip"
