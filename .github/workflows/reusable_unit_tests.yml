@@ -97,6 +97,15 @@ jobs:
           path: ./ledger-app-workflows
           ref: ${{ fromJSON(toJSON(job)).workflow_sha }}
 
+      # Cache Unity and CMock sources fetched by FetchContent at configure time.
+      # Keyed on LedgerUT.cmake so a change in pinned tags busts the cache.
+      - name: Cache Unity/CMock (FetchContent)
+        if: ${{ inputs.use_cmake_ut_framework }}
+        uses: actions/cache@v6
+        with:
+          path: /tmp/cmake-fetch-deps
+          key: cmake-fetch-deps-${{ hashFiles('cmake/LedgerUT.cmake') }}
+
       # Single install step:
       #   - caller-provided build packages (ADDITIONAL_PACKAGES, may be empty);
       #   - libjson-xs-perl: speeds up lcov and silences its JSON::PP warning.
@@ -135,13 +144,18 @@ jobs:
       - name: Build unit tests
         working-directory: ${{ env.WORK_DIR }}
         run: |
-          cmake -Bbuild -H. && make -C build
+          if [ "${USE_CMAKE_UT_FRAMEWORK}" = "true" ]; then
+            cmake -B build -S . -DCMAKE_BUILD_TYPE=Debug -DFETCHCONTENT_BASE_DIR=/tmp/cmake-fetch-deps
+          else
+            cmake -B build -S .
+          fi
+          cmake --build build
 
       - name: Run unit tests
         working-directory: ${{ env.RUN_DIR }}
         run: |
           if [ "${USE_CMAKE_UT_FRAMEWORK}" = "true" ]; then
-            ctest
+            ctest --output-on-failure
           else
             CTEST_OUTPUT_ON_FAILURE=1 make -C build test
           fi
@@ -151,7 +165,7 @@ jobs:
         working-directory: ${{ env.RUN_DIR }}
         run: |
           if [ "${USE_CMAKE_UT_FRAMEWORK}" = "true" ]; then
-            make generate_coverage
+            cmake --build . --target generate_coverage
           else
             "${GITHUB_WORKSPACE}/ledger-app-workflows/scripts/generate_coverage.sh"
           fi
