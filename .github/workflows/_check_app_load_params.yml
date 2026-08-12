@@ -22,7 +22,7 @@ env:
 jobs:
   check_app_load_params:
     name: Check APP_LOAD_PARAMS
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
 
     steps:
       - name: Clone ledger-app-workflows repository

@@ -79,13 +79,6 @@ jobs:
       image: ghcr.io/ledgerhq/ledger-app-builder/${{ inputs.builder }}:latest
 
     steps:
-      # --break-system-packages: the builder image is debian-trixie based
-      # (externally-managed) and installs its own pip packages the same way.
-      # lcov_cobertura is optional, so a transient PyPI issue must not fail the
-      # build -- hence the `|| true` (the coverage step degrades gracefully).
-      - name: Install Python dependencies
-        run: pip install --break-system-packages --no-cache-dir lcov_cobertura || true
-
       - name: Clone app repository
         uses: actions/checkout@v6
         with:
@@ -112,11 +105,9 @@ jobs:
           path: /tmp/cmake-fetch-deps
           key: cmake-fetch-deps-${{ hashFiles('cmake/LedgerUT.cmake') }}
 
-      # Single install step:
-      #   - caller-provided build packages (ADDITIONAL_PACKAGES, may be empty);
-      #   - libjson-xs-perl: speeds up lcov and silences its JSON::PP warning.
       - name: Install system dependencies
-        run: ./ledger-app-workflows/scripts/apt_install.sh -R $ADDITIONAL_PACKAGES libjson-xs-perl ruby
+        if: ${{ inputs.additional_packages != '' }}
+        run: ./ledger-app-workflows/scripts/apt_install.sh -R ${ADDITIONAL_PACKAGES}
 
       - name: Deprecation warning for test_directory
         if: ${{ inputs.test_directory != '' && !inputs.repo_is_tool }}

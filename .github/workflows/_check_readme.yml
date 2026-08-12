@@ -23,7 +23,7 @@ env:
 jobs:
   check_readme:
     name: Check readme
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
 
     steps:
       - name: Clone ledger-app-workflows repository

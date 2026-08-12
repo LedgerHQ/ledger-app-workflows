@@ -10,7 +10,7 @@ permissions:
 jobs:
   job_check_SDK:
     name: Check Ethereum plugin SDK submodule is up-to-date
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     steps:
       - name: Clone plugin
         uses: actions/checkout@v6
