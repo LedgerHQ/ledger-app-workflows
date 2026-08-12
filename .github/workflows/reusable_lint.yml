@@ -41,7 +41,7 @@ jobs:
     name: Lint check
     needs: call_get_app_metadata
     if: ${{ always() && (needs.call_get_app_metadata.result == 'success' || needs.call_get_app_metadata.result == 'skipped') }}
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     container:
       image: ghcr.io/ledgerhq/ledger-app-builder/ledger-app-builder:latest
 

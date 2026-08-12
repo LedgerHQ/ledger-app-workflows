@@ -69,7 +69,7 @@ permissions:
 jobs:
   fetch_metadata:
     name: Retrieve application metadata
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
 
     steps:
       - name: Clone app repository

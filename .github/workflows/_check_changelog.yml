@@ -28,7 +28,7 @@ env:
 jobs:
   check_changelog:
     name: Check changelog
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
 
     steps:
       - name: Clone ledger-app-workflows repository
