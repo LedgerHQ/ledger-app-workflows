@@ -97,7 +97,7 @@ jobs:
 
       - name: Installing required packages
         if: ${{ inputs.additional_packages != '' }}
-        run: ./ledger-app-workflows/scripts/apt_install.sh ${{ env.ADDITIONAL_PACKAGES }}
+        run: ./ledger-app-workflows/scripts/apt_install.sh ${ADDITIONAL_PACKAGES}
 
       - name: Clone
         uses: actions/checkout@v6
@@ -188,7 +188,7 @@ jobs:
 
       - name: Installing required packages
         if: ${{ inputs.additional_packages != '' }}
-        run: ./ledger-app-workflows/scripts/apt_install.sh ${{ env.ADDITIONAL_PACKAGES }}
+        run: ./ledger-app-workflows/scripts/apt_install.sh ${ADDITIONAL_PACKAGES}
 
       - name: Clone
         uses: actions/checkout@v6
@@ -237,7 +237,7 @@ jobs:
 
       - name: Installing required packages
         if: ${{ inputs.additional_packages != '' }}
-        run: ./ledger-app-workflows/scripts/apt_install.sh ${{ env.ADDITIONAL_PACKAGES }}
+        run: ./ledger-app-workflows/scripts/apt_install.sh ${ADDITIONAL_PACKAGES}
 
       - name: Clone
         uses: actions/checkout@v6

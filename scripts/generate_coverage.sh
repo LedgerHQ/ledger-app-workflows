@@ -89,16 +89,8 @@ gh_endgroup
 
 gh_group "Generating Cobertura report"
 # Convert the filtered tracefile to Cobertura XML (coverage.xml) for tooling
-# that does not read lcov -- here, the PR coverage-comment jobs. lcov_cobertura
-# is installed by a workflow step; the conversion is best-effort so a missing
-# dependency or a failure never drops the HTML report or the Codecov upload
-# (the surrounding `set -e` would otherwise abort).
+# that does not read lcov -- here, the PR coverage-comment jobs.
 # -b makes the XML source paths relative to the repo root for readable output.
 cobertura_base="${GITHUB_WORKSPACE:-$(realpath .)}"
-if command -v lcov_cobertura >/dev/null; then
-    lcov_cobertura coverage.info -b "${cobertura_base}" -o coverage.xml \
-        || log_warning "lcov_cobertura failed; coverage.xml not generated"
-else
-    log_warning "lcov_cobertura not installed; coverage.xml not generated"
-fi
+lcov_cobertura coverage.info -b "${cobertura_base}" -o coverage.xml || log_warning "lcov_cobertura failed; coverage.xml not generated"
 gh_endgroup
