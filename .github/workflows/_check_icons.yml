@@ -66,6 +66,9 @@ jobs:
           name: ${{ inputs.download_manifest_artifact_name }}
           path: ${{ inputs.download_manifest_artifact_name }}
 
+      - name: Install dependencies
+        run: ./ledger-app-workflows/scripts/apt_install.sh -R imagemagick
+
       - name: Run script
         run: |
             ./ledger-app-workflows/scripts/check_all.sh -c icons -t "${{ matrix.device }}" \
