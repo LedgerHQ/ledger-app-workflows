@@ -13,28 +13,9 @@ on:
         required: false
         default: ${{ github.ref }}
         type: string
-      run_linter:
-        description: "[DEPRECATED] Prefer omitting this input to use ruff. When set, runs the legacy linter (pylint, flake8, yapf or black) instead."
-        type: string
-        required: false
       run_type_check:
         description: "Whether to run mypy type check (defaults to false)"
         required: true
-        type: boolean
-      run_security_check:
-        description: "Whether to run bandit security check (defaults to false)"
-        required: false
-        default: false
-        type: boolean
-      bandit_severity_level:
-        description: "Minimum bandit severity level to report (all, low, medium, high - defaults to 'all')"
-        required: false
-        default: ''
-        type: string
-      bandit_non_blocking:
-        description: "Whether the bandit check should never fail the workflow (defaults to false)"
-        required: false
-        default: false
         type: boolean
       src_directory:
         description: "The directory containing the python sources to check"
@@ -67,11 +48,7 @@ permissions:
 env:
   APP_REPOSITORY: ${{ inputs.app_repository }}
   APP_BRANCH_NAME: ${{ inputs.app_branch_name }}
-  RUN_LINTER: ${{ inputs.run_linter }}
   RUN_TYPE_CHECK: ${{ inputs.run_type_check }}
-  RUN_SECURITY_CHECK: ${{ inputs.run_security_check }}
-  BANDIT_SEVERITY_LEVEL: ${{ inputs.bandit_severity_level }}
-  BANDIT_NON_BLOCKING: ${{ inputs.bandit_non_blocking }}
   SRC_DIRECTORY: ${{ inputs.src_directory }}
   REQ_DIRECTORY: ${{ inputs.req_directory }}
   SETUP_DIRECTORY: ${{ inputs.setup_directory }}
@@ -80,14 +57,9 @@ env:
 
 jobs:
   linter:
-    name: Python Linting with ${{ inputs.run_linter != '' && inputs.run_linter || 'ruff' }}
+    name: Python Linting with 'ruff'
     runs-on: ubuntu-latest
     steps:
-      - name: Check deprecated input
-        if: ${{ inputs.run_linter != '' }}
-        run: |
-          echo ":warning The input 'run_linter' is deprecated and has no effect. Linter and formatter is now always ruff."
-
       - name: Checkout ledger-app-workflows
         uses: actions/checkout@v6
         with:
@@ -114,18 +86,7 @@ jobs:
       - name: Installing Python dependencies
         run: |
           python -m pip install --upgrade pip
-
-          # Install linter / formatter
-          if [ -z "${RUN_LINTER}" ]; then
-            pip install ruff
-          else
-            case "${RUN_LINTER}" in
-              "pylint") pip install pylint ;;
-              "flake8") pip install flake8 flake8-pyproject ;;
-              "yapf") pip install yapf ;;
-              "black") pip install black ;;
-            esac
-          fi
+          pip install ruff
 
           # Install project requirements
           if [ -n "${REQ_DIRECTORY}" ] && [ -f "${REQ_DIRECTORY}/requirements.txt" ]; then
@@ -141,39 +102,15 @@ jobs:
           fi
 
       - name: Run ruff formatting
-        if: ${{ inputs.run_linter == '' }}
         working-directory: ${{ env.WORK_DIR }}
         run: |
           ruff format --check "${SRC_DIRECTORY}"
 
       - name: Run ruff check
-        if: ${{ inputs.run_linter == '' }}
         working-directory: ${{ env.WORK_DIR }}
         run: |
           ruff check "${SRC_DIRECTORY}"
 
-      - name: Run ${{ inputs.run_linter }}
-        if: ${{ inputs.run_linter != '' }}
-        working-directory: ${{ env.WORK_DIR }}
-        run: |
-          case "${RUN_LINTER}" in
-            "pylint")
-              ARGS=(-j 0)
-              if [ -f "./setup.cfg" ]; then
-                ARGS+=(--rcfile "./setup.cfg")
-              fi
-              pylint "${ARGS[@]}" "${SRC_DIRECTORY}"
-              ;;
-            "flake8")
-              flake8 "${SRC_DIRECTORY}"
-              ;;
-            "yapf")
-              yapf "${SRC_DIRECTORY}" --recursive -d
-              ;;
-            "black")
-              black --check --diff "${SRC_DIRECTORY}"
-              ;;
-          esac
   mypy:
     name: Type checking
     if: ${{ inputs.run_type_check == true }}
@@ -222,60 +159,3 @@ jobs:
         working-directory: ${{ env.WORK_DIR }}
         run: |
           mypy "${SRC_DIRECTORY}"
-
-  bandit:
-    name: Security checking
-    if: ${{ inputs.run_security_check == true }}
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout ledger-app-workflows
-        uses: actions/checkout@v6
-        with:
-          repository: LedgerHQ/ledger-app-workflows
-          path: ./ledger-app-workflows
-          ref: ${{ fromJSON(toJSON(job)).workflow_sha }}
-
-      - name: Installing required packages
-        if: ${{ inputs.additional_packages != '' }}
-        run: ./ledger-app-workflows/scripts/apt_install.sh ${ADDITIONAL_PACKAGES}
-
-      - name: Clone
-        uses: actions/checkout@v6
-        with:
-          repository: ${{ inputs.app_repository }}
-          ref: ${{ inputs.app_branch_name }}
-
-      - name: Set up Python
-        uses: actions/setup-python@v6
-        with:
-          python-version: ${{ inputs.python_version }}
-          cache: 'pip'
-
-      - name: Installing Python dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install bandit
-          if [ -n "${REQ_DIRECTORY}" ] && [ -f "${REQ_DIRECTORY}/requirements.txt" ]; then
-            pip install -r "${REQ_DIRECTORY}/requirements.txt"
-          fi
-
-      - name: Set working directory
-        run: |
-          if [ -n "${SETUP_DIRECTORY}" ]; then
-            echo "WORK_DIR=${SETUP_DIRECTORY}" >> "${GITHUB_ENV}"
-          else
-            echo "WORK_DIR=." >> "${GITHUB_ENV}"
-          fi
-
-      - name: Bandit security checking
-        working-directory: ${{ env.WORK_DIR }}
-        run: |
-          ARGS=(-r)
-          if [ -n "${BANDIT_SEVERITY_LEVEL}" ]; then
-            ARGS+=(--severity-level "${BANDIT_SEVERITY_LEVEL}")
-          fi
-          if [ "${BANDIT_NON_BLOCKING}" = "true" ]; then
-            bandit "${ARGS[@]}" "${SRC_DIRECTORY}" || true
-          else
-            bandit "${ARGS[@]}" "${SRC_DIRECTORY}"
-          fi
