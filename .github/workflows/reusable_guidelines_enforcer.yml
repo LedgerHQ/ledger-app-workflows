@@ -91,6 +91,7 @@ jobs:
   call_check_icons:
     name: Dispatch check
     needs: [call_get_app_metadata, call_get_workflow_version, call_get_app_manifest]
+    if: ${{ always() && !cancelled() && needs.call_get_app_metadata.result == 'success' && needs.call_get_workflow_version.result == 'success' && needs.call_get_app_manifest.result == 'success' }}
     uses: ./.github/workflows/_check_icons.yml
     with:
       app_repository: ${{ inputs.app_repository }}
@@ -101,6 +102,7 @@ jobs:
   call_check_app_load_params:
     name: Dispatch check
     needs: [call_get_workflow_version, call_get_app_manifest]
+    if: ${{ always() && !cancelled() && needs.call_get_workflow_version.result == 'success' && needs.call_get_app_manifest.result == 'success' }}
     uses: ./.github/workflows/_check_app_load_params.yml
     with:
       download_manifest_artifact_name: manifests
@@ -109,6 +111,7 @@ jobs:
   call_check_makefile:
     name: Dispatch check
     needs: [call_get_app_metadata, call_get_workflow_version, call_get_app_manifest]
+    if: ${{ always() && !cancelled() && needs.call_get_app_metadata.result == 'success' && needs.call_get_workflow_version.result == 'success' && needs.call_get_app_manifest.result == 'success' }}
     uses: ./.github/workflows/_check_makefile.yml
     with:
       app_repository: ${{ inputs.app_repository }}
