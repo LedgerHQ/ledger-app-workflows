@@ -25,6 +25,7 @@ env:
 permissions:
   contents: read
   actions: write  # Needed for upload-artifact & gh release
+  pull-requests: write
 
 jobs:
   call_get_app_metadata:
