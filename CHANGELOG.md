@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.111.3] - 2026-08-27
+
+### Fixed
+
+- `reusable_clusterfuzz_tests.yml`: Enable recursive submodule checkout in the clone step of the ClusterFuzzLite coverage job.
+
 ## [1.111.2] - 2026-08-25
 
 ### Fixed
