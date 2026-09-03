@@ -3,10 +3,6 @@ name: Check APP_LOAD_PARAMS
 on:
   workflow_call:
     inputs:
-      workflows_ref:
-        description: 'The current reference in use for the ledger-app-workflow repository'
-        required: true
-        type: string
       download_manifest_artifact_name:
         description: 'The name of the artifact containing the built manifest'
         required: true
@@ -16,7 +12,6 @@ permissions:
   contents: read  # Needed to clone the repositories
 
 env:
-  WORKFLOWS_REF: ${{ inputs.workflows_ref }}
   DOWNLOAD_MANIFEST_ARTIFACT_NAME: ${{ inputs.download_manifest_artifact_name }}
 
 jobs:
@@ -30,7 +25,7 @@ jobs:
         with:
           repository: LedgerHQ/ledger-app-workflows
           path: ./ledger-app-workflows
-          ref: ${{ inputs.workflows_ref }}
+          ref: ${{ fromJSON(toJSON(job)).workflow_sha }}
 
       - name: Clone ledger-app-database repository
         uses: actions/checkout@v6

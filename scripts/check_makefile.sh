@@ -18,7 +18,7 @@ main() (
     declare -A appnames_array
     declare -A is_allowed_makefile_array
 
-    if [[ "$repo_name" == "app-boilerplate" || "$repo_name" == "app-plugin-boilerplate" ]]; then
+    if echo "$repo_name" | grep -q "app.*boilerplate"; then
         is_boilerplate=true
     else
         is_boilerplate=false

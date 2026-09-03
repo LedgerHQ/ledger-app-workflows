@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.111.4] - 2026-09-03
+
+### Fixed
+
+- `_get_workflow_version.yaml`: drop the dependency on `canonical/get-workflow-version-action` and read `workflow_sha` from the job context.
+
 ## [1.111.3] - 2026-08-27
 
 ### Fixed
