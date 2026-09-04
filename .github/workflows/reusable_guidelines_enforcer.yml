@@ -33,18 +33,6 @@ env:
   RUN_FOR_DEVICES: ${{ inputs.run_for_devices }}
 
 jobs:
-  # We can't simply know the current ledger-app-workflow ref from inside the reusable workflow
-  # We use the workaround linked in the following Github issue until a proper API is available at Github API level
-  # https://github.com/actions/toolkit/issues/1264
-  call_get_workflow_version:
-    name: Get workflow version
-    uses: ./.github/workflows/_get_workflow_version.yaml
-    with:
-      repository_name: LedgerHQ/ledger-app-workflows
-      file_name: reusable_guidelines_enforcer.yml
-    secrets:
-      git_token: ${{ secrets.git_token }}
-
   call_get_app_metadata:
     # This job digests inputs and repository metadata provided by the `ledger_app.toml` manifest
     # file, in order to output relevant directories, compatible devices, and other variables needed
@@ -72,16 +60,15 @@ jobs:
 
   call_get_app_manifest:
     name: Dump app information
-    needs: [call_get_workflow_version, call_get_app_metadata, call_build]
+    needs: [call_get_app_metadata, call_build]
     # Run regardless of call_build's result: it is skipped for Rust apps (no glyph
     # filtering) and the explicit success checks below keep this job independent of it.
     # For C apps the build is required: if it failed there is no binary, and the manifest
     # dump will then fail with an explicit "build the application first" error.
-    if: ${{ always() && !cancelled() && needs.call_get_workflow_version.result == 'success' && needs.call_get_app_metadata.result == 'success' }}
+    if: ${{ always() && !cancelled() && needs.call_get_app_metadata.result == 'success' }}
     uses: ./.github/workflows/_get_app_manifest.yml
     with:
       app_repository: ${{ inputs.app_repository }}
-      workflows_ref: ${{ needs.call_get_workflow_version.outputs.version }}
       run_for_devices: ${{ needs.call_get_app_metadata.outputs.compatible_devices }}
       relative_app_directory: ${{ needs.call_get_app_metadata.outputs.build_directory }}
       is_rust: ${{ needs.call_get_app_metadata.outputs.is_rust }}
@@ -90,68 +77,61 @@ jobs:
 
   call_check_icons:
     name: Dispatch check
-    needs: [call_get_app_metadata, call_get_workflow_version, call_get_app_manifest]
-    if: ${{ always() && !cancelled() && needs.call_get_app_metadata.result == 'success' && needs.call_get_workflow_version.result == 'success' && needs.call_get_app_manifest.result == 'success' }}
+    needs: [call_get_app_metadata, call_get_app_manifest]
+    if: ${{ always() && !cancelled() && needs.call_get_app_metadata.result == 'success' && needs.call_get_app_manifest.result == 'success' }}
     uses: ./.github/workflows/_check_icons.yml
     with:
       app_repository: ${{ inputs.app_repository }}
       download_manifest_artifact_name: manifests
-      workflows_ref: ${{ needs.call_get_workflow_version.outputs.version }}
       run_for_devices: ${{ needs.call_get_app_metadata.outputs.compatible_devices }}
 
   call_check_app_load_params:
     name: Dispatch check
-    needs: [call_get_workflow_version, call_get_app_manifest]
-    if: ${{ always() && !cancelled() && needs.call_get_workflow_version.result == 'success' && needs.call_get_app_manifest.result == 'success' }}
+    needs: call_get_app_manifest
+    if: ${{ always() && !cancelled() && needs.call_get_app_manifest.result == 'success' }}
     uses: ./.github/workflows/_check_app_load_params.yml
     with:
       download_manifest_artifact_name: manifests
-      workflows_ref: ${{ needs.call_get_workflow_version.outputs.version }}
 
   call_check_makefile:
     name: Dispatch check
-    needs: [call_get_app_metadata, call_get_workflow_version, call_get_app_manifest]
-    if: ${{ always() && !cancelled() && needs.call_get_app_metadata.result == 'success' && needs.call_get_workflow_version.result == 'success' && needs.call_get_app_manifest.result == 'success' }}
+    needs: [call_get_app_metadata, call_get_app_manifest]
+    if: ${{ always() && !cancelled() && needs.call_get_app_metadata.result == 'success' && needs.call_get_app_manifest.result == 'success' }}
     uses: ./.github/workflows/_check_makefile.yml
     with:
       app_repository: ${{ inputs.app_repository }}
       download_manifest_artifact_name: manifests
-      workflows_ref: ${{ needs.call_get_workflow_version.outputs.version }}
       run_for_devices: ${{ needs.call_get_app_metadata.outputs.compatible_devices }}
 
   call_check_readme:
     name: Dispatch check
-    needs: call_get_workflow_version
     uses: ./.github/workflows/_check_readme.yml
     with:
       app_repository: ${{ inputs.app_repository }}
-      workflows_ref: ${{ needs.call_get_workflow_version.outputs.version }}
 
   call_check_changelog:
     name: Dispatch check
-    needs: [call_get_app_metadata, call_get_workflow_version]
+    needs: call_get_app_metadata
     # Only relevant on pull requests, and skipped when the 'no_changelog' label is set
     if: github.event_name == 'pull_request' && !contains(github.event.pull_request.labels.*.name, 'no_changelog')
     uses: ./.github/workflows/_check_changelog.yml
     with:
       app_repository: ${{ inputs.app_repository }}
-      workflows_ref: ${{ needs.call_get_workflow_version.outputs.version }}
       is_rust: ${{ needs.call_get_app_metadata.outputs.is_rust }}
 
   call_clang_static_analyzer:
     name: Dispatch check
-    needs: [call_get_app_metadata, call_get_workflow_version]
+    needs: call_get_app_metadata
     uses: ./.github/workflows/_check_clang_static_analyzer.yml
     with:
       app_repository: ${{ inputs.app_repository }}
       run_for_devices: ${{ needs.call_get_app_metadata.outputs.compatible_devices }}
       relative_app_directory: ${{ needs.call_get_app_metadata.outputs.build_directory }}
       is_rust: ${{ needs.call_get_app_metadata.outputs.is_rust }}
-      workflows_ref: ${{ needs.call_get_workflow_version.outputs.version }}
 
   call_clang_static_analyzer_latest_sdk:
     name: Dispatch check
-    needs: [call_get_app_metadata, call_get_workflow_version]
+    needs: call_get_app_metadata
     uses: ./.github/workflows/_check_clang_static_analyzer_latest_sdk.yml
     if: github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'scan_on_latest_sdk')
     with:
@@ -159,4 +139,3 @@ jobs:
       run_for_devices: ${{ needs.call_get_app_metadata.outputs.compatible_devices }}
       relative_app_directory: ${{ needs.call_get_app_metadata.outputs.build_directory }}
       is_rust: ${{ needs.call_get_app_metadata.outputs.is_rust }}
-      workflows_ref: ${{ needs.call_get_workflow_version.outputs.version }}
