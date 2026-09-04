@@ -115,6 +115,16 @@ jobs:
           submodules: recursive
           token: ${{ secrets.token && secrets.token || github.token }}
 
+      - name: Compute the device name
+        env:
+          SDK: ${{ matrix.sdk }}
+        shell: bash
+        run: |
+          # Turn '$NANOS_SDK' into 'nanos', to be used in the artifact name
+          device="${SDK#\$}"
+          device="${device%_SDK}"
+          echo "DEVICE=${device,,}" >> "${GITHUB_ENV}"
+
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v4
         with:
@@ -128,3 +138,19 @@ jobs:
 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v4
+        with:
+          # Uploading the results to the 'Code scanning' tab requires GitHub Advanced Security,
+          # which is only available on public repositories (or with a GHAS license).
+          # On private/internal repositories, run the analysis but skip the upload.
+          upload: ${{ github.event.repository.visibility == 'public' && 'always' || 'never' }}
+          output: ${{ runner.temp }}/codeql-results
+
+      # The 'Code scanning' tab is unavailable without Advanced Security, so the SARIF results are
+      # exposed as a build artifact instead.
+      - name: Upload the SARIF results as an artifact
+        if: ${{ github.event.repository.visibility != 'public' }}
+        uses: actions/upload-artifact@v6
+        with:
+          name: codeql-sarif-${{ matrix.language }}-${{ env.DEVICE }}
+          path: ${{ runner.temp }}/codeql-results
+          if-no-files-found: error
