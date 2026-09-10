@@ -1,6 +1,42 @@
 name: Analyze the application with CodeQL
 
 on:
+  workflow_dispatch:
+    inputs:
+      app_repository:
+        description: 'The GIT repository to build (defaults to `github.repository`)'
+        required: false
+        default: ${{ github.repository }}
+        type: string
+      app_branch_name:
+        description: 'The GIT branch to build (defaults to `github.ref`)'
+        required: false
+        default: ${{ github.ref }}
+        type: string
+      run_for_devices:
+        description: |
+          The list of device(s) on which the CI will run.
+
+          Defaults to the full list of device(s) supported by the application as configured in the
+          'ledger_app.toml' manifest.
+          If the manifest is missing, defaults to ALL (["nanos", "nanox", "nanosp", "stax", "flex", "apex_m", "apex_p"]).
+        required: false
+        default: 'None'
+        type: string
+      builder:
+        description: "The docker image to build the application in (defaults to ledger-app-builder-lite)"
+        required: false
+        default: 'ledger-app-builder-lite'
+        type: string
+      flags:
+        description: "Additional flags (default to none)"
+        required: false
+        default: ''
+        type: string
+    secrets:
+      token:
+        description: 'A token used to checkout private repositories'
+        required: false
   workflow_call:
     inputs:
       app_repository:
