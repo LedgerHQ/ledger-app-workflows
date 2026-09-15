@@ -91,6 +91,11 @@ on:
         required: false
         default: false
         type: boolean
+      artifact_retention_days:
+        description: "Retention period, in days, for the uploaded build artifacts."
+        required: false
+        default: ''
+        type: string
 
 permissions:
   contents: read
@@ -110,6 +115,7 @@ env:
   FEATURES: ${{ inputs.features }}
   CARGO_LEDGER_BUILD_ARGS: ${{ inputs.cargo_ledger_build_args }}
   ENABLE_STACK_CONSUMPTION: ${{ inputs.enable_stack_consumption }}
+  ARTIFACT_RETENTION_DAYS: ${{ inputs.artifact_retention_days }}
 
 jobs:
   call_get_app_metadata:
@@ -250,6 +256,7 @@ jobs:
           name: ${{ inputs.upload_app_binaries_artifact }}-${{ matrix.device }}
           path: ${{ steps.build.outputs.binary_path }}
           if-no-files-found: error
+          retention-days: ${{ inputs.artifact_retention_days }}
 
   merge_artifacts:
     name: Merge build artifacts
@@ -262,6 +269,7 @@ jobs:
           name: ${{ inputs.upload_app_binaries_artifact }}
           pattern: ${{ inputs.upload_app_binaries_artifact }}-*
           delete-merged: true
+          retention-days: ${{ inputs.artifact_retention_days }}
 
   # The following jobs are used in PRs, to compare builds between source and target branches.
   build_target_branch:
@@ -385,6 +393,7 @@ jobs:
           name: ${{ inputs.upload_app_binaries_artifact }}_target-${{ matrix.device }}
           path: ${{ steps.build.outputs.binary_path }}
           if-no-files-found: error
+          retention-days: ${{ inputs.artifact_retention_days }}
 
   merge_artifacts_target_branch:
     name: Merge build artifacts (target branch)
@@ -397,6 +406,7 @@ jobs:
           name: ${{ inputs.upload_app_binaries_artifact }}_target
           pattern: ${{ inputs.upload_app_binaries_artifact }}_target-*
           delete-merged: true
+          retention-days: ${{ inputs.artifact_retention_days }}
 
   diff_elf_sizes:
     name: Report ELF section sizes and post PR comment

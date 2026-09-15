@@ -31,6 +31,7 @@ In order to build an App, this workflow can use the following input parameters:
 | cargo_ledger_build_args      | ❌       |                           | Additional arguments to pass to the cargo                                                                   |
 | build_comparison             | ❌       | `false`                   | Whether to build the target branch and report ELF size diffs on PRs                                         |
 | enable_stack_consumption     | ❌       | `false`                   | Enable stack consumption tracking (`DEBUG_OS_STACK_CONSUMPTION=1` for C, `--features stack_usage` for Rust) |
+| artifact_retention_days      | ❌       |                           | Retention (days) for the uploaded build artifacts. Empty uses the repo/org default                          |
 
 In addition, the following secret can be used:
 
@@ -79,6 +80,8 @@ In order to test an App, this workflow can use the following input parameters:
 | container_image                      | ❌       |                          | Optional container image to run the ragger_tests job                                                                              |
 | capture_file                         | ❌       |                          | Optional file name to capture pytest logs into an artifact                                                                        |
 | post_stack_consumption               | ❌       | `false`                  | Post a stack consumption summary on PRs. Requires `reusable_build` with `enable_stack_consumption` and `build_comparison` enabled |
+| artifact_retention_days              | ❌       |                          | Retention period (days) for the artifacts uploaded by this workflow. Empty uses the repo/org default                              |
+| delete_input_artifacts_after_test    | ❌       | `false`                  | Delete the downloaded app binary artifacts once tests are done (skip retention)                                                   |
 
 In addition, the following secret can be used:
 
@@ -112,6 +115,16 @@ In addition, the following secrets can be used:
 | token               | ❌       |               | A token passed from the caller workflow (used to checkout/build the app)                             |
 | secret_test_options | ❌       |               | A string of secret options to be given to pytest                                                     |
 | codecov_token       | ❌       |               | Codecov token; if provided, the lcov file is uploaded to codecov.io under the `functionaltests` flag |
+
+## Reusable Erase Artifact
+
+This workflow deletes one or more previously uploaded artifacts, using [`geekyeggo/delete-artifact`](https://github.com/geekyeggo/delete-artifact). It is used internally by `reusable_ragger_tests` (`delete_input_artifacts_after_test`), but can also be called directly from an App repository.
+
+| Parameter     | Required | Default value | Comment                                                                     |
+| ------------- | -------- | ------------- | --------------------------------------------------------------------------- |
+| artifact_name | ✅       |               | Name(s) of the artifact(s) to delete, one per line. Empty lines are ignored |
+| use_glob      | ❌       | `true`        | Whether `artifact_name` should be treated as a glob pattern                 |
+| fail_on_error | ❌       | `false`       | Whether to fail the job if an artifact is not found                         |
 
 ## Reusable Memory Profiling
 

@@ -126,6 +126,18 @@ on:
         required: false
         default: ''
         type: string
+      artifact_retention_days:
+        description: "Retention period, in days, for the artifacts uploaded by this workflow
+                     (stack consumption summaries, pytest logs, coverage reports, snapshots)."
+        required: false
+        default: ''
+        type: string
+      delete_input_artifacts_after_test:
+        description: "Whether to delete the app binary artifacts downloaded for testing
+                     once the tests are done."
+        required: false
+        default: false
+        type: boolean
     secrets:
       secret_test_options:
         description: 'A string of secret options to be given to `pytest`'
@@ -160,6 +172,8 @@ env:
   POST_STACK_CONSUMPTION: ${{ inputs.post_stack_consumption }}
   COVERAGE: ${{ inputs.coverage }}
   COVERAGE_EXCLUDE: ${{ inputs.coverage_exclude }}
+  ARTIFACT_RETENTION_DAYS: ${{ inputs.artifact_retention_days }}
+  DELETE_INPUT_ARTIFACTS_AFTER_TEST: ${{ inputs.delete_input_artifacts_after_test }}
   CODECOV_TOKEN: ${{ secrets.codecov_token }}
 
 jobs:
@@ -376,6 +390,7 @@ jobs:
         with:
           name: ${{ inputs.stack_consumption_section_id }}-${{ matrix.device }}
           path: stack_summary_${{ matrix.device }}.txt
+          retention-days: ${{ inputs.artifact_retention_days }}
 
       - name: Upload pytest logs
         if: ${{ inputs.capture_file != '' }}
@@ -383,6 +398,7 @@ jobs:
         with:
           name: pytest-logs-${{ matrix.device }}
           path: pytest_output.log
+          retention-days: ${{ inputs.artifact_retention_days }}
 
       - name: Upload coverage report
         if: ${{ inputs.coverage && hashFiles(format('coverage-{0}.info', matrix.device)) != '' }}
@@ -392,6 +408,7 @@ jobs:
           path: |
             coverage-${{ matrix.device }}.info
             coverage-${{ matrix.device }}_html
+          retention-days: ${{ inputs.artifact_retention_days }}
 
       - name: Upload coverage to codecov.io
         if: ${{ inputs.coverage && env.CODECOV_TOKEN != '' && hashFiles(format('coverage-{0}.info', matrix.device)) != '' }}
@@ -449,10 +466,22 @@ jobs:
           # Append a ~ at the end to prevent one job's pattern from prefixing another one
           name: ${{ steps.compute_name.outputs.artifact_basename }}~${{ matrix.device }}
           path: ${{ needs.call_get_test_metadata.outputs.pytest_directory }}/snapshots-tmp
+          retention-days: ${{ inputs.artifact_retention_days }}
 
     outputs:
       snapshot_artifact_uploaded: ${{ steps.upload-flag.outputs.artifact_uploaded }}
       snapshot_artifact_basename: ${{ steps.compute_name.outputs.artifact_basename }}
+
+  delete_input_artifacts:
+    name: Delete downloaded app binary artifacts
+    needs: ragger_tests
+    if: ${{ always() && inputs.delete_input_artifacts_after_test }}
+    uses: ./.github/workflows/reusable_erase_artifact.yml
+    with:
+      artifact_name: |
+        ${{ inputs.download_app_binaries_artifact }}
+        ${{ inputs.additional_app_binaries_artifact }}
+        ${{ inputs.lib_binaries_artifact }}
 
   merge_pytest_logs:
     name: Merge pytest logs
@@ -476,6 +505,7 @@ jobs:
         with:
           name: "${{ inputs.capture_file }}"
           path: "${{ inputs.capture_file }}.log"
+          retention-days: ${{ inputs.artifact_retention_days }}
 
   merge_artifacts_if_needed:
     # Merge matrix output
@@ -492,6 +522,7 @@ jobs:
           # We pattern against the ~ set above to prevent subpatterning
           pattern: ${{ needs.ragger_tests.outputs.snapshot_artifact_basename }}~*
           delete-merged: true
+          retention-days: ${{ inputs.artifact_retention_days }}
 
     outputs:
       # Forward computed base name

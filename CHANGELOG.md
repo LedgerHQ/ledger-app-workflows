@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.111.6] - 2026-09-15
+
+### Added
+
+- `reusable_build.yml` and `reusable_ragger_tests.yml`: new `artifact_retention_days` input to set the
+  retention (in days) of the artifacts they upload.
+- `reusable_ragger_tests.yml`: new `delete_input_artifacts_after_test` boolean input to delete the
+  downloaded app binary artifacts once the tests are done.
+- New `reusable_erase_artifact.yml` workflow to delete one or more artifacts. It can also be called
+  directly from an App repository.
+
 ## [1.111.5] - 2026-09-04
 
 ### Added
