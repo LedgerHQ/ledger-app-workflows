@@ -1,0 +1,37 @@
+name: Erase artifact(s)
+
+on:
+  workflow_call:
+    inputs:
+      artifact_name:
+        description: |
+          Name(s) of the artifact(s) to delete. Multiple names can be given, one per line.
+          Empty lines are ignored, so an unused input can safely be passed through as-is.
+          Supports glob patterns unless `use_glob` is set to false.
+        required: true
+        type: string
+      use_glob:
+        description: "Whether 'artifact_name' should be treated as a glob pattern (defaults to true)."
+        required: false
+        default: true
+        type: boolean
+      fail_on_error:
+        description: "Whether to fail the job if an artifact is not found (defaults to false)."
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  actions: write  # Needed to delete artifacts
+
+jobs:
+  erase_artifact:
+    name: Delete artifact(s)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Delete artifact(s)
+        uses: geekyeggo/delete-artifact@176a747ab7e287e3ff4787bf8a148716375ca118  # v6
+        with:
+          name: ${{ inputs.artifact_name }}
+          useGlob: ${{ inputs.use_glob }}
+          failOnError: ${{ inputs.fail_on_error }}
