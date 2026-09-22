@@ -1,0 +1,61 @@
+name: Claude Security Review
+
+on:
+  workflow_call:
+    inputs:
+      security_review_skill_path:
+        description: >
+          Path to the security-review skill definition, as shipped by the
+          `ledger-app-ai-instructions` submodule. Ignored if the submodule isn't present.
+        required: false
+        type: string
+        default: "ledger-app-ai-instructions/skills/SECURITY.REVIEW.md"
+      trigger_label:
+        description: "PR label that re-triggers the review on demand"
+        required: false
+        type: string
+        default: "security-review"
+    secrets:
+      claude_code_oauth_token:
+        description: "OAuth token for the Claude Code GitHub app"
+        required: true
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: read
+  id-token: write
+
+jobs:
+  security-review:
+    # Runs automatically on every PR update, or on demand by (re-)applying the
+    # trigger label from the PR sidebar.
+    if: github.event.action != 'labeled' || github.event.label.name == inputs.trigger_label
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+          submodules: recursive
+
+      - name: Run Claude Security Review
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.claude_code_oauth_token }}
+          prompt: |
+            Run the security-review skill (see ${{ inputs.security_review_skill_path }}, if present
+            in this repository) against the changes in PR #${{ github.event.pull_request.number }}
+            of ${{ github.repository }} compared to its base branch.
+
+            Once the final report is ready, post it as a single PR comment with:
+              gh pr comment ${{ github.event.pull_request.number }} --repo ${{ github.repository }} --body-file <path-to-report>
+          claude_args: '--allowedTools "Bash(gh pr comment:*)"'
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - name: Remove the trigger label
+        if: github.event.action == 'labeled'
+        run: gh pr edit "${{ github.event.pull_request.number }}" --repo "${{ github.repository }}" --remove-label "${{ inputs.trigger_label }}"
+        env:
+          GH_TOKEN: ${{ github.token }}

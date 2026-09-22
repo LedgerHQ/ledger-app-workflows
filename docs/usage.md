@@ -414,6 +414,97 @@ In order to check an App, this workflow can use the following input parameters:
 | app_branch_name | ❌       | `github.ref`        | The GIT branch to clone     |
 | doxy_file       | ❌       | `.doxygen/Doxyfile` | Doxygen configuration file  |
 
+## Reusable Claude Code (on-demand)
+
+Lets Claude respond to `@claude` mentions in issue/PR comments and PR reviews. No parameters for this workflow.
+
+In addition, the following secret can be used:
+
+| Parameter               | Required | Default value | Comment                                       |
+| ------------------------ | -------- | -------------- | ---------------------------------------------- |
+| claude_code_oauth_token | ✅       |                | OAuth token for the Claude Code GitHub app     |
+
+The caller workflow decides the trigger:
+
+```yml
+on:
+  issue_comment:
+    types: [created]
+  pull_request_review_comment:
+    types: [created]
+  issues:
+    types: [opened, assigned]
+  pull_request_review:
+    types: [submitted]
+
+jobs:
+  claude:
+    uses: LedgerHQ/ledger-app-workflows/.github/workflows/reusable_claude.yml@v1
+    secrets:
+      claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+```
+
+## Reusable Claude Code Review
+
+Runs Claude's generic code-review plugin automatically on every PR and posts findings as inline
+comments. No parameters for this workflow.
+
+In addition, the following secret can be used:
+
+| Parameter               | Required | Default value | Comment                                       |
+| ------------------------ | -------- | -------------- | ---------------------------------------------- |
+| claude_code_oauth_token | ✅       |                | OAuth token for the Claude Code GitHub app     |
+
+```yml
+on:
+  pull_request:
+    types: [opened, synchronize, ready_for_review, reopened]
+
+jobs:
+  claude-review:
+    uses: LedgerHQ/ledger-app-workflows/.github/workflows/reusable_claude_code_review.yml@v1
+    secrets:
+      claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+```
+
+## Reusable Claude Security Review
+
+Runs a Ledger embedded-application security review (APDU reachability, clear-signing bypass,
+memory safety, crypto misuse) on every PR and posts the report as a PR comment. Tailored for
+repositories that embed the `ledger-app-ai-instructions` submodule, but degrades gracefully
+otherwise. Can also be re-triggered on demand by (re-)applying a PR label.
+
+| Parameter                  | Required | Default value                                            | Comment                                                     |
+| --------------------------- | -------- | ---------------------------------------------------------- | ------------------------------------------------------------ |
+| security_review_skill_path | ❌       | `ledger-app-ai-instructions/skills/SECURITY.REVIEW.md`    | Path to the security-review skill definition                |
+| trigger_label              | ❌       | `security-review`                                          | PR label that re-triggers the review on demand               |
+
+In addition, the following secret can be used:
+
+| Parameter               | Required | Default value | Comment                                       |
+| ------------------------ | -------- | -------------- | ---------------------------------------------- |
+| claude_code_oauth_token | ✅       |                | OAuth token for the Claude Code GitHub app     |
+
+The trigger label (`security-review` by default) must already exist on the repository — GitHub
+requires a label to exist before it can be applied from the PR sidebar:
+
+```sh
+gh label create security-review --repo <org>/<repo> --color B60205 \
+  --description "Triggers an on-demand Claude security review"
+```
+
+```yml
+on:
+  pull_request:
+    types: [opened, synchronize, ready_for_review, reopened, labeled]
+
+jobs:
+  security-review:
+    uses: LedgerHQ/ledger-app-workflows/.github/workflows/reusable_claude_security_review.yml@v1
+    secrets:
+      claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+```
+
 ## Reusable NPM Deployment
 
 In order to deploy an npm package, this workflow can use the following input parameters:
