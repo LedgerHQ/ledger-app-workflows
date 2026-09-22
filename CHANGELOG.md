@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.112.0] - 2026-09-22
+
+### Added
+
+- New `reusable_claude.yml` workflow: on-demand Claude responses to `@claude` mentions in issues,
+  PR comments and PR reviews.
+- New `reusable_claude_code_review.yml` workflow: runs Claude's generic code-review plugin
+  automatically on every PR and posts findings as inline comments.
+- New `reusable_claude_security_review.yml` workflow: runs a Ledger embedded-application security
+  review on every PR (APDU reachability, clear-signing bypass, memory safety, crypto misuse) and
+  posts the report as a PR comment; can also be re-triggered on demand via a PR label.
+
 ## [1.111.6] - 2026-09-15
 
 ### Added

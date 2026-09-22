@@ -102,6 +102,21 @@ profiling enabled (at least `DEBUG=1 MEMORY_PROFILING=1`, through a dedicated `u
 runs the Ragger functional tests while capturing the Speculos output, then processes the
 captured logs with the `valground` tool to detect memory leaks.
 
+- `reusable_claude.yml` \
+This workflow lets Claude respond on demand to `@claude` mentions in issue/PR comments and reviews.
+This workflow is optional, but recommended.
+
+- `reusable_claude_code_review.yml` \
+This workflow runs Claude's generic code-review plugin automatically on every PR and posts findings
+as inline comments. This workflow is optional, but recommended.
+
+- `reusable_claude_security_review.yml` \
+This workflow runs a Ledger-specific security review (APDU reachability, clear-signing bypass,
+memory safety, crypto misuse) on every PR, and posts the report as a PR comment. It also accepts
+the review being re-triggered on demand by (re-)applying a PR label (`security-review` by default).
+Meant for repositories that embed the `ledger-app-ai-instructions` submodule, but degrades gracefully
+otherwise. This workflow is optional, but recommended.
+
 ## Example
 
 Please see an example on how to use the reusable workflows in the [`app-boilerplate`](https://github.com/LedgerHQ/app-boilerplate)
