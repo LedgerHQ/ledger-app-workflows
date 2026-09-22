@@ -33,7 +33,7 @@ jobs:
         uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.claude_code_oauth_token }}
-          model: claude-opus-5
+          claude_args: '--model claude-opus-5'
 
           # Allows Claude to read CI results on PRs
           additional_permissions: |
