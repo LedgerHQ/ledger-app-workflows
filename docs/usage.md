@@ -470,14 +470,14 @@ jobs:
 ## Reusable Claude Security Review
 
 Runs a Ledger embedded-application security review (APDU reachability, clear-signing bypass,
-memory safety, crypto misuse) on every PR and posts the report as a PR comment. Tailored for
+memory safety, crypto misuse) on demand and posts the report as a PR comment. Tailored for
 repositories that embed the `ledger-app-ai-instructions` submodule, but degrades gracefully
-otherwise. Can also be re-triggered on demand by (re-)applying a PR label.
+otherwise. Triggered by applying a PR label.
 
 | Parameter                  | Required | Default value                                            | Comment                                                     |
 | --------------------------- | -------- | ---------------------------------------------------------- | ------------------------------------------------------------ |
 | security_review_skill_path | ❌       | `ledger-app-ai-instructions/skills/SECURITY.REVIEW.md`    | Path to the security-review skill definition                |
-| trigger_label              | ❌       | `security-review`                                          | PR label that re-triggers the review on demand               |
+| trigger_label              | ❌       | `run-security-review`                                       | PR label that triggers the review on demand                  |
 
 In addition, the following secret can be used:
 
@@ -485,18 +485,18 @@ In addition, the following secret can be used:
 | ------------------------ | -------- | -------------- | ---------------------------------------------- |
 | claude_code_oauth_token | ✅       |                | OAuth token for the Claude Code GitHub app     |
 
-The trigger label (`security-review` by default) must already exist on the repository — GitHub
-requires a label to exist before it can be applied from the PR sidebar:
+The trigger label (`run-security-review` by default) must already exist on the repository —
+GitHub requires a label to exist before it can be applied from the PR sidebar:
 
 ```sh
-gh label create security-review --repo <org>/<repo> --color B60205 \
+gh label create run-security-review --repo <org>/<repo> --color B60205 \
   --description "Triggers an on-demand Claude security review"
 ```
 
 ```yml
 on:
   pull_request:
-    types: [opened, synchronize, ready_for_review, reopened, labeled]
+    types: [labeled]
 
 jobs:
   security-review:
