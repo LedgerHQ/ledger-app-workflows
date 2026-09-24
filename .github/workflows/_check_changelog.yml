@@ -2,6 +2,10 @@ name: Check changelog
 
 on:
   workflow_call:
+    secrets:
+      token:
+        description: 'A token passed from the caller workflow'
+        required: false
     inputs:
       app_repository:
         description: 'The URL of the app repository to check. Defaults to the workflow caller repository URL'
@@ -41,6 +45,7 @@ jobs:
           submodules: recursive
           # Full history is required to compute the diff between the PR base and head
           fetch-depth: 0
+          token: ${{ secrets.token && secrets.token || github.token }}
 
       # The script never fails: it computes a verdict (ok / soft / hard / skip), prints a
       # human-readable status, fills the job summary and emits warning/error annotations.

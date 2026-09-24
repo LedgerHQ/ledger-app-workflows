@@ -3,6 +3,10 @@ name: Open PR with new snapshots
 
 on:
   workflow_call:
+    secrets:
+      token:
+        description: 'A token passed from the caller workflow'
+        required: false
     inputs:
       app_repository:
         description: 'The GIT repository to test (defaults to `github.repository`)'
@@ -58,6 +62,7 @@ jobs:
           repository: ${{ inputs.app_repository }}
           ref: ${{ inputs.app_branch_name }}
           submodules: recursive
+          token: ${{ secrets.token && secrets.token || github.token }}
           # by default the action uses fetch-depth = 1, which creates
           # shallow repositories from which we can't push
           fetch-depth: 0

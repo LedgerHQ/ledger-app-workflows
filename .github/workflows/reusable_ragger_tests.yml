@@ -139,6 +139,9 @@ on:
         default: false
         type: boolean
     secrets:
+      token:
+        description: 'A token passed from the caller workflow'
+        required: false
       secret_test_options:
         description: 'A string of secret options to be given to `pytest`'
         required: false
@@ -187,6 +190,8 @@ jobs:
       app_repository: ${{ inputs.app_repository }}
       app_branch_name: ${{ inputs.app_branch_name }}
       compatible_devices: ${{ inputs.run_for_devices }}
+    secrets:
+      token: ${{ secrets.token }}
 
   call_get_test_metadata:
     name: Retrieve test metadata
@@ -195,6 +200,8 @@ jobs:
       app_repository: ${{ inputs.app_repository }}
       app_branch_name: ${{ inputs.app_branch_name }}
       pytest_directory: ${{ inputs.test_dir }}
+    secrets:
+      token: ${{ secrets.token }}
 
   ragger_tests:
     name: Functional tests with Ragger
@@ -219,6 +226,7 @@ jobs:
           repository: ${{ inputs.app_repository }}
           ref: ${{ inputs.app_branch_name }}
           submodules: recursive
+          token: ${{ secrets.token && secrets.token || github.token }}
 
       - name: Set binary path
         id: "set_binary_path"
@@ -539,6 +547,8 @@ jobs:
       snapshots_artifact_name: ${{ needs.merge_artifacts_if_needed.outputs.snapshot_artifact_name }}
       snapshots_directory: ${{ needs.call_get_test_metadata.outputs.pytest_directory }}/snapshots
       also_delete_snapshots: ${{ inputs.also_delete_snapshots }}
+    secrets:
+      token: ${{ secrets.token }}
 
   post_stack_consumption:
     name: Post stack consumption summary on PR
