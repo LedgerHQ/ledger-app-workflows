@@ -2,6 +2,10 @@ name: Get app manifest
 
 on:
   workflow_call:
+    secrets:
+      token:
+        description: 'A token passed from the caller workflow'
+        required: false
     inputs:
       app_repository:
         description: 'The URL of the app repository to check. Defaults to the workflow caller repository URL'
@@ -70,6 +74,7 @@ jobs:
           repository: ${{ inputs.app_repository }}
           path: app-repository
           submodules: recursive
+          token: ${{ secrets.token && secrets.token || github.token }}
 
       - name: Call Cargo metadata dumper script
         if: ${{ inputs.is_rust == 'true'}}

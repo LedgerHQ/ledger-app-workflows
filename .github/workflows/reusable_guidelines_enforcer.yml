@@ -42,6 +42,8 @@ jobs:
     with:
       app_repository: ${{ inputs.app_repository }}
       compatible_devices: ${{ inputs.run_for_devices }}
+    secrets:
+      token: ${{ secrets.git_token }}
 
   call_build:
     # Build the application once, the canonical way, so that the manifest job can
@@ -74,6 +76,8 @@ jobs:
       is_rust: ${{ needs.call_get_app_metadata.outputs.is_rust }}
       upload_manifest_artifact_name: manifests
       download_app_binaries_artifact_name: guidelines_enforcer_app_binaries
+    secrets:
+      token: ${{ secrets.git_token }}
 
   call_check_icons:
     name: Dispatch check
@@ -84,6 +88,8 @@ jobs:
       app_repository: ${{ inputs.app_repository }}
       download_manifest_artifact_name: manifests
       run_for_devices: ${{ needs.call_get_app_metadata.outputs.compatible_devices }}
+    secrets:
+      token: ${{ secrets.git_token }}
 
   call_check_app_load_params:
     name: Dispatch check
@@ -102,12 +108,16 @@ jobs:
       app_repository: ${{ inputs.app_repository }}
       download_manifest_artifact_name: manifests
       run_for_devices: ${{ needs.call_get_app_metadata.outputs.compatible_devices }}
+    secrets:
+      token: ${{ secrets.git_token }}
 
   call_check_readme:
     name: Dispatch check
     uses: ./.github/workflows/_check_readme.yml
     with:
       app_repository: ${{ inputs.app_repository }}
+    secrets:
+      token: ${{ secrets.git_token }}
 
   call_check_changelog:
     name: Dispatch check
@@ -118,6 +128,8 @@ jobs:
     with:
       app_repository: ${{ inputs.app_repository }}
       is_rust: ${{ needs.call_get_app_metadata.outputs.is_rust }}
+    secrets:
+      token: ${{ secrets.git_token }}
 
   call_clang_static_analyzer:
     name: Dispatch check
@@ -128,6 +140,8 @@ jobs:
       run_for_devices: ${{ needs.call_get_app_metadata.outputs.compatible_devices }}
       relative_app_directory: ${{ needs.call_get_app_metadata.outputs.build_directory }}
       is_rust: ${{ needs.call_get_app_metadata.outputs.is_rust }}
+    secrets:
+      token: ${{ secrets.git_token }}
 
   call_clang_static_analyzer_latest_sdk:
     name: Dispatch check
@@ -139,3 +153,5 @@ jobs:
       run_for_devices: ${{ needs.call_get_app_metadata.outputs.compatible_devices }}
       relative_app_directory: ${{ needs.call_get_app_metadata.outputs.build_directory }}
       is_rust: ${{ needs.call_get_app_metadata.outputs.is_rust }}
+    secrets:
+      token: ${{ secrets.git_token }}

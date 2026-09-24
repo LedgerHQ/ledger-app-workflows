@@ -83,11 +83,12 @@ In order to test an App, this workflow can use the following input parameters:
 | artifact_retention_days              | ❌       |                          | Retention period (days) for the artifacts uploaded by this workflow. Empty uses the repo/org default                              |
 | delete_input_artifacts_after_test    | ❌       | `false`                  | Delete the downloaded app binary artifacts once tests are done (skip retention)                                                   |
 
-In addition, the following secret can be used:
+In addition, the following secrets can be used:
 
-| Parameter           | Required | Default value | Comment                                 |
-| ------------------- | -------- | ------------- | --------------------------------------- |
-| secret_test_options | ❌       |               | A token passed from the caller workflow |
+| Parameter           | Required | Default value  | Comment                                                                                |
+| ------------------- | -------- | -------------- | -------------------------------------------------------------------------------------- |
+| token               | ❌       | `github.token` | A token passed from the caller workflow; needed for private repositories or submodules |
+| secret_test_options | ❌       |                | A string of secret options to be given to `pytest`                                     |
 
 ## Reusable Ragger tests coverage
 
@@ -161,9 +162,9 @@ In order to check an App, this workflow can use the following input parameters:
 
 In addition, the following secret can be used:
 
-| Parameter | Required | Default value | Comment                                           |
-| --------- | -------- | ------------- | ------------------------------------------------- |
-| git_token | ❌       |               | A token used as authentication for GIT operations |
+| Parameter | Required | Default value  | Comment                                                                                                    |
+| --------- | -------- | -------------- | ----------------------------------------------------------------------------------------------------------- |
+| git_token | ❌       | `github.token` | A token used as authentication for GIT operations, forwarded to every dispatched check; needed for private repositories or submodules |
 
 On pull requests, if the repository owns a `CHANGELOG` file, this workflow checks whether it has been
 updated by the PR. The verdict is always recorded in the job summary, and the check is **not blocking
