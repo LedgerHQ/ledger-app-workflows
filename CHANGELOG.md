@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.113.0] - 2026-09-24
+
+### Added
+
+- `reusable_ragger_tests.yml`: new `token` secret, to support private repositories and submodules.
+
+### Fixed
+
+- `reusable_guidelines_enforcer.yml`: forward `git_token` to the dispatched checks.
+
 ## [1.112.3] - 2026-09-22
 
 ### Fixed
