@@ -264,7 +264,7 @@ For this workflow, it is important to also set the secrets for called workflow. 
 jobs:
   analyse:
     name: Call Ledger CodeQL analysis
-    uses: LedgerHQ/ledger-app-workflows/.github/workflows/reusable_codeql_checks.yml@v1
+    uses: LedgerHQ/ledger-app-workflows/.github/workflows/reusable_codeql_checks.yml@v2
     secrets:
       token: ${{ secrets.GITHUB_TOKEN }}
 ```
@@ -301,7 +301,7 @@ otherwise they simply degrade (no comment / no native coverage) without failing 
 jobs:
   job_unit_test:
     name: Call Ledger unit_test
-    uses: LedgerHQ/ledger-app-workflows/.github/workflows/reusable_unit_tests.yml@v1
+    uses: LedgerHQ/ledger-app-workflows/.github/workflows/reusable_unit_tests.yml@v2
     # test_directory is deprecated and auto-detected from ledger_app.toml
     secrets:
       codecov_token: ${{ secrets.CODECOV_TOKEN }}
@@ -336,14 +336,22 @@ In order to test an App, this workflow can use the following input parameters:
 
 In order to test an App, this workflow can use the following input parameters:
 
-| Parameter                      | Required | Default value       | Comment                                                                         |
-| ------------------------------ | -------- | ------------------- | ------------------------------------------------------------------------------- |
-| app_repository                 | ❌       | `github.repository` | The GIT repository to test                                                      |
-| app_branch_name                | ❌       | `github.ref`        | The GIT branch to test                                                          |
-| download_app_binaries_artifact | ❌       |                     | If not provided, the workflow will build the app to test                        |
-| exchange_build_artifact        | ❌       |                     | If not provided, the workflow will build the `app-exchange` app                 |
-| ethereum_build_artifact        | ❌       |                     | If not provided, the workflow will build the `app-ethereum` app                 |
-| regenerate_snapshots           | ❌       | `false`             | Clean snapshots, regenerate them, commit the changes in a branch, and open a PR |
+| Parameter                      | Required | Default value               | Comment                                                                         |
+| ------------------------------ | -------- | --------------------------- | ------------------------------------------------------------------------------- |
+| app_repository                 | ❌       | `github.repository`         | The GIT repository to test                                                      |
+| app_branch_name                | ❌       | `github.ref`                | The GIT branch to test                                                          |
+| download_app_binaries_artifact | ❌       |                             | If not provided, the workflow will build the app to test                        |
+| exchange_repository            | ❌       | `LedgerHQ/app-exchange-dev` | The GIT repository to build Exchange from                                       |
+| exchange_binaries_artifact     | ❌       |                             | If not provided, the workflow will build Exchange from `exchange_repository`    |
+| ethereum_repository            | ❌       | `LedgerHQ/app-ethereum-dev` | The GIT repository to build Ethereum from                                       |
+| ethereum_binaries_artifact     | ❌       |                             | If not provided, the workflow will build Ethereum from `ethereum_repository`    |
+| regenerate_snapshots           | ❌       | `false`                     | Clean snapshots, regenerate them, commit the changes in a branch, and open a PR |
+
+In addition, the following secret can be used:
+
+| Parameter | Required | Default value  | Comment                                                                                |
+| --------- | -------- | -------------- | -------------------------------------------------------------------------------------- |
+| token     | ❌       | `github.token` | A token passed from the caller workflow; needed for private repositories or submodules |
 
 ## Reusable pypi deployment
 
@@ -440,7 +448,7 @@ on:
 
 jobs:
   claude:
-    uses: LedgerHQ/ledger-app-workflows/.github/workflows/reusable_claude.yml@v1
+    uses: LedgerHQ/ledger-app-workflows/.github/workflows/reusable_claude.yml@v2
     secrets:
       claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
 ```
@@ -463,7 +471,7 @@ on:
 
 jobs:
   claude-review:
-    uses: LedgerHQ/ledger-app-workflows/.github/workflows/reusable_claude_code_review.yml@v1
+    uses: LedgerHQ/ledger-app-workflows/.github/workflows/reusable_claude_code_review.yml@v2
     secrets:
       claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
 ```
@@ -501,7 +509,7 @@ on:
 
 jobs:
   security-review:
-    uses: LedgerHQ/ledger-app-workflows/.github/workflows/reusable_claude_security_review.yml@v1
+    uses: LedgerHQ/ledger-app-workflows/.github/workflows/reusable_claude_security_review.yml@v2
     secrets:
       claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
 ```

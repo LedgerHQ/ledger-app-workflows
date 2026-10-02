@@ -43,67 +43,67 @@ jobs:
       matrix:
         coin:
           - name: stellar
-            repo: 'LedgerHQ/app-stellar'
+            repo: 'LedgerHQ/app-stellar-dev'
             branch: 'develop'
           - name: tezos
-            repo: 'LedgerHQ/app-tezos'
+            repo: 'LedgerHQ/app-tezos-dev'
             branch: 'develop'
           - name: xrp
-            repo: 'LedgerHQ/app-xrp'
+            repo: 'LedgerHQ/app-xrp-dev'
             branch: 'develop'
           - name: ethereum
-            repo: 'LedgerHQ/app-ethereum'
+            repo: 'LedgerHQ/app-ethereum-dev'
             branch: 'develop'
           - name: ethereum_classic
-            repo: 'LedgerHQ/app-ethereum'
+            repo: 'LedgerHQ/app-ethereum-dev'
             branch: 'develop'
           - name: litecoin
-            repo: 'LedgerHQ/app-bitcoin-legacy'
+            repo: 'LedgerHQ/app-bitcoin-legacy-dev'
             branch: 'develop'
           - name: bitcoin_legacy
-            repo: 'LedgerHQ/app-bitcoin-legacy'
+            repo: 'LedgerHQ/app-bitcoin-legacy-dev'
             branch: 'develop'
           - name: bitcoin
-            repo: 'LedgerHQ/app-bitcoin'
+            repo: 'LedgerHQ/app-bitcoin-dev'
             branch: 'develop'
           - name: solana
-            repo: 'LedgerHQ/app-solana'
+            repo: 'LedgerHQ/app-solana-dev'
             branch: 'develop'
           - name: DOT
-            repo: 'LedgerHQ/app-polkadot'
+            repo: 'LedgerHQ/app-polkadot-dev'
             branch: 'develop'
           - name: tron
-            repo: 'LedgerHQ/app-tron'
+            repo: 'LedgerHQ/app-tron-dev'
             branch: 'develop'
           - name: ton
-            repo: 'LedgerHQ/app-ton-new'
+            repo: 'LedgerHQ/app-ton-dev'
             branch: 'develop'
           - name: cardano
-            repo: 'LedgerHQ/app-cardano'
+            repo: 'LedgerHQ/app-cardano-dev'
             branch: 'develop'
           - name: near
-            repo: 'LedgerHQ/app-near'
+            repo: 'LedgerHQ/app-near-dev'
             branch: 'develop'
           - name: APTOS
-            repo: 'LedgerHQ/app-aptos'
+            repo: 'LedgerHQ/app-aptos-dev'
             branch: 'develop'
           - name: sui
-            repo: 'LedgerHQ/app-sui'
+            repo: 'LedgerHQ/app-sui-dev'
             branch: 'develop'
           - name: ATOM
-            repo: 'LedgerHQ/app-cosmos'
+            repo: 'LedgerHQ/app-cosmos-dev'
             branch: 'develop'
           - name: hedera
-            repo: 'LedgerHQ/app-hedera'
+            repo: 'LedgerHQ/app-hedera-dev'
             branch: 'develop'
           - name: boilerplate
             repo: 'LedgerHQ/app-boilerplate'
             branch: 'master'
           - name: kaspa
-            repo: 'LedgerHQ/app-kaspa'
+            repo: 'LedgerHQ/app-kaspa-dev'
             branch: 'develop'
           - name: celo
-            repo: 'LedgerHQ/app-celo-spender'
+            repo: 'LedgerHQ/app-celo-spender-dev'
             branch: 'develop'
 
     uses: ./.github/workflows/reusable_build.yml
@@ -117,6 +117,8 @@ jobs:
       upload_as_lib_artifact: ${{ matrix.coin.name }}
       builder: ledger-app-builder
       build_comparison: false
+    secrets:
+      token: ${{ secrets.CI_BOT_TOKEN }}
 
   merge_libraries_build:
     name: Merge built libraries
@@ -133,11 +135,13 @@ jobs:
     name: Build Exchange
     uses: ./.github/workflows/reusable_build.yml
     with:
-      app_repository: LedgerHQ/app-exchange
+      app_repository: LedgerHQ/app-exchange-dev
       app_branch_name: develop
       flags: "TESTING=1 TEST_PUBLIC_KEY=1"
       upload_app_binaries_artifact: exchange_binaries
       build_comparison: false
+    secrets:
+      token: ${{ secrets.CI_BOT_TOKEN }}
 
   ragger_tests_exchange:
     name: Run Exchange tests
@@ -146,7 +150,7 @@ jobs:
       - build_sideloaded_applications_for_exchange
     uses: ./.github/workflows/reusable_ragger_tests.yml
     with:
-      app_repository: LedgerHQ/app-exchange
+      app_repository: LedgerHQ/app-exchange-dev
       app_branch_name: develop
       download_app_binaries_artifact: exchange_binaries
       lib_binaries_artifact: libraries_binaries
@@ -154,6 +158,8 @@ jobs:
       # No need to run everyone, we are testing the reusable workflows not exchange
       test_filter: "ethereum"
       post_stack_consumption: false
+    secrets:
+      token: ${{ secrets.CI_BOT_TOKEN }}
 
   #####################################
   ######### Boilerplate tests #########
@@ -187,6 +193,8 @@ jobs:
       app_repository: LedgerHQ/app-boilerplate
       app_branch_name: master
       download_app_binaries_artifact: "boilerplate_binaries"
+    secrets:
+      token: ${{ secrets.CI_BOT_TOKEN }}
 
   ############################################
   ######### Plugin Boilerplate tests #########
@@ -207,11 +215,13 @@ jobs:
     name: Build Ethereum
     uses: ./.github/workflows/reusable_build.yml
     with:
-      app_repository: LedgerHQ/app-ethereum
+      app_repository: LedgerHQ/app-ethereum-dev
       app_branch_name: develop
       flags: "DEBUG=1 CAL_TEST_KEY=1"
       upload_app_binaries_artifact: ethereum_build_develop
       build_comparison: false
+    secrets:
+      token: ${{ secrets.CI_BOT_TOKEN }}
 
 
   ragger_tests_plugin_boilerplate:

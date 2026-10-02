@@ -152,6 +152,8 @@ jobs:
           ref: ${{ inputs.app_branch_name }}
           submodules: recursive
           token: ${{ secrets.token && secrets.token || github.token }}
+          # The application code runs after this step: it must not find the token in the git configuration
+          persist-credentials: false
 
       - name: Set device-specific environment variables
         if: ${{ needs.call_get_app_metadata.outputs.is_rust == 'false' }}
@@ -292,6 +294,8 @@ jobs:
           ref: ${{ github.base_ref }}
           submodules: recursive
           token: ${{ secrets.token && secrets.token || github.token }}
+          # The application code runs after this step: it must not find the token in the git configuration
+          persist-credentials: false
 
       - name: Set device-specific environment variables
         if: ${{ needs.call_get_app_metadata.outputs.is_rust == 'false' }}

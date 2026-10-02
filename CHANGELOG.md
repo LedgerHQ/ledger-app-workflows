@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.0] - 2026-10-02
+
+### Added
+
+- `reusable_swap_tests.yml`: new `token` secret, to support private repositories and submodules.
+- `reusable_swap_tests.yml`: new `exchange_repository` and `ethereum_repository` inputs.
+
+### Changed
+
+- BREAKING: `reusable_swap_tests.yml`: Exchange and Ethereum are built from `LedgerHQ/app-exchange-dev` and `LedgerHQ/app-ethereum-dev` by default. Callers that do not give `exchange_binaries_artifact` and `ethereum_binaries_artifact` must give a `token` with read access to these repositories.
+- `update_tags.yml`: the moving major tag is now `v2`. The `v1` tag stays on `1.113.0`.
+
+### Fixed
+
+- `reusable_build.yml`, `reusable_ragger_tests.yml`: the `token` secret is no longer kept in the git configuration of the application checkout, where the application build and test code could read it.
+
 ## [1.113.0] - 2026-09-24
 
 ### Added
