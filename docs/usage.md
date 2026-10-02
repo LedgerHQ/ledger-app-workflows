@@ -264,7 +264,7 @@ For this workflow, it is important to also set the secrets for called workflow. 
 jobs:
   analyse:
     name: Call Ledger CodeQL analysis
-    uses: LedgerHQ/ledger-app-workflows/.github/workflows/reusable_codeql_checks.yml@v2
+    uses: LedgerHQ/ledger-app-workflows/.github/workflows/reusable_codeql_checks.yml@v1
     secrets:
       token: ${{ secrets.GITHUB_TOKEN }}
 ```
@@ -301,7 +301,7 @@ otherwise they simply degrade (no comment / no native coverage) without failing 
 jobs:
   job_unit_test:
     name: Call Ledger unit_test
-    uses: LedgerHQ/ledger-app-workflows/.github/workflows/reusable_unit_tests.yml@v2
+    uses: LedgerHQ/ledger-app-workflows/.github/workflows/reusable_unit_tests.yml@v1
     # test_directory is deprecated and auto-detected from ledger_app.toml
     secrets:
       codecov_token: ${{ secrets.CODECOV_TOKEN }}
@@ -448,7 +448,7 @@ on:
 
 jobs:
   claude:
-    uses: LedgerHQ/ledger-app-workflows/.github/workflows/reusable_claude.yml@v2
+    uses: LedgerHQ/ledger-app-workflows/.github/workflows/reusable_claude.yml@v1
     secrets:
       claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
 ```
@@ -471,7 +471,7 @@ on:
 
 jobs:
   claude-review:
-    uses: LedgerHQ/ledger-app-workflows/.github/workflows/reusable_claude_code_review.yml@v2
+    uses: LedgerHQ/ledger-app-workflows/.github/workflows/reusable_claude_code_review.yml@v1
     secrets:
       claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
 ```
@@ -509,7 +509,7 @@ on:
 
 jobs:
   security-review:
-    uses: LedgerHQ/ledger-app-workflows/.github/workflows/reusable_claude_security_review.yml@v2
+    uses: LedgerHQ/ledger-app-workflows/.github/workflows/reusable_claude_security_review.yml@v1
     secrets:
       claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
 ```

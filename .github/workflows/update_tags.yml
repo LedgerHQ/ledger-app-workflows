@@ -20,13 +20,13 @@ jobs:
       app_branch_name: ${{ github.ref }}
       app_tag_overwrite: false
 
-  update_v2_tag:
-    name: Update v2 tag
+  update_v1_tag:
+    name: Update v1 tag
     uses: ./.github/workflows/reusable_add_tag.yml
     needs: create_changelog_tag
     secrets:
       token: ${{ secrets.GITHUB_TOKEN }}
     with:
       app_branch_name: ${{ github.ref }}
-      app_tag: "v2"
+      app_tag: "v1"
       app_tag_overwrite: true

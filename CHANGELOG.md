@@ -14,8 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- BREAKING: `reusable_swap_tests.yml`: Exchange and Ethereum are built from `LedgerHQ/app-exchange-dev` and `LedgerHQ/app-ethereum-dev` by default. Callers that do not give `exchange_binaries_artifact` and `ethereum_binaries_artifact` must give a `token` with read access to these repositories.
-- `update_tags.yml`: the moving major tag is now `v2`. The `v1` tag stays on `1.113.0`.
+- `reusable_swap_tests.yml`: Exchange and Ethereum are built from `LedgerHQ/app-exchange-dev` and `LedgerHQ/app-ethereum-dev` by default. Callers that do not give `exchange_binaries_artifact` and `ethereum_binaries_artifact` must give a `token` with read access to these repositories.
 
 ### Fixed
 
