@@ -29,17 +29,27 @@ on:
         required: false
         default: ''
         type: string
+      exchange_repository:
+        description: 'The GIT repository to build Exchange from, when exchange_binaries_artifact is not provided'
+        required: false
+        default: 'LedgerHQ/app-exchange-dev'
+        type: string
       exchange_binaries_artifact:
         description: |
           The name of the artifact containing pre-built Exchange app binaries.
-          If not provided, the workflow will build Exchange from LedgerHQ/app-exchange@develop.
+          If not provided, the workflow will build Exchange from exchange_repository@develop.
         required: false
         default: ''
+        type: string
+      ethereum_repository:
+        description: 'The GIT repository to build Ethereum from, when ethereum_binaries_artifact is not provided'
+        required: false
+        default: 'LedgerHQ/app-ethereum-dev'
         type: string
       ethereum_binaries_artifact:
         description: |
           The name of the artifact containing pre-built Ethereum app binaries.
-          If not provided, the workflow will build Ethereum from LedgerHQ/app-ethereum@develop.
+          If not provided, the workflow will build Ethereum from ethereum_repository@develop.
         required: false
         default: ''
         type: string
@@ -48,6 +58,10 @@ on:
         required: false
         default: false
         type: boolean
+    secrets:
+      token:
+        description: 'A token passed from the caller workflow; needed for private repositories or submodules'
+        required: false
 
 permissions:
   contents: write       # Needed for reusable_ragger_tests.yml
@@ -112,6 +126,8 @@ jobs:
       use_case: ${{ inputs.use_case }}
       builder: ledger-app-builder
       build_comparison: false
+    secrets:
+      token: ${{ secrets.token }}
 
   build_exchange:
     name: Build Exchange app using the reusable workflow
@@ -119,11 +135,13 @@ jobs:
     if: ${{ inputs.exchange_binaries_artifact == '' }}
     uses: ./.github/workflows/reusable_build.yml
     with:
-      app_repository: 'LedgerHQ/app-exchange'
+      app_repository: ${{ inputs.exchange_repository }}
       app_branch_name: 'develop'
       upload_app_binaries_artifact: ${{ needs.compute_artifact_names.outputs.exchange_binaries_artifact }}
       use_case: 'use_test_keys'
       build_comparison: false
+    secrets:
+      token: ${{ secrets.token }}
 
   build_ethereum:
     name: Build Ethereum app using the reusable workflow
@@ -131,11 +149,13 @@ jobs:
     if: ${{ inputs.ethereum_binaries_artifact == '' }}
     uses: ./.github/workflows/reusable_build.yml
     with:
-      app_repository: 'LedgerHQ/app-ethereum'
+      app_repository: ${{ inputs.ethereum_repository }}
       app_branch_name: 'develop'
       upload_app_binaries_artifact: ${{ needs.compute_artifact_names.outputs.ethereum_binaries_artifact }}
       use_case: 'use_test_keys'
       build_comparison: false
+    secrets:
+      token: ${{ secrets.token }}
 
   get_swap_test_metadata:
     name: Retrieve swap test metadata
@@ -151,6 +171,7 @@ jobs:
           repository: ${{ inputs.app_repository }}
           ref: ${{ inputs.app_branch_name }}
           path: app_coin
+          token: ${{ secrets.token && secrets.token || github.token }}
 
       - name: Install ledgered
         run: python3 -m pip install ledgered
@@ -205,3 +226,5 @@ jobs:
       regenerate_snapshots: ${{ inputs.regenerate_snapshots }}
       post_stack_consumption: false  # XXX : for now this feature is not compatible with swap tests. Will be fixed in upcoming PR.
       stack_consumption_section_id: 'stack-consumption-summary-swap'
+    secrets:
+      token: ${{ secrets.token }}
