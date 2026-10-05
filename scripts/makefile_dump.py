@@ -8,7 +8,7 @@ import subprocess
 import sys
 from argparse import ArgumentParser
 from pathlib import Path
-from tempfile import NamedTemporaryFile
+from tempfile import NamedTemporaryFile, TemporaryDirectory
 from typing import Any
 
 from utils import run_cmd
@@ -55,9 +55,20 @@ listparams:
 """
 
 
-def get_app_listvariants(app_build_path: Path) -> tuple[str, list[str]]:
-    # Using listvariants Makefile target
-    listvariants = run_cmd("make listvariants", cwd=app_build_path)
+def cmake_target(app_build_path: Path, cmake_preset: str, cmake_dir: Path, target: str, variant_param: str = "") -> str:
+    define = f" -D{variant_param}" if variant_param else ""
+    run_cmd(f"cmake --preset {cmake_preset} -B {cmake_dir}{define}", cwd=app_build_path)
+    return run_cmd(f"cmake --build {cmake_dir} --target {target}", cwd=app_build_path)
+
+
+def get_app_listvariants(
+    app_build_path: Path, cmake_preset: str | None = None, cmake_dir: Path | None = None
+) -> tuple[str, list[str]]:
+    if cmake_preset and cmake_dir:
+        listvariants = cmake_target(app_build_path, cmake_preset, cmake_dir, "listvariants")
+    else:
+        # Using listvariants Makefile target
+        listvariants = run_cmd("make listvariants", cwd=app_build_path)
     if "VARIANTS" not in listvariants:
         raise ValueError(f"Invalid variants retrieved: {listvariants}")
 
@@ -72,17 +83,22 @@ def get_app_listvariants(app_build_path: Path) -> tuple[str, list[str]]:
     return variant_param_name, variants
 
 
-def get_app_listparams(app_build_path: Path, variant_param: str) -> dict:
-    with NamedTemporaryFile(suffix=".mk") as tmp:
-        tmp_file = Path(tmp.name)
+def get_app_listparams(
+    app_build_path: Path, variant_param: str, cmake_preset: str | None = None, cmake_dir: Path | None = None
+) -> dict:
+    if cmake_preset and cmake_dir:
+        ret = cmake_target(app_build_path, cmake_preset, cmake_dir, "listparams", variant_param)
+    else:
+        with NamedTemporaryFile(suffix=".mk") as tmp:
+            tmp_file = Path(tmp.name)
 
-        with open(tmp_file, "w") as f:
-            f.write(LISTPARAMS_MAKEFILE)
+            with open(tmp_file, "w") as f:
+                f.write(LISTPARAMS_MAKEFILE)
 
-        ret = run_cmd(
-            f"make -f Makefile -f {tmp_file} listparams {variant_param}",
-            cwd=app_build_path,
-        )
+            ret = run_cmd(
+                f"make -f Makefile -f {tmp_file} listparams {variant_param}",
+                cwd=app_build_path,
+            )
 
     ret = ret.split("Start dumping params\n")[1]
     ret = ret.split("\nStop dumping params")[0]
@@ -301,24 +317,26 @@ def filter_embedded_glyphs(
     return " ".join(kept)
 
 
-def save_app_params(app_build_path: Path, json_path: Path) -> None:
+def save_app_params(app_build_path: Path, json_path: Path, cmake_preset: str | None = None) -> None:
+    with TemporaryDirectory() as tmp_dir:
+        cmake_dir = Path(tmp_dir)
 
-    # Retrieve available variants
-    variant_param_name, variants = get_app_listvariants(app_build_path)
+        # Retrieve available variants
+        variant_param_name, variants = get_app_listvariants(app_build_path, cmake_preset, cmake_dir)
 
-    ret: dict[str, Any] = {
-        "BUILD_DIRECTORY": str(app_build_path),
-        "VARIANT_PARAM": variant_param_name,
-        "VARIANTS": {},
-        "IS_ALLOWED_MAKEFILE": is_allowed_makefile(app_build_path),
-    }
+        ret: dict[str, Any] = {
+            "BUILD_DIRECTORY": str(app_build_path),
+            "VARIANT_PARAM": variant_param_name,
+            "VARIANTS": {},
+            "IS_ALLOWED_MAKEFILE": is_allowed_cmakelists(app_build_path) if cmake_preset else is_allowed_makefile(app_build_path),
+        }
 
-    for variant in variants:
-        print(f"Checking for variant: {variant}")
+        for variant in variants:
+            print(f"Checking for variant: {variant}")
 
-        app_params = get_app_listparams(app_build_path, variant_param=f"{variant_param_name}={variant}")
+            app_params = get_app_listparams(app_build_path, f"{variant_param_name}={variant}", cmake_preset, cmake_dir)
 
-        ret["VARIANTS"][variant] = app_params
+            ret["VARIANTS"][variant] = app_params
 
     # If the application has been built, reduce the listed glyphs to the ones
     # actually embedded in the binary (the SDK garbage-collects unused glyphs).
@@ -374,6 +392,11 @@ def save_app_params(app_build_path: Path, json_path: Path) -> None:
         json.dump(ret, f, indent=4)
 
 
+def is_allowed_cmakelists(app_build_path: Path) -> bool:
+    with open(os.path.join(app_build_path, "CMakeLists.txt")) as f:
+        return any(re.match(r"\s*ledger_app\s*\(", line) for line in f)
+
+
 def is_allowed_makefile(app_build_path: Path) -> bool:
     makefile_path = os.path.join(app_build_path, "Makefile")
 
@@ -406,7 +429,8 @@ if __name__ == "__main__":
         required=True,
     )
     parser.add_argument("--json_path", help="Json path to store the output", required=True)
+    parser.add_argument("--cmake_preset", help="Use the CMake build with this preset instead of make")
 
     args = parser.parse_args()
 
-    save_app_params(Path(args.app_build_path), Path(args.json_path))
+    save_app_params(Path(args.app_build_path), Path(args.json_path), args.cmake_preset)

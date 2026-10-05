@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.116.0] - 2026-10-07
+
+### Added
+
+- `reusable_build.yml`: new `use_cmake` input, to build C applications with their CMake presets instead of make.
+- `reusable_unit_tests.yml`: new `use_cmake_presets` input, to build and run the unit tests with the application `unit-tests` CMake preset.
+- `reusable_unit_tests.yml`: new `sdk_reference` input, to checkout a SDK reference before building the unit tests.
+- `reusable_codeql_checks.yml`: new `use_cmake` and `sdk_reference` inputs, as in `reusable_build.yml`.
+
 ## [1.115.0] - 2026-10-07
 
 ### Changed

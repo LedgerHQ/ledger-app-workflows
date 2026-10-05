@@ -33,6 +33,23 @@ on:
         required: false
         default: ''
         type: string
+      sdk_reference:
+        description: |
+          A SDK reference to checkout before building the app.
+          Default behavior is to build on the current version of the app-builder Docker image.
+        required: false
+        default: ""
+        type: string
+      use_cmake:
+        description: |
+          Build the application with its CMake presets instead of make (defaults to false).
+
+          Each device is built with the preset of the same name in the application `CMakePresets.json`
+          ('nanosp' uses the 'nanos2' preset). Flags are passed as CMake cache variables.
+          The SDK must support CMake: use `sdk_reference` if the builder SDK does not.
+        required: false
+        default: false
+        type: boolean
     secrets:
       token:
         description: 'A token used to checkout private repositories'
@@ -49,6 +66,8 @@ env:
   RUN_FOR_DEVICES: ${{ inputs.run_for_devices }}
   BUILDER: ${{ inputs.builder }}
   FLAGS: ${{ inputs.flags }}
+  SDK_REFERENCE: ${{ inputs.sdk_reference }}
+  USE_CMAKE: ${{ inputs.use_cmake }}
 
 jobs:
   call_get_app_metadata:
@@ -125,6 +144,14 @@ jobs:
           device="${device%_SDK}"
           echo "DEVICE=${device,,}" >> "${GITHUB_ENV}"
 
+      - name: Checkout SDK
+        if: ${{ inputs.sdk_reference != '' }}
+        shell: bash
+        run: |
+          BOLOS_SDK=${{ matrix.sdk }}
+          echo "Checking out reference '${SDK_REFERENCE}' in ${BOLOS_SDK}..."
+          git -C "${BOLOS_SDK}" fetch -apt && git -C "${BOLOS_SDK}" checkout ${SDK_REFERENCE}
+
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v4
         with:
@@ -133,8 +160,25 @@ jobs:
 
       # CodeQL will create the database during the compilation
       - name: Build
+        shell: bash
         run: |
-           make BOLOS_SDK="${{ matrix.sdk }}" ${FLAGS}
+          if [ "${USE_CMAKE}" = "true" ]; then
+            if [ ! -f CMakePresets.json ]; then
+              echo "::error::'use_cmake' is set but CMakePresets.json is missing"
+              exit 1
+            fi
+            export BOLOS_SDK=${{ matrix.sdk }}
+            PRESET="$(echo "${DEVICE}" | sed 's/nanosp/nanos2/')"
+            # Make-style flags (e.g. DEBUG=1) become CMake cache variables
+            CMAKE_ARGS=()
+            for flag in ${FLAGS}; do
+              CMAKE_ARGS+=("-D${flag}")
+            done
+            cmake --preset "${PRESET}" "${CMAKE_ARGS[@]}"
+            cmake --build --preset "${PRESET}" -j
+          else
+            make BOLOS_SDK="${{ matrix.sdk }}" ${FLAGS}
+          fi
 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v4

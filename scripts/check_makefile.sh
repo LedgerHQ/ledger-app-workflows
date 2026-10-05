@@ -133,11 +133,27 @@ main() (
                     build_target=$(jq -r --arg v "${variant}" '.VARIANTS[$v].TARGET' "${cur_manifest}")
                     eval "BOLOS_SDK=\$$(echo "${build_target/s2/sp}" | tr '[:lower:]' '[:upper:]')_SDK"
 
-                    log_info "Trying to make --dry-run for rule build/${build_target}/obj/app/${entrypoint_filepath}. Using $BOLOS_SDK"
+                    if [[ "${USE_CMAKE}" == true ]]; then
+                        variant_param=$(jq -r '.VARIANT_PARAM' "${cur_manifest}")
+                        cmake_dir=$(mktemp -d)
+                        log_info "Reading compile commands for ${variant_param}=${variant}. Using $BOLOS_SDK"
 
-                    make -C "${build_dir}"  \
-                        BOLOS_SDK="${BOLOS_SDK}" \
-                        --dry-run build/"${build_target}"/obj/app/"${entrypoint_filepath}" 2>&1 | tee build_dry_run_output.txt
+                        (cd "${build_dir}" && BOLOS_SDK="${BOLOS_SDK}" cmake --preset "${build_target}" -B "${cmake_dir}" -D"${variant_param}=${variant}" > /dev/null)
+                        jq -r '.[] | .command // (.arguments | join(" "))' \
+                            "${cmake_dir}/compile_commands.json" > build_dry_run_output.txt
+                        rm -rf "${cmake_dir}"
+
+                        if [[ ! -s build_dry_run_output.txt ]]; then
+                            log_error_no_header "No compile command found"
+                            error=1
+                        fi
+                    else
+                        log_info "Trying to make --dry-run for rule build/${build_target}/obj/app/${entrypoint_filepath}. Using $BOLOS_SDK"
+
+                        make -C "${build_dir}"  \
+                            BOLOS_SDK="${BOLOS_SDK}" \
+                            --dry-run build/"${build_target}"/obj/app/"${entrypoint_filepath}" 2>&1 | tee build_dry_run_output.txt
+                    fi
 
                     for forbidden_flag in $forbidden_flags; do
                         log_info "Checking for forbidden flag $forbidden_flag"
