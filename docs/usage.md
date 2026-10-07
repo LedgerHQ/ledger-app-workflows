@@ -336,16 +336,16 @@ In order to test an App, this workflow can use the following input parameters:
 
 In order to test an App, this workflow can use the following input parameters:
 
-| Parameter                      | Required | Default value               | Comment                                                                         |
-| ------------------------------ | -------- | --------------------------- | ------------------------------------------------------------------------------- |
-| app_repository                 | ❌       | `github.repository`         | The GIT repository to test                                                      |
-| app_branch_name                | ❌       | `github.ref`                | The GIT branch to test                                                          |
-| download_app_binaries_artifact | ❌       |                             | If not provided, the workflow will build the app to test                        |
-| exchange_repository            | ❌       | `LedgerHQ/app-exchange-dev` | The GIT repository to build Exchange from                                       |
-| exchange_binaries_artifact     | ❌       |                             | If not provided, the workflow will build Exchange from `exchange_repository`    |
-| ethereum_repository            | ❌       | `LedgerHQ/app-ethereum-dev` | The GIT repository to build Ethereum from                                       |
-| ethereum_binaries_artifact     | ❌       |                             | If not provided, the workflow will build Ethereum from `ethereum_repository`    |
-| regenerate_snapshots           | ❌       | `false`                     | Clean snapshots, regenerate them, commit the changes in a branch, and open a PR |
+| Parameter                      | Required | Default value                                                                                  | Comment                                                                         |
+| ------------------------------ | -------- | ---------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| app_repository                 | ❌       | `github.repository`                                                                            | The GIT repository to test                                                      |
+| app_branch_name                | ❌       | `github.ref`                                                                                   | The GIT branch to test                                                          |
+| download_app_binaries_artifact | ❌       |                                                                                                | If not provided, the workflow will build the app to test                        |
+| exchange_repository            | ❌       | `LedgerHQ/app-exchange-dev` if `app_repository` ends with `-dev`, else `LedgerHQ/app-exchange` | The GIT repository to build Exchange from                                       |
+| exchange_binaries_artifact     | ❌       |                                                                                                | If not provided, the workflow will build Exchange from `exchange_repository`    |
+| ethereum_repository            | ❌       | `LedgerHQ/app-ethereum-dev` if `app_repository` ends with `-dev`, else `LedgerHQ/app-ethereum` | The GIT repository to build Ethereum from                                       |
+| ethereum_binaries_artifact     | ❌       |                                                                                                | If not provided, the workflow will build Ethereum from `ethereum_repository`    |
+| regenerate_snapshots           | ❌       | `false`                                                                                        | Clean snapshots, regenerate them, commit the changes in a branch, and open a PR |
 
 In addition, the following secret can be used:
 

@@ -30,9 +30,11 @@ on:
         default: ''
         type: string
       exchange_repository:
-        description: 'The GIT repository to build Exchange from, when exchange_binaries_artifact is not provided'
+        description: |
+          The GIT repository to build Exchange from, when exchange_binaries_artifact is not provided.
+          If not set, LedgerHQ/app-exchange-dev is used when app_repository ends with '-dev', else LedgerHQ/app-exchange.
         required: false
-        default: 'LedgerHQ/app-exchange-dev'
+        default: ''
         type: string
       exchange_binaries_artifact:
         description: |
@@ -42,9 +44,11 @@ on:
         default: ''
         type: string
       ethereum_repository:
-        description: 'The GIT repository to build Ethereum from, when ethereum_binaries_artifact is not provided'
+        description: |
+          The GIT repository to build Ethereum from, when ethereum_binaries_artifact is not provided.
+          If not set, LedgerHQ/app-ethereum-dev is used when app_repository ends with '-dev', else LedgerHQ/app-ethereum.
         required: false
-        default: 'LedgerHQ/app-ethereum-dev'
+        default: ''
         type: string
       ethereum_binaries_artifact:
         description: |
@@ -72,6 +76,8 @@ env:
   APP_REPOSITORY: ${{ inputs.app_repository }}
   APP_BRANCH_NAME: ${{ inputs.app_branch_name }}
   DOWNLOAD_APP_BINARIES_ARTIFACT: ${{ inputs.download_app_binaries_artifact }}
+  EXCHANGE_REPOSITORY: ${{ inputs.exchange_repository }}
+  ETHEREUM_REPOSITORY: ${{ inputs.ethereum_repository }}
   EXCHANGE_BINARIES_ARTIFACT: ${{ inputs.exchange_binaries_artifact }}
   ETHEREUM_BINARIES_ARTIFACT: ${{ inputs.ethereum_binaries_artifact }}
   REGENERATE_SNAPSHOTS: ${{ inputs.regenerate_snapshots }}
@@ -84,7 +90,27 @@ jobs:
       app_binaries_artifact: ${{ steps.compute_names.outputs.app_artifact_name }}
       exchange_binaries_artifact: ${{ steps.compute_names.outputs.exchange_artifact_name }}
       ethereum_binaries_artifact: ${{ steps.compute_names.outputs.ethereum_artifact_name }}
+      exchange_repository: ${{ steps.compute_repositories.outputs.exchange_repository }}
+      ethereum_repository: ${{ steps.compute_repositories.outputs.ethereum_repository }}
     steps:
+      - name: Compute Exchange and Ethereum repositories
+        id: compute_repositories
+        run: |
+          # A '-dev' application is tested against the '-dev' Exchange and Ethereum
+          if [[ "${APP_REPOSITORY}" == *-dev ]]; then
+            suffix="-dev"
+          else
+            suffix=""
+          fi
+          exchange_repository="${EXCHANGE_REPOSITORY:-LedgerHQ/app-exchange${suffix}}"
+          ethereum_repository="${ETHEREUM_REPOSITORY:-LedgerHQ/app-ethereum${suffix}}"
+          {
+            echo "exchange_repository=${exchange_repository}"
+            echo "ethereum_repository=${ethereum_repository}"
+          } >> "${GITHUB_OUTPUT}"
+          echo "Exchange repository: ${exchange_repository}"
+          echo "Ethereum repository: ${ethereum_repository}"
+
       - name: Compute artifact names
         id: compute_names
         run: |
@@ -135,7 +161,7 @@ jobs:
     if: ${{ inputs.exchange_binaries_artifact == '' }}
     uses: ./.github/workflows/reusable_build.yml
     with:
-      app_repository: ${{ inputs.exchange_repository }}
+      app_repository: ${{ needs.compute_artifact_names.outputs.exchange_repository }}
       app_branch_name: 'develop'
       upload_app_binaries_artifact: ${{ needs.compute_artifact_names.outputs.exchange_binaries_artifact }}
       use_case: 'use_test_keys'
@@ -149,7 +175,7 @@ jobs:
     if: ${{ inputs.ethereum_binaries_artifact == '' }}
     uses: ./.github/workflows/reusable_build.yml
     with:
-      app_repository: ${{ inputs.ethereum_repository }}
+      app_repository: ${{ needs.compute_artifact_names.outputs.ethereum_repository }}
       app_branch_name: 'develop'
       upload_app_binaries_artifact: ${{ needs.compute_artifact_names.outputs.ethereum_binaries_artifact }}
       use_case: 'use_test_keys'
