@@ -11,6 +11,7 @@ source "${dirName}/logger.sh"
 
 VERBOSE=false
 IS_RUST=false
+USE_CMAKE=false
 
 # All available checks ('manifest' must be the first one)
 ALL_CHECKS="manifest icons app_load_params makefile readme changelog scan"
@@ -39,6 +40,7 @@ help() {
     echo "  -m <file>   : Manifest (file or directory)"
     echo "  -t <device> : Targeted device"
     echo "  -r          : Rust application"
+    echo "  -k          : Use the CMake build instead of make"
     echo "  -v          : Verbose mode"
     echo "  -h          : Displays this help"
     echo
@@ -51,7 +53,7 @@ help() {
 #
 #===============================================================================
 
-while getopts ":a:b:c:d:m:t:w:rvh" opt; do
+while getopts ":a:b:c:d:m:t:w:rkvh" opt; do
     case ${opt} in
         a)  APP_DIR=${OPTARG}   ;;
         b)  BUILD_DIR=${OPTARG} ;;
@@ -61,6 +63,7 @@ while getopts ":a:b:c:d:m:t:w:rvh" opt; do
         t)  TARGET=${OPTARG}    ;;
         w)  WORKFLOWS_DIR=${OPTARG} ;;
         r)  IS_RUST=true ;;
+        k)  USE_CMAKE=true ;;
         v)  VERBOSE=true ;;
         h)  help ;;
 
@@ -168,6 +171,27 @@ log_bold () {
 
 #===============================================================================
 #
+#     CMake helpers
+#
+#===============================================================================
+
+cmake_preset_arg() {
+    [[ "${USE_CMAKE}" == true ]] && echo "--cmake_preset ${1/nanosp/nanos2}"
+}
+
+# Same options as the SDK `make scan-build` rule
+scan_command() {
+    local preset="${1/nanosp/nanos2}"
+    if [[ "${USE_CMAKE}" == true ]]; then
+        local scan_dir="build/scan/${preset}"
+        echo "(cd ${APP_DIR}/${BUILD_DIR} && scan-build --use-cc=clang -analyze-headers -enable-checker security -enable-checker unix -enable-checker valist --status-bugs -o ${scan_dir}/output-scan sh -c 'cmake --preset ${preset} -B ${scan_dir} -DENABLE_SDK_WERROR=ON -DLEDGER_CLANG_CC=\"\${CC}\" && cmake --build ${scan_dir} -j')"
+    else
+        echo "make ${make_option[*]} ENABLE_SDK_WERROR=1 scan-build"
+    fi
+}
+
+#===============================================================================
+#
 #     step function
 #
 #===============================================================================
@@ -183,7 +207,7 @@ call_step() {
                 if [[ "${IS_RUST}" == true ]]; then
                     COMMAND="(cd ${APP_DIR} && python3 ${dirName}/cargo_metadata_dump.py --device ${TARGET} --app_build_path ${BUILD_DIR} --json_path ${MANIFEST_FILE})"
                 else
-                    COMMAND="(cd ${APP_DIR} && python3 ${dirName}/makefile_dump.py --app_build_path ${BUILD_DIR} --json_path ${MANIFEST_FILE})"
+                    COMMAND="(cd ${APP_DIR} && python3 ${dirName}/makefile_dump.py --app_build_path ${BUILD_DIR} --json_path ${MANIFEST_FILE} $(cmake_preset_arg "${TARGET}"))"
                 fi
             else
                 log_step "Get ${step} (All targets)"
@@ -195,7 +219,7 @@ call_step() {
                     if [[ "${IS_RUST}" == true ]]; then
                         COMMAND="(cd ${APP_DIR} && python3 ${dirName}/cargo_metadata_dump.py --device ${tgt} --app_build_path ${BUILD_DIR} --json_path ${MANIFEST_DIR}/manifest_${tgt}.json)"
                     else
-                        COMMAND="(cd ${APP_DIR} && python3 ${dirName}/makefile_dump.py --app_build_path ${BUILD_DIR} --json_path ${MANIFEST_DIR}/manifest_${tgt}.json)"
+                        COMMAND="(cd ${APP_DIR} && python3 ${dirName}/makefile_dump.py --app_build_path ${BUILD_DIR} --json_path ${MANIFEST_DIR}/manifest_${tgt}.json $(cmake_preset_arg "${tgt}"))"
                     fi
                     [[ "${VERBOSE}" == true ]] && echo "Running: ${COMMAND}"
                     eval "${COMMAND}"
@@ -218,7 +242,7 @@ call_step() {
             COMMAND="python3 ${DATABASE_DIR}/scripts/app_load_params_check.py --database_path ${DATABASE_DIR}/app-load-params-db.json --app_manifests_path ${MANIFEST_DIR}"
             ;;
         "makefile")
-            COMMAND="${dirName}/check_makefile.sh ${APP_DIR} ${REPO_NAME} ${MANIFEST_DIR} ${WORKFLOWS_DIR} ${IS_RUST} ${TARGET}"
+            COMMAND="USE_CMAKE=${USE_CMAKE} ${dirName}/check_makefile.sh ${APP_DIR} ${REPO_NAME} ${MANIFEST_DIR} ${WORKFLOWS_DIR} ${IS_RUST} ${TARGET}"
             ;;
         "readme")
             COMMAND="${dirName}/check_readme.sh ${APP_DIR} ${REPO_NAME}"
@@ -236,7 +260,7 @@ call_step() {
                 if [[ "${IS_RUST}" == true ]]; then
                     COMMAND="(cd ${APP_DIR}/${BUILD_DIR} && cargo clippy --target ${TARGET/nanosp/nanosplus} -- -Dwarnings)"
                 else
-                    COMMAND="make ${make_option[*]} ENABLE_SDK_WERROR=1 scan-build"
+                    COMMAND="$(scan_command "${TARGET}")"
                 fi
             else
                 log_step "Check ${step} (All targets)"
@@ -248,7 +272,7 @@ call_step() {
                     if [[ "${IS_RUST}" == true ]]; then
                         COMMAND="(cd ${APP_DIR}/${BUILD_DIR} && cargo clippy --target ${tgt/nanosp/nanosplus} -- -Dwarnings)"
                     else
-                        COMMAND="make ${make_option[*]} ENABLE_SDK_WERROR=1 scan-build"
+                        COMMAND="$(scan_command "${tgt}")"
                     fi
                     [[ "${VERBOSE}" == true ]] && echo "Running: ${COMMAND}"
                     eval "${COMMAND}"

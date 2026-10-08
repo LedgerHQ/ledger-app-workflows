@@ -96,6 +96,17 @@ on:
         required: false
         default: ''
         type: string
+      use_cmake:
+        description: |
+          Build C applications with their CMake presets instead of make (defaults to false).
+
+          Each device is built with the preset of the same name in the application `CMakePresets.json`
+          ('nanosp' uses the 'nanos2' preset). Flags (`flags` or the `use_case` ones) are passed as CMake
+          cache variables. The SDK must support CMake: use `sdk_reference` if the builder SDK does not.
+          The target branch of a build comparison falls back to make when it has no `CMakePresets.json`.
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -116,6 +127,7 @@ env:
   CARGO_LEDGER_BUILD_ARGS: ${{ inputs.cargo_ledger_build_args }}
   ENABLE_STACK_CONSUMPTION: ${{ inputs.enable_stack_consumption }}
   ARTIFACT_RETENTION_DAYS: ${{ inputs.artifact_retention_days }}
+  USE_CMAKE: ${{ inputs.use_cmake }}
 
 jobs:
   call_get_app_metadata:
@@ -206,11 +218,34 @@ jobs:
               echo "binary_path=${binary_path}" >> "${GITHUB_OUTPUT}"
           else
               echo "Using BOLOS_SDK: ${BOLOS_SDK}"
-              STACK_FLAG=""
-              if [ "${ENABLE_STACK_CONSUMPTION}" = "true" ]; then
-                STACK_FLAG="DEBUG_OS_STACK_CONSUMPTION=1"
+              BUILD_SYSTEM="make"
+              if [ "${USE_CMAKE}" = "true" ]; then
+                if [ ! -f CMakePresets.json ]; then
+                  echo "::error::'use_cmake' is set but CMakePresets.json is missing"
+                  exit 1
+                fi
+                BUILD_SYSTEM="cmake"
               fi
-              make -j ${{ needs.call_get_app_metadata.outputs.flags }} ${ADDITIONAL_ARGS} ${STACK_FLAG} BOLOS_SDK="${BOLOS_SDK}"
+              if [ "${BUILD_SYSTEM}" = "cmake" ]; then
+                PRESET="$(echo "${{ matrix.device }}" | sed 's/nanosp/nanos2/')"
+                # Make-style flags (e.g. DEBUG=1) become CMake cache variables
+                CMAKE_ARGS=()
+                for flag in ${{ needs.call_get_app_metadata.outputs.flags }}; do
+                  CMAKE_ARGS+=("-D${flag}")
+                done
+                if [ "${ENABLE_STACK_CONSUMPTION}" = "true" ]; then
+                  CMAKE_ARGS+=(-DDEBUG_OS_STACK_CONSUMPTION=ON)
+                fi
+                cmake --preset "${PRESET}" "${CMAKE_ARGS[@]}"
+                cmake --build --preset "${PRESET}" -j
+              else
+                STACK_FLAG=""
+                if [ "${ENABLE_STACK_CONSUMPTION}" = "true" ]; then
+                  STACK_FLAG="DEBUG_OS_STACK_CONSUMPTION=1"
+                fi
+                make -j ${{ needs.call_get_app_metadata.outputs.flags }} ${ADDITIONAL_ARGS} ${STACK_FLAG} BOLOS_SDK="${BOLOS_SDK}"
+              fi
+              echo "build_system=${BUILD_SYSTEM}" >> "${GITHUB_OUTPUT}"
               echo "binary_path=${{ needs.call_get_app_metadata.outputs.build_directory }}/build" >> "${GITHUB_OUTPUT}"
           fi
           echo "binary_path=${binary_path}"
@@ -222,6 +257,9 @@ jobs:
           then
               find ${{ steps.build.outputs.binary_path }} -mindepth 3 -maxdepth 3 -type d -exec rm -rf {} +
               rm -rf ${{ steps.build.outputs.binary_path }}/release
+          elif [ "${{ steps.build.outputs.build_system }}" = "cmake" ]; then
+              # CMake also leaves files (CMakeCache.txt, app.map, ...) next to bin/
+              find ${{ steps.build.outputs.binary_path }} -mindepth 2 -maxdepth 2 ! -name 'bin' -exec rm -rf {} +
           else
               find ${{ steps.build.outputs.binary_path }} -mindepth 2 -maxdepth 2 -type d ! -name 'bin' -exec rm -r {} +
           fi
@@ -348,11 +386,34 @@ jobs:
               echo "binary_path=${binary_path}" >> "${GITHUB_OUTPUT}"
           else
               echo "Using BOLOS_SDK: ${BOLOS_SDK}"
-              STACK_FLAG=""
-              if [ "${ENABLE_STACK_CONSUMPTION}" = "true" ]; then
-                STACK_FLAG="DEBUG_OS_STACK_CONSUMPTION=1"
+              BUILD_SYSTEM="make"
+              if [ "${USE_CMAKE}" = "true" ]; then
+                if [ -f CMakePresets.json ]; then
+                  BUILD_SYSTEM="cmake"
+                else
+                  echo "::notice::No CMakePresets.json on the target branch, building it with make"
+                fi
               fi
-              make -j ${{ needs.call_get_app_metadata.outputs.flags }} ${ADDITIONAL_ARGS} ${STACK_FLAG} BOLOS_SDK="${BOLOS_SDK}"
+              if [ "${BUILD_SYSTEM}" = "cmake" ]; then
+                PRESET="$(echo "${{ matrix.device }}" | sed 's/nanosp/nanos2/')"
+                # Make-style flags (e.g. DEBUG=1) become CMake cache variables
+                CMAKE_ARGS=()
+                for flag in ${{ needs.call_get_app_metadata.outputs.flags }}; do
+                  CMAKE_ARGS+=("-D${flag}")
+                done
+                if [ "${ENABLE_STACK_CONSUMPTION}" = "true" ]; then
+                  CMAKE_ARGS+=(-DDEBUG_OS_STACK_CONSUMPTION=ON)
+                fi
+                cmake --preset "${PRESET}" "${CMAKE_ARGS[@]}"
+                cmake --build --preset "${PRESET}" -j
+              else
+                STACK_FLAG=""
+                if [ "${ENABLE_STACK_CONSUMPTION}" = "true" ]; then
+                  STACK_FLAG="DEBUG_OS_STACK_CONSUMPTION=1"
+                fi
+                make -j ${{ needs.call_get_app_metadata.outputs.flags }} ${ADDITIONAL_ARGS} ${STACK_FLAG} BOLOS_SDK="${BOLOS_SDK}"
+              fi
+              echo "build_system=${BUILD_SYSTEM}" >> "${GITHUB_OUTPUT}"
               echo "binary_path=${{ needs.call_get_app_metadata.outputs.build_directory }}/build" >> "${GITHUB_OUTPUT}"
           fi
           echo "binary_path=${binary_path}"
@@ -364,6 +425,9 @@ jobs:
           then
               find ${{ steps.build.outputs.binary_path }} -mindepth 3 -maxdepth 3 -type d -exec rm -rf {} +
               rm -rf ${{ steps.build.outputs.binary_path }}/release
+          elif [ "${{ steps.build.outputs.build_system }}" = "cmake" ]; then
+              # CMake also leaves files (CMakeCache.txt, app.map, ...) next to bin/
+              find ${{ steps.build.outputs.binary_path }} -mindepth 2 -maxdepth 2 ! -name 'bin' -exec rm -rf {} +
           else
               find ${{ steps.build.outputs.binary_path }} -mindepth 2 -maxdepth 2 -type d ! -name 'bin' -exec rm -r {} +
           fi

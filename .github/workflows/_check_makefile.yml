@@ -45,6 +45,16 @@ on:
         required: false
         default: ''
         type: string
+      use_cmake:
+        description: 'Use the CMake build of C applications instead of make (defaults to false)'
+        required: false
+        default: false
+        type: boolean
+      sdk_reference:
+        description: 'A SDK reference to checkout before running the check. Does not apply on Rust applications'
+        required: false
+        default: ''
+        type: string
 
 permissions:
   contents: read  # Needed to clone the repositories
@@ -55,6 +65,7 @@ env:
   REPO_NAME: ${{ inputs.repo_name }}
   DOWNLOAD_MANIFEST_ARTIFACT_NAME: ${{ inputs.download_manifest_artifact_name }}
   RUN_FOR_DEVICES: ${{ inputs.run_for_devices }}
+  SDK_REFERENCE: ${{ inputs.sdk_reference }}
 
 jobs:
   call_get_app_metadata:
@@ -113,8 +124,16 @@ jobs:
           echo "BOLOS_SDK=${BOLOS_SDK}" >> "${GITHUB_ENV}"
           echo "BOLOS_SDK will be set to: ${BOLOS_SDK}"
 
+      - name: Checkout SDK
+        if: ${{ needs.call_get_app_metadata.outputs.is_rust == 'false' && inputs.sdk_reference != '' }}
+        shell: bash
+        run: |
+          eval "SDK_DIR=\$$(echo ${{ matrix.device }} | tr '[:lower:]' '[:upper:]')_SDK"
+          echo "Checking out reference '${SDK_REFERENCE}' in ${SDK_DIR}..."
+          git -C "${SDK_DIR}" fetch -apt && git -C "${SDK_DIR}" checkout "${SDK_REFERENCE}"
+
       - name: Run script
         run: |
             [ ${{ needs.call_get_app_metadata.outputs.is_rust }} = 'true' ] && EXTRA_FLAGS=-r
             ./ledger-app-workflows/scripts/check_all.sh -c makefile -t "${{ matrix.device }}" \
-              -a ./app-repository -m "${DOWNLOAD_MANIFEST_ARTIFACT_NAME}" -w ./ledger-app-workflows $EXTRA_FLAGS
+              -a ./app-repository -m "${DOWNLOAD_MANIFEST_ARTIFACT_NAME}" -w ./ledger-app-workflows $EXTRA_FLAGS ${{ inputs.use_cmake && '-k' || '' }}

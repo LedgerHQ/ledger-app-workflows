@@ -32,6 +32,7 @@ In order to build an App, this workflow can use the following input parameters:
 | build_comparison             | ❌       | `false`                   | Whether to build the target branch and report ELF size diffs on PRs                                         |
 | enable_stack_consumption     | ❌       | `false`                   | Enable stack consumption tracking (`DEBUG_OS_STACK_CONSUMPTION=1` for C, `--features stack_usage` for Rust) |
 | artifact_retention_days      | ❌       |                           | Retention (days) for the uploaded build artifacts. Empty uses the repo/org default                          |
+| use_cmake                    | ❌       | `false`                   | Build C apps with their CMake presets (one per device, `nanos2` for `nanosp`) instead of make              |
 
 In addition, the following secret can be used:
 
@@ -251,6 +252,8 @@ In order to build an App, this workflow can use the following input parameters:
 | run_for_devices | ❌       | *ALL*                     | The list of device(s) on which the CI will run |
 | builder         | ❌       | `ledger-app-builder-lite` | The docker image to build the application in   |
 | flags           | ❌       |                           | Additional compilation flags                   |
+| sdk_reference   | ❌       |                           | A SDK reference to checkout before building the app |
+| use_cmake       | ❌       | `false`                   | Build with the app CMake presets (one per device, `nanos2` for `nanosp`) instead of make |
 
 In addition, the following secrets can be used:
 
@@ -284,6 +287,8 @@ In order to test an App, this workflow can use the following input parameters:
 | enable_codecov         | ❌       | `true`                    | Whether to upload coverage to Codecov; `false` for repos that can't use it, e.g. internal (also skipped without `codecov_token`)  |
 | use_cmake_ut_framework | ❌       | `false`                   | Use the CMake UT framework: tests run and coverage generated in a `build/` subdirectory (else directly in the test directory)     |
 | repo_is_tool           | ❌       | `false`                   | Set to `true` for tool/SDK repos (no `ledger_app.toml`): uses `test_directory` directly instead of reading from the manifest      |
+| use_cmake_presets      | ❌       | `false`                   | Build and run the tests from the app root with its `unit-tests` CMake preset; takes precedence over `use_cmake_ut_framework`      |
+| sdk_reference          | ❌       |                           | A SDK reference to checkout in `BOLOS_SDK` before building the tests                                                              |
 
 In addition, the following secrets can be used:
 

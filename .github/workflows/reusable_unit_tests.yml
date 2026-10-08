@@ -55,6 +55,21 @@ on:
         required: false
         default: false
         type: boolean
+      use_cmake_presets:
+        description: |
+          Build and run the unit tests from the application root with its `unit-tests` CMake preset
+          (defaults to false). Takes precedence over `use_cmake_ut_framework`.
+          The SDK must support CMake: use `sdk_reference` if the builder SDK does not.
+        required: false
+        default: false
+        type: boolean
+      sdk_reference:
+        description: |
+          A SDK reference to checkout in BOLOS_SDK before building the unit tests.
+          Default behavior is to use the current version of the app-builder Docker image.
+        required: false
+        default: ""
+        type: string
 
 permissions:
   contents: read
@@ -70,6 +85,8 @@ env:
   CODECOV_TOKEN: ${{ secrets.codecov_token }}
   USE_CMAKE_UT_FRAMEWORK: ${{ inputs.use_cmake_ut_framework }}
   REPO_IS_TOOL: ${{ inputs.repo_is_tool }}
+  USE_CMAKE_PRESETS: ${{ inputs.use_cmake_presets }}
+  SDK_REFERENCE: ${{ inputs.sdk_reference }}
 
 jobs:
   unit_test:
@@ -99,11 +116,22 @@ jobs:
       # Cache Unity and CMock sources fetched by FetchContent at configure time.
       # Keyed on LedgerUT.cmake so a change in pinned tags busts the cache.
       - name: Cache Unity/CMock (FetchContent)
-        if: ${{ inputs.use_cmake_ut_framework }}
+        if: ${{ inputs.use_cmake_ut_framework || inputs.use_cmake_presets }}
         uses: actions/cache@v6
         with:
           path: /tmp/cmake-fetch-deps
           key: cmake-fetch-deps-${{ hashFiles('cmake/LedgerUT.cmake') }}
+
+      # BOLOS_SDK comes from the builder image, not from the workflow env context.
+      - name: Checkout SDK
+        if: ${{ inputs.sdk_reference != '' }}
+        run: |
+          if [ -z "${BOLOS_SDK}" ]; then
+            echo "::error::BOLOS_SDK is not set in the builder image"
+            exit 1
+          fi
+          echo "Checking out reference '${SDK_REFERENCE}' in ${BOLOS_SDK}..."
+          git -C "${BOLOS_SDK}" fetch -apt && git -C "${BOLOS_SDK}" checkout ${SDK_REFERENCE}
 
       - name: Install system dependencies
         if: ${{ inputs.additional_packages != '' }}
@@ -123,6 +151,7 @@ jobs:
 
       # WORK_DIR is the test directory (where the build is launched from).
       # RUN_DIR is where single-module coverage lives (used by upload/codecov/summary):
+      #   - CMake presets (app):      build/unit-tests, built from the app root
       #   - CMake mono-module (app):  WORK_DIR/build
       #   - CMake multi-module (SDK): WORK_DIR  (coverage files in per-module subdirs)
       #   - legacy:                   WORK_DIR
@@ -131,6 +160,13 @@ jobs:
       #   - otherwise: "." (single module, loop runs once, identical to old behaviour)
       - name: Set working directory
         run: |
+          if [ "${USE_CMAKE_PRESETS}" = "true" ]; then
+            echo "WORK_DIR=." >> "${GITHUB_ENV}"
+            echo "RUN_DIR=build/unit-tests" >> "${GITHUB_ENV}"
+            echo "TEST_MODULES=." >> "${GITHUB_ENV}"
+            exit 0
+          fi
+
           if [ -n "${TEST_DIRECTORY}" ]; then
             WORK_DIR="${TEST_DIRECTORY}"
           else
@@ -156,7 +192,10 @@ jobs:
       - name: Build unit tests
         working-directory: ${{ env.WORK_DIR }}
         run: |
-          if [ "${USE_CMAKE_UT_FRAMEWORK}" = "true" ]; then
+          if [ "${USE_CMAKE_PRESETS}" = "true" ]; then
+            cmake --preset unit-tests -DFETCHCONTENT_BASE_DIR=/tmp/cmake-fetch-deps
+            cmake --build --preset unit-tests
+          elif [ "${USE_CMAKE_UT_FRAMEWORK}" = "true" ]; then
             for dir in ${TEST_MODULES}; do
               echo "::group::Building ${dir}"
               cmake -B "${dir}/build" -S "${dir}" \
@@ -173,7 +212,9 @@ jobs:
       - name: Run unit tests
         working-directory: ${{ env.WORK_DIR }}
         run: |
-          if [ "${USE_CMAKE_UT_FRAMEWORK}" = "true" ]; then
+          if [ "${USE_CMAKE_PRESETS}" = "true" ]; then
+            ctest --preset unit-tests --output-on-failure
+          elif [ "${USE_CMAKE_UT_FRAMEWORK}" = "true" ]; then
             for dir in ${TEST_MODULES}; do
               echo "::group::Testing ${dir}"
               ctest --test-dir "${dir}/build" --output-on-failure
@@ -187,7 +228,9 @@ jobs:
         id: coverage
         working-directory: ${{ env.WORK_DIR }}
         run: |
-          if [ "${USE_CMAKE_UT_FRAMEWORK}" = "true" ]; then
+          if [ "${USE_CMAKE_PRESETS}" = "true" ]; then
+            cmake --build --preset unit-tests --target generate_coverage
+          elif [ "${USE_CMAKE_UT_FRAMEWORK}" = "true" ]; then
             for dir in ${TEST_MODULES}; do
               echo "::group::Coverage for ${dir}"
               cmake --build "${dir}/build" --target generate_coverage

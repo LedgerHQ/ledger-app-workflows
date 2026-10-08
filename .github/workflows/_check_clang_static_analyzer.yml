@@ -25,6 +25,16 @@ on:
         description: '"true" if the app is using Rust SDK, else "false"'
         required: true
         type: string
+      use_cmake:
+        description: 'Use the CMake build of C applications instead of make (defaults to false)'
+        required: false
+        default: false
+        type: boolean
+      sdk_reference:
+        description: 'A SDK reference to checkout before running the check. Does not apply on Rust applications'
+        required: false
+        default: ''
+        type: string
 
 permissions:
   contents: read  # Needed to clone the repositories
@@ -35,6 +45,7 @@ env:
   RUN_FOR_DEVICES: ${{ inputs.run_for_devices }}
   RELATIVE_APP_DIRECTORY: ${{ inputs.relative_app_directory }}
   IS_RUST: ${{ inputs.is_rust }}
+  SDK_REFERENCE: ${{ inputs.sdk_reference }}
 
 jobs:
   scan_build:
@@ -74,12 +85,20 @@ jobs:
             ./ledger-app-workflows/scripts/check_all.sh -r -c scan -t "${{ matrix.device }}" \
               -a ./app-repository -b "${RELATIVE_APP_DIRECTORY}"
 
+      - name: Checkout SDK
+        if: ${{ inputs.is_rust == 'false' && inputs.sdk_reference != '' }}
+        shell: bash
+        run: |
+          eval "SDK_DIR=\$$(echo ${{ matrix.device }} | tr '[:lower:]' '[:upper:]')_SDK"
+          echo "Checking out reference '${SDK_REFERENCE}' in ${SDK_DIR}..."
+          git -C "${SDK_DIR}" fetch -apt && git -C "${SDK_DIR}" checkout "${SDK_REFERENCE}"
+
       - name: Build with Clang Static Analyzer
         if: ${{ inputs.is_rust == 'false'}}
         run: |
             eval "BOLOS_SDK=\$$(echo ${{ matrix.device }} | tr '[:lower:]' '[:upper:]')_SDK" && \
             ./ledger-app-workflows/scripts/check_all.sh -c scan -t "${{ matrix.device }}" \
-              -a ./app-repository -b "${RELATIVE_APP_DIRECTORY}"
+              -a ./app-repository -b "${RELATIVE_APP_DIRECTORY}" ${{ inputs.use_cmake && '-k' || '' }}
 
       - name: Upload scan result
         if: ${{ failure() && inputs.is_rust == 'false'}}

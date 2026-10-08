@@ -18,6 +18,22 @@ on:
         required: false
         default: 'None'
         type: string
+      use_cmake:
+        description: |
+          Use the CMake build of C applications instead of make (defaults to false).
+          The SDK must support CMake: use `sdk_reference` if the builder SDK does not.
+        required: false
+        default: false
+        type: boolean
+      sdk_reference:
+        description: |
+          A SDK reference to checkout before building and checking the app. Does not apply on Rust applications.
+
+          As the branch `master` exists locally, `origin/master` should be used to checkout the
+          actual, current SDK master branch.
+        required: false
+        default: ''
+        type: string
     secrets:
       git_token:
         description: 'A token used as authentication for GIT operations. Useful when including this workflow in a private repository.'
@@ -57,6 +73,8 @@ jobs:
       run_for_devices: ${{ needs.call_get_app_metadata.outputs.compatible_devices }}
       upload_app_binaries_artifact: guidelines_enforcer_app_binaries
       builder: ledger-app-builder
+      use_cmake: ${{ inputs.use_cmake }}
+      sdk_reference: ${{ inputs.sdk_reference }}
     secrets:
       token: ${{ secrets.git_token }}
 
@@ -76,6 +94,8 @@ jobs:
       is_rust: ${{ needs.call_get_app_metadata.outputs.is_rust }}
       upload_manifest_artifact_name: manifests
       download_app_binaries_artifact_name: guidelines_enforcer_app_binaries
+      use_cmake: ${{ inputs.use_cmake }}
+      sdk_reference: ${{ inputs.sdk_reference }}
     secrets:
       token: ${{ secrets.git_token }}
 
@@ -108,6 +128,8 @@ jobs:
       app_repository: ${{ inputs.app_repository }}
       download_manifest_artifact_name: manifests
       run_for_devices: ${{ needs.call_get_app_metadata.outputs.compatible_devices }}
+      use_cmake: ${{ inputs.use_cmake }}
+      sdk_reference: ${{ inputs.sdk_reference }}
     secrets:
       token: ${{ secrets.git_token }}
 
@@ -140,6 +162,8 @@ jobs:
       run_for_devices: ${{ needs.call_get_app_metadata.outputs.compatible_devices }}
       relative_app_directory: ${{ needs.call_get_app_metadata.outputs.build_directory }}
       is_rust: ${{ needs.call_get_app_metadata.outputs.is_rust }}
+      use_cmake: ${{ inputs.use_cmake }}
+      sdk_reference: ${{ inputs.sdk_reference }}
     secrets:
       token: ${{ secrets.git_token }}
 
