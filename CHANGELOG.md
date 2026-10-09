@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.117.1] - 2026-10-09
+
+### Fixed
+
+- `reusable_unit_tests.yml`: with `use_cmake_presets` and `repo_is_tool`, the unit tests are built from the repository root instead of reading `ledger_app.toml`, which tool/SDK repositories don't have.
+
 ## [1.117.0] - 2026-10-08
 
 ### Added
