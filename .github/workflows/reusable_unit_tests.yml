@@ -161,7 +161,10 @@ jobs:
       - name: Set working directory
         run: |
           if [ "${USE_CMAKE_PRESETS}" = "true" ]; then
-            WORK_DIR=$(realpath --relative-to=. "$(ledger-manifest -ob ledger_app.toml)")
+            WORK_DIR="."
+            if [ "${REPO_IS_TOOL}" != "true" ]; then
+              WORK_DIR=$(realpath --relative-to=. "$(ledger-manifest -ob ledger_app.toml)")
+            fi
             echo "WORK_DIR=${WORK_DIR}" >> "${GITHUB_ENV}"
             echo "RUN_DIR=${WORK_DIR}/build/unit-tests" >> "${GITHUB_ENV}"
             echo "TEST_MODULES=." >> "${GITHUB_ENV}"
