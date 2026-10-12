@@ -43,67 +43,67 @@ jobs:
       matrix:
         coin:
           - name: stellar
-            repo: 'LedgerHQ/app-stellar-dev'
+            repo: 'LedgerHQ/app-stellar'
             branch: 'develop'
           - name: tezos
-            repo: 'LedgerHQ/app-tezos-dev'
+            repo: 'LedgerHQ/app-tezos'
             branch: 'develop'
           - name: xrp
-            repo: 'LedgerHQ/app-xrp-dev'
+            repo: 'LedgerHQ/app-xrp'
             branch: 'develop'
           - name: ethereum
-            repo: 'LedgerHQ/app-ethereum-dev'
+            repo: 'LedgerHQ/app-ethereum'
             branch: 'develop'
           - name: ethereum_classic
-            repo: 'LedgerHQ/app-ethereum-dev'
+            repo: 'LedgerHQ/app-ethereum'
             branch: 'develop'
           - name: litecoin
-            repo: 'LedgerHQ/app-bitcoin-legacy-dev'
+            repo: 'LedgerHQ/app-bitcoin-legacy'
             branch: 'develop'
           - name: bitcoin_legacy
-            repo: 'LedgerHQ/app-bitcoin-legacy-dev'
+            repo: 'LedgerHQ/app-bitcoin-legacy'
             branch: 'develop'
           - name: bitcoin
-            repo: 'LedgerHQ/app-bitcoin-dev'
+            repo: 'LedgerHQ/app-bitcoin'
             branch: 'develop'
           - name: solana
-            repo: 'LedgerHQ/app-solana-dev'
+            repo: 'LedgerHQ/app-solana'
             branch: 'develop'
           - name: DOT
-            repo: 'LedgerHQ/app-polkadot-dev'
+            repo: 'LedgerHQ/app-polkadot'
             branch: 'develop'
           - name: tron
-            repo: 'LedgerHQ/app-tron-dev'
+            repo: 'LedgerHQ/app-tron'
             branch: 'develop'
           - name: ton
-            repo: 'LedgerHQ/app-ton-dev'
+            repo: 'LedgerHQ/app-ton'
             branch: 'develop'
           - name: cardano
-            repo: 'LedgerHQ/app-cardano-dev'
+            repo: 'LedgerHQ/app-cardano'
             branch: 'develop'
           - name: near
-            repo: 'LedgerHQ/app-near-dev'
+            repo: 'LedgerHQ/app-near'
             branch: 'develop'
           - name: APTOS
-            repo: 'LedgerHQ/app-aptos-dev'
+            repo: 'LedgerHQ/app-aptos'
             branch: 'develop'
           - name: sui
-            repo: 'LedgerHQ/app-sui-dev'
+            repo: 'LedgerHQ/app-sui'
             branch: 'develop'
           - name: ATOM
-            repo: 'LedgerHQ/app-cosmos-dev'
+            repo: 'LedgerHQ/app-cosmos'
             branch: 'develop'
           - name: hedera
-            repo: 'LedgerHQ/app-hedera-dev'
+            repo: 'LedgerHQ/app-hedera'
             branch: 'develop'
           - name: boilerplate
             repo: 'LedgerHQ/app-boilerplate'
             branch: 'master'
           - name: kaspa
-            repo: 'LedgerHQ/app-kaspa-dev'
+            repo: 'LedgerHQ/app-kaspa'
             branch: 'develop'
           - name: celo
-            repo: 'LedgerHQ/app-celo-spender-dev'
+            repo: 'LedgerHQ/app-celo-spender'
             branch: 'develop'
 
     uses: ./.github/workflows/reusable_build.yml
@@ -135,7 +135,7 @@ jobs:
     name: Build Exchange
     uses: ./.github/workflows/reusable_build.yml
     with:
-      app_repository: LedgerHQ/app-exchange-dev
+      app_repository: LedgerHQ/app-exchange
       app_branch_name: develop
       flags: "TESTING=1 TEST_PUBLIC_KEY=1"
       upload_app_binaries_artifact: exchange_binaries
@@ -150,7 +150,7 @@ jobs:
       - build_sideloaded_applications_for_exchange
     uses: ./.github/workflows/reusable_ragger_tests.yml
     with:
-      app_repository: LedgerHQ/app-exchange-dev
+      app_repository: LedgerHQ/app-exchange
       app_branch_name: develop
       download_app_binaries_artifact: exchange_binaries
       lib_binaries_artifact: libraries_binaries
