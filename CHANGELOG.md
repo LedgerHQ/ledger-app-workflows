@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.119.0] - 2026-10-14
+
+### Added
+
+- The app-builder images registry can be overridden with the `APP_BUILDER_REGISTRY` variable of the caller repository (defaults to `ghcr.io/ledgerhq/ledger-app-builder`). When set, the images are pulled with the caller `github.token`.
+
 ## [1.118.0] - 2026-10-14
 
 ### Added
