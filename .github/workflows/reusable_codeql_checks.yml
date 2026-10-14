@@ -59,6 +59,7 @@ permissions:
   contents: read
   security-events: write  # Needed for CodeQL analysis upload
   actions: read           # Needed by github/codeql-action to query the workflow run
+  packages: read          # Needed to pull the app-builder image
 
 env:
   APP_REPOSITORY: ${{ inputs.app_repository }}

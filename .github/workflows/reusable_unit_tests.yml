@@ -74,6 +74,7 @@ on:
 permissions:
   contents: read
   actions: write  # For upload-artifact
+  packages: read  # Needed to pull the app-builder image
 
 env:
   APP_REPOSITORY: ${{ inputs.app_repository }}

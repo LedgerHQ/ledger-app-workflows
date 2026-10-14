@@ -112,6 +112,7 @@ permissions:
   contents: read
   actions: write        # Needed for upload-artifact
   pull-requests: write  # Needed to post PR comments
+  packages: read        # Needed to pull the app-builder image
 
 env:
   APP_REPOSITORY: ${{ inputs.app_repository }}
