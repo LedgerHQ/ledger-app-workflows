@@ -217,6 +217,8 @@ jobs:
           push: ${{ !inputs.dry_run }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          secrets: |
+            github_token=${{ secrets.token }}
           build-args: |
             ${{ inputs.build_args }}
             "http_proxy=${{ env.http_proxy }}"
