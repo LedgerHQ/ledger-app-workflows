@@ -92,8 +92,7 @@ jobs:
   unit_test:
     name: Unit test
     runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/ledgerhq/ledger-app-builder/${{ inputs.builder }}:latest
+    container: ${{ vars.APP_BUILDER_REGISTRY && fromJSON(format('{{"image":"{0}/{1}:latest","credentials":{{"username":"{2}","password":"{3}"}}}}', vars.APP_BUILDER_REGISTRY, inputs.builder, github.actor, github.token)) || format('ghcr.io/ledgerhq/ledger-app-builder/{0}:latest', inputs.builder) }}
 
     steps:
       - name: Clone app repository
