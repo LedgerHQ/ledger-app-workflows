@@ -51,6 +51,7 @@ on:
 
 permissions:
   contents: read  # Needed to clone the repositories
+  packages: read  # Needed to pull the app-builder image
 
 env:
   APP_REPOSITORY: ${{ inputs.app_repository }}

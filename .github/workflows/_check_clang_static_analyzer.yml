@@ -39,6 +39,7 @@ on:
 permissions:
   contents: read  # Needed to clone the repositories
   actions: write  # Needed for upload-artifact
+  packages: read  # Needed to pull the app-builder image
 
 env:
   APP_REPOSITORY: ${{ inputs.app_repository }}

@@ -26,6 +26,7 @@ permissions:
   contents: read
   actions: write  # Needed for upload-artifact & gh release
   pull-requests: write
+  packages: read  # Needed to pull the app-builder image
 
 jobs:
   call_get_app_metadata:

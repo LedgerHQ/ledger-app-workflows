@@ -23,6 +23,7 @@ on:
 
 permissions:
   contents: read
+  packages: read  # Needed to pull the app-builder image
 
 env:
   SOURCE: ${{ inputs.source }}

@@ -43,6 +43,7 @@ permissions:
   contents: read
   actions: write        # Needed for _get_app_manifest.yml and _check_*.yml workflows
   pull-requests: write  # Required by reusable_build.yml (for diff_elf_sizes job, unused here)
+  packages: read        # Needed to pull the app-builder image
 
 env:
   APP_REPOSITORY: ${{ inputs.app_repository }}

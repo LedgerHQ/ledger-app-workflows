@@ -29,6 +29,7 @@ permissions:
   pull-requests: write  # Needed for child workflows
   attestations: write   # Needed for child workflows
   id-token: write       # Needed for child workflows
+  packages: read        # Needed for child workflows
 
 jobs:
 
