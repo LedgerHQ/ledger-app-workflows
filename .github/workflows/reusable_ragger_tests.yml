@@ -382,16 +382,19 @@ jobs:
             rm -f stack_summary_${{ matrix.device }}.txt
           else
             cat stack_summary_${{ matrix.device }}.txt
+
+            # print worst case line, then the per-test detail in a collapsible block
+            tail -n1 stack_summary_${{ matrix.device }}.txt >> ${GITHUB_STEP_SUMMARY}
+            echo "" >> ${GITHUB_STEP_SUMMARY}
+            echo "<details>" >> ${GITHUB_STEP_SUMMARY}
+            echo "<summary>Stack consumption per test (${{ matrix.device }})</summary>" >> ${GITHUB_STEP_SUMMARY}
+            echo "" >> ${GITHUB_STEP_SUMMARY}
             echo "| Test | Stack |" >> ${GITHUB_STEP_SUMMARY}
             echo "|------|--------------:|" >> ${GITHUB_STEP_SUMMARY}
-
-            # print stack summary detail, worst case line printed out separately
             tail -n +2 stack_summary_${{ matrix.device }}.txt | head -n -1 |
               sed -r -e 's/^/| /' -e 's/$/ |/' -e 's/([[:digit:]]+ bytes)\s+(\S+)/\2 | \1 |/' >> ${GITHUB_STEP_SUMMARY}
-
-            # print worst case line
             echo "" >> ${GITHUB_STEP_SUMMARY}
-            tail -n1 stack_summary_${{ matrix.device }}.txt >> ${GITHUB_STEP_SUMMARY}
+            echo "</details>" >> ${GITHUB_STEP_SUMMARY}
           fi
 
       - name: Upload stack consumption summary
@@ -654,10 +657,10 @@ jobs:
               ? 'Stack consumption summary'
               : 'Stack consumption summary (' + sectionId.replace('stack-consumption-summary-', '') + ')';
             const stackSection =
-              stackMarker + '\n ' + sectionTitle + '\n\n' +
+              stackMarker + '\n<details open>\n<summary>' + sectionTitle + '</summary>\n\n' +
               disclaimer + '\n\n' +
               fs.readFileSync('stack_comment.md', 'utf8') +
-              `\n[Full details](${runUrl})`;
+              `\n[Full details](${runUrl})\n\n</details>`;
 
             const { data: comments } = await github.rest.issues.listComments({
               owner: context.repo.owner,
