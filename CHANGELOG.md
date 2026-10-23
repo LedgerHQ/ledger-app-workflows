@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.119.2] - 2026-10-23
+
+### Changed
+
+- `reusable_ragger_tests.yml`: the per-test stack consumption table of the step summary is collapsed in a `<details>` block, below the worst case line, and the stack consumption section of the PR comment is wrapped in an open `<details>` block.
+- `reusable_build.yml`: the ELF sizes section of the PR comment is wrapped in an open `<details>` block.
+
 ## [1.119.1] - 2026-10-14
 
 ### Fixed

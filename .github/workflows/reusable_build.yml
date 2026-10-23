@@ -509,7 +509,9 @@ jobs:
         run: |
           SRC="${GITHUB_HEAD_REF}"
           TGT="${GITHUB_BASE_REF}"
-          echo "elf sizes" >> elf_diff.md
+          echo "<details open>" >> elf_diff.md
+          echo "<summary>elf sizes</summary>" >> elf_diff.md
+          echo "" >> elf_diff.md
 
           echo "source = source branch ${SRC}" >> elf_diff.md
           echo "target = target branch ${TGT}" >> elf_diff.md
@@ -557,6 +559,8 @@ jobs:
 
               echo "| ${DEVICE_NAME} | ${src_text} | ${tgt_text} | $((src_text - tgt_text)) | ${src_bss_size} | ${tgt_bss_size} | ${bss_delta} | ${src_stack_size} | ${tgt_stack_size} | ${stack_delta} |" >> elf_diff.md
           done
+          echo "" >> elf_diff.md
+          echo "</details>" >> elf_diff.md
 
       - name: Post or update PR comment
         uses: actions/github-script@v8
