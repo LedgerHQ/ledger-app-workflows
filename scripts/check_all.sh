@@ -212,7 +212,10 @@ call_step() {
             else
                 log_step "Get ${step} (All targets)"
                 ALL_TARGETS=$(ledger-manifest --output-devices ledger_app.toml | tail -n +2 | awk -F" " '{print $2}' | sed 's/[2+]/p/')
+                failed_targets=()
+                nb_targets=0
                 for tgt in ${ALL_TARGETS}; do
+                    nb_targets=$((nb_targets + 1))
                     gh_group "  Processing target ${tgt}"
                     log_bold "********* Processing target: ${tgt}"
                     eval BOLOS_SDK="$(echo "\$${tgt}" | tr '[:lower:]' '[:upper:]')_SDK"
@@ -227,11 +230,19 @@ call_step() {
                     gh_endgroup
                     if [[ ${err} -ne 0 ]]; then
                         log_error "Check ${step} failed for target ${tgt}"
-                        echo -n "|:x:" >> "${FILE_STATUS}"
-                        exit 1
+                        failed_targets+=("${tgt}")
+                        # Keep only valid manifests for the next checks
+                        rm -f "${MANIFEST_DIR}/manifest_${tgt}.json"
                     fi
                 done
-                echo -n "|:white_check_mark:" >> "${FILE_STATUS}"
+                if [[ ${#failed_targets[@]} -eq 0 ]]; then
+                    echo -n "|:white_check_mark:" >> "${FILE_STATUS}"
+                    return
+                fi
+                log_error "Check ${step} failed for target(s): ${failed_targets[*]}"
+                echo -n "|:x:" >> "${FILE_STATUS}"
+                # No manifest at all: the next checks cannot run
+                [[ ${#failed_targets[@]} -eq ${nb_targets} ]] && exit 1
                 return
             fi
             ;;
@@ -265,6 +276,7 @@ call_step() {
             else
                 log_step "Check ${step} (All targets)"
                 ALL_TARGETS=$(ledger-manifest --output-devices ledger_app.toml | tail -n +2 | awk -F" " '{print $2}' | sed 's/[2+]/p/')
+                failed_targets=()
                 for tgt in ${ALL_TARGETS}; do
                     gh_group "  Processing target ${tgt}"
                     log_bold "********* Processing target: ${tgt}"
@@ -280,11 +292,15 @@ call_step() {
                     gh_endgroup
                     if [[ ${err} -ne 0 ]]; then
                         log_error "Check ${step} failed for target ${tgt}"
-                        echo -n "|:x:" >> "${FILE_STATUS}"
-                        return
+                        failed_targets+=("${tgt}")
                     fi
                 done
-                echo -n "|:white_check_mark:" >> "${FILE_STATUS}"
+                if [[ ${#failed_targets[@]} -eq 0 ]]; then
+                    echo -n "|:white_check_mark:" >> "${FILE_STATUS}"
+                else
+                    log_error "Check ${step} failed for target(s): ${failed_targets[*]}"
+                    echo -n "|:x:" >> "${FILE_STATUS}"
+                fi
                 return
             fi
             ;;
