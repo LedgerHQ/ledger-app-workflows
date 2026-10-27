@@ -39,7 +39,7 @@ env:
 jobs:
   tag:
     name: Update tag
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Clone
         uses: actions/checkout@v6

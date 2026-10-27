@@ -91,7 +91,7 @@ jobs:
       fail-fast: false
       matrix:
         device: ${{ fromJSON(inputs.run_for_devices) }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     container: ${{ vars.APP_BUILDER_REGISTRY && fromJSON(format('{{"image":"{0}/{1}:latest","credentials":{{"username":"{2}","password":"{3}"}}}}', vars.APP_BUILDER_REGISTRY, inputs.builder, github.actor, github.token)) || format('ghcr.io/ledgerhq/ledger-app-builder/{0}:latest', inputs.builder) }}
 
     steps:

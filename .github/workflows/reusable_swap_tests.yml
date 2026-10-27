@@ -86,7 +86,7 @@ env:
 jobs:
   compute_artifact_names:
     name: Compute matrix-safe artifact names
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
       app_binaries_artifact: ${{ steps.compute_names.outputs.app_artifact_name }}
       exchange_binaries_artifact: ${{ steps.compute_names.outputs.exchange_artifact_name }}
@@ -186,7 +186,7 @@ jobs:
 
   get_swap_test_metadata:
     name: Retrieve swap test metadata
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
       swap_test_dir: ${{ steps.compute_directories.outputs.swap_test_dir }}
       main_app_dir: ${{ steps.compute_directories.outputs.main_app_dir }}

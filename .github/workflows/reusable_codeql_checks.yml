@@ -86,7 +86,7 @@ jobs:
   build_device_matrix:
     name: Build device matrix
     needs: call_get_app_metadata
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
       sdks_config: ${{ steps.sdk_list.outputs.sdks_config }}
 
@@ -122,7 +122,7 @@ jobs:
         sdk: ${{ fromJSON(needs.build_device_matrix.outputs.sdks_config) }}
         # 'cpp' covers C and C++
         language: ['cpp']
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     container: ${{ vars.APP_BUILDER_REGISTRY && fromJSON(format('{{"image":"{0}/{1}:latest","credentials":{{"username":"{2}","password":"{3}"}}}}', vars.APP_BUILDER_REGISTRY, inputs.builder, github.actor, github.token)) || format('ghcr.io/ledgerhq/ledger-app-builder/{0}:latest', inputs.builder) }}
 
     steps:

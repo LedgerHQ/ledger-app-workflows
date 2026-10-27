@@ -44,7 +44,7 @@ jobs:
   check-tag:
     name: Check that tag matches last changelog entry (c apps) or cargo.toml version (rust apps)
     needs: call_get_app_metadata
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
@@ -89,7 +89,7 @@ jobs:
   release:
     name: Create GitHub release with ELF binaries
     needs: [call_get_app_metadata, build_app]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: write
     steps:

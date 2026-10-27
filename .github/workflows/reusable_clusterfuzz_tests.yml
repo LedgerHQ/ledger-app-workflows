@@ -54,7 +54,7 @@ env:
 
 jobs:
   prepare_matrix:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
       matrix_json: ${{ steps.set_matrix.outputs.matrix }}
       fuzz_seconds: ${{ steps.set_matrix.outputs.fuzz_seconds }}
@@ -81,7 +81,7 @@ jobs:
 
   pull_images:
     name: Cache ClusterFuzzLite images
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
       cache-key: ${{ steps.key.outputs.value }}
 
@@ -112,7 +112,7 @@ jobs:
 
   fuzzing:
     name: ${{ matrix.mode_cflite }} (${{ matrix.sanitizer }})
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: [prepare_matrix, pull_images]
     strategy:
       fail-fast: false
@@ -159,7 +159,7 @@ jobs:
   # corpus was discarded, so it runs after them instead.
   prune:
     name: prune (address)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: [fuzzing, pull_images]
     # `!cancelled()` and not the default `success()`: a batch job that finds a crash
     # fails by design, and that must not stop the corpus being maintained.
@@ -199,7 +199,7 @@ jobs:
   # HTML report. Merging and the lcov export are therefore done here.
   coverage:
     name: Fuzzing coverage
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     # Last, so the replayed corpus is the one this run grew and prune minimised
     # rather than the previous run's. Coverage mode only downloads the corpus, so
     # this is about reporting a current number, not about contention.
