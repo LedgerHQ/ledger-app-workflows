@@ -45,67 +45,67 @@ jobs:
         coin:
           - name: stellar
             repo: 'LedgerHQ/app-stellar'
-            branch: 'develop'
+            branch: 'master'
           - name: tezos
             repo: 'LedgerHQ/app-tezos'
-            branch: 'develop'
+            branch: 'main'
           - name: xrp
             repo: 'LedgerHQ/app-xrp'
-            branch: 'develop'
+            branch: 'master'
           - name: ethereum
             repo: 'LedgerHQ/app-ethereum'
-            branch: 'develop'
+            branch: 'master'
           - name: ethereum_classic
             repo: 'LedgerHQ/app-ethereum'
-            branch: 'develop'
+            branch: 'master'
           - name: litecoin
             repo: 'LedgerHQ/app-bitcoin-legacy'
-            branch: 'develop'
+            branch: 'master'
           - name: bitcoin_legacy
             repo: 'LedgerHQ/app-bitcoin-legacy'
-            branch: 'develop'
+            branch: 'master'
           - name: bitcoin
             repo: 'LedgerHQ/app-bitcoin'
-            branch: 'develop'
+            branch: 'master'
           - name: solana
             repo: 'LedgerHQ/app-solana'
-            branch: 'develop'
+            branch: 'master'
           - name: DOT
             repo: 'LedgerHQ/app-polkadot'
-            branch: 'develop'
+            branch: 'main'
           - name: tron
             repo: 'LedgerHQ/app-tron'
-            branch: 'develop'
+            branch: 'master'
           - name: ton
             repo: 'LedgerHQ/app-ton'
-            branch: 'develop'
+            branch: 'master'
           - name: cardano
             repo: 'LedgerHQ/app-cardano'
-            branch: 'develop'
+            branch: 'main'
           - name: near
             repo: 'LedgerHQ/app-near'
-            branch: 'develop'
+            branch: 'main'
           - name: APTOS
             repo: 'LedgerHQ/app-aptos'
-            branch: 'develop'
+            branch: 'main'
           - name: sui
             repo: 'LedgerHQ/app-sui'
-            branch: 'develop'
+            branch: 'main'
           - name: ATOM
             repo: 'LedgerHQ/app-cosmos'
-            branch: 'develop'
+            branch: 'main'
           - name: hedera
             repo: 'LedgerHQ/app-hedera'
-            branch: 'develop'
+            branch: 'master'
           - name: boilerplate
             repo: 'LedgerHQ/app-boilerplate'
             branch: 'master'
           - name: kaspa
             repo: 'LedgerHQ/app-kaspa'
-            branch: 'develop'
+            branch: 'main'
           - name: celo
             repo: 'LedgerHQ/app-celo-spender'
-            branch: 'develop'
+            branch: 'master'
 
     uses: ./.github/workflows/reusable_build.yml
     with:
@@ -137,7 +137,7 @@ jobs:
     uses: ./.github/workflows/reusable_build.yml
     with:
       app_repository: LedgerHQ/app-exchange
-      app_branch_name: develop
+      app_branch_name: master
       flags: "TESTING=1 TEST_PUBLIC_KEY=1"
       upload_app_binaries_artifact: exchange_binaries
       build_comparison: false
@@ -152,7 +152,7 @@ jobs:
     uses: ./.github/workflows/reusable_ragger_tests.yml
     with:
       app_repository: LedgerHQ/app-exchange
-      app_branch_name: develop
+      app_branch_name: master
       download_app_binaries_artifact: exchange_binaries
       lib_binaries_artifact: libraries_binaries
       lib_binaries_artifact_dir: test/python/lib_binaries
@@ -218,7 +218,7 @@ jobs:
     with:
       # We use public repo of eth because this will be fed to plugin boilerplate tests
       app_repository: LedgerHQ/app-ethereum
-      app_branch_name: develop
+      app_branch_name: master
       flags: "DEBUG=1 CAL_TEST_KEY=1"
       upload_app_binaries_artifact: ethereum_build_develop
       build_comparison: false
