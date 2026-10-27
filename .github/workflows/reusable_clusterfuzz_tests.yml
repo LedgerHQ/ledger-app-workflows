@@ -4,6 +4,11 @@ name: ClusterFuzzLite Reusable Fuzzing
 # Coverage additionally needs the per-target seed corpus zips that the SDK's
 # fuzzing/scripts/cfl-build.sh ships alongside the fuzzers; a build.sh that predates it
 # reports no coverage data instead of failing the job.
+#
+# The Dockerfile takes the SDK from the public ledger-app-dev-tools image. When the
+# APP_BUILDER_REGISTRY variable is set (private repositories), the image of that
+# registry is pulled and tagged with the public name first, so the build uses it
+# instead while the Dockerfile stays the same in public and private repositories.
 
 on:
   workflow_call:
@@ -44,6 +49,7 @@ on:
 
 permissions:
   contents: read
+  packages: read  # Private app-builder image, when APP_BUILDER_REGISTRY is set
 
 env:
   EXEC_MODE: ${{ inputs.exec_mode }}
@@ -51,6 +57,8 @@ env:
   SECONDS_PUSH: ${{ inputs.seconds_push }}
   SECONDS_SCHEDULE: ${{ inputs.seconds_schedule }}
   CODECOV_TOKEN: ${{ secrets.codecov_token }}
+  APP_BUILDER_REGISTRY: ${{ vars.APP_BUILDER_REGISTRY }}
+  PUBLIC_DEV_TOOLS_IMAGE: ghcr.io/ledgerhq/ledger-app-builder/ledger-app-dev-tools:latest
 
 jobs:
   prepare_matrix:
@@ -132,6 +140,16 @@ jobs:
       - name: Load Docker images
         run: docker load < /tmp/cfl-images/images.tar.gz
 
+      - name: Use the private app-builder image
+        if: ${{ vars.APP_BUILDER_REGISTRY != '' }}
+        env:
+          GH_ACTOR: ${{ github.actor }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          echo "${GH_TOKEN}" | docker login ghcr.io -u "${GH_ACTOR}" --password-stdin
+          docker pull "${APP_BUILDER_REGISTRY}/ledger-app-dev-tools:latest"
+          docker tag "${APP_BUILDER_REGISTRY}/ledger-app-dev-tools:latest" "${PUBLIC_DEV_TOOLS_IMAGE}"
+
       # Every mode seeds itself from the newest `cifuzz-corpus-<target>` artifact, so a
       # batch run continues from the corpus the last campaign published.
       - name: Build Fuzzers (${{ matrix.mode_cflite }}/${{ matrix.sanitizer }})
@@ -178,6 +196,16 @@ jobs:
       - name: Load Docker images
         run: docker load < /tmp/cfl-images/images.tar.gz
 
+      - name: Use the private app-builder image
+        if: ${{ vars.APP_BUILDER_REGISTRY != '' }}
+        env:
+          GH_ACTOR: ${{ github.actor }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          echo "${GH_TOKEN}" | docker login ghcr.io -u "${GH_ACTOR}" --password-stdin
+          docker pull "${APP_BUILDER_REGISTRY}/ledger-app-dev-tools:latest"
+          docker tag "${APP_BUILDER_REGISTRY}/ledger-app-dev-tools:latest" "${PUBLIC_DEV_TOOLS_IMAGE}"
+
       - name: Build Fuzzers (prune/address)
         uses: google/clusterfuzzlite/actions/build_fuzzers@v1
         with:
@@ -210,6 +238,7 @@ jobs:
     permissions:
       contents: read
       actions: read  # For the corpus download
+      packages: read  # Private app-builder image, when APP_BUILDER_REGISTRY is set
     env:
       IMAGE: gcr.io/oss-fuzz-base/clusterfuzzlite-run-fuzzers:v1
 
@@ -227,6 +256,16 @@ jobs:
 
       - name: Load Docker images
         run: docker load < /tmp/cfl-images/images.tar.gz
+
+      - name: Use the private app-builder image
+        if: ${{ vars.APP_BUILDER_REGISTRY != '' }}
+        env:
+          GH_ACTOR: ${{ github.actor }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          echo "${GH_TOKEN}" | docker login ghcr.io -u "${GH_ACTOR}" --password-stdin
+          docker pull "${APP_BUILDER_REGISTRY}/ledger-app-dev-tools:latest"
+          docker tag "${APP_BUILDER_REGISTRY}/ledger-app-dev-tools:latest" "${PUBLIC_DEV_TOOLS_IMAGE}"
 
       - name: Build Fuzzers (coverage)
         uses: google/clusterfuzzlite/actions/build_fuzzers@v1
