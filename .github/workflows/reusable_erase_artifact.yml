@@ -27,7 +27,7 @@ permissions:
 jobs:
   erase_artifact:
     name: Delete artifact(s)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Delete artifact(s)
         uses: geekyeggo/delete-artifact@176a747ab7e287e3ff4787bf8a148716375ca118  # v6

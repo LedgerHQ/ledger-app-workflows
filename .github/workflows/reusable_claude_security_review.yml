@@ -30,7 +30,7 @@ jobs:
   security-review:
     # Runs only on demand, by (re-)applying the trigger label from the PR sidebar.
     if: github.event.action == 'labeled' && github.event.label.name == inputs.trigger_label
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6

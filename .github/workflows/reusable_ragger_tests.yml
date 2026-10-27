@@ -210,7 +210,7 @@ jobs:
       fail-fast: false
       matrix:
         device: ${{ fromJSON(needs.call_get_app_metadata.outputs.compatible_devices) }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     container: ${{ inputs.container_image != '' && inputs.container_image || null }}
 
     steps:
@@ -499,7 +499,7 @@ jobs:
   merge_pytest_logs:
     name: Merge pytest logs
     needs: ragger_tests
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     if: ${{ inputs.capture_file != '' }}
     steps:
       - name: Download pytest logs
@@ -524,7 +524,7 @@ jobs:
     # Merge matrix output
     name: Merge snapshots artifacts
     needs: ragger_tests
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Merge snapshots artifacts
         uses: actions/upload-artifact/merge@v6
@@ -559,7 +559,7 @@ jobs:
     name: Post stack consumption summary on PR
     needs: [ragger_tests, call_get_app_metadata]
     if: ${{ always() && inputs.post_stack_consumption && github.event_name == 'pull_request' }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     steps:
       - name: Download all stack summary artifacts

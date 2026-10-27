@@ -97,7 +97,7 @@ jobs:
     name: Process pytest logs with valground
     if: always()
     needs: ragger_mem_tests
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Clone SDK
         uses: actions/checkout@v6

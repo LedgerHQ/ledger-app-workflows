@@ -42,7 +42,7 @@ jobs:
     name: Lint check
     needs: call_get_app_metadata
     if: ${{ always() && (needs.call_get_app_metadata.result == 'success' || needs.call_get_app_metadata.result == 'skipped') }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     container: ${{ vars.APP_BUILDER_REGISTRY && fromJSON(format('{{"image":"{0}/ledger-app-builder:latest","credentials":{{"username":"{1}","password":"{2}"}}}}', vars.APP_BUILDER_REGISTRY, github.actor, github.token)) || 'ghcr.io/ledgerhq/ledger-app-builder/ledger-app-builder:latest' }}
 
     steps:
