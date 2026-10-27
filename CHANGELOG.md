@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.120.0] - 2026-10-27
+
+### Added
+
+- `reusable_clusterfuzz_tests.yml`: when the `APP_BUILDER_REGISTRY` variable is set, the `ledger-app-builder-lite` image of that registry is pulled and tagged with its public name before building, so the fuzzing Dockerfile builds against that registry's SDK. A Dockerfile based on another app-builder image keeps the public SDK.
+
+### Changed
+
+- `reusable_clusterfuzz_tests.yml`: free runner disk space in the background, and wait for it before building.
+
+### Removed
+
+- `reusable_clusterfuzz_tests.yml`: the ClusterFuzzLite image cache job. GitHub already pulls those images at the start of every job.
+
 ## [1.119.5] - 2026-10-27
 
 ### Changed

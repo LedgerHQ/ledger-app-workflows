@@ -4,6 +4,12 @@ name: ClusterFuzzLite Reusable Fuzzing
 # Coverage additionally needs the per-target seed corpus zips that the SDK's
 # fuzzing/scripts/cfl-build.sh ships alongside the fuzzers; a build.sh that predates it
 # reports no coverage data instead of failing the job.
+#
+# The Dockerfile takes the SDK from the public ledger-app-builder-lite image. When the
+# APP_BUILDER_REGISTRY variable is set (private repositories), that registry's lite
+# image is pulled and tagged with the public name first, so the build uses it while
+# the Dockerfile stays the same in public and private repositories. A Dockerfile
+# based on another app-builder image keeps the public SDK.
 
 on:
   workflow_call:
@@ -44,6 +50,7 @@ on:
 
 permissions:
   contents: read
+  packages: read  # Private app-builder image, when APP_BUILDER_REGISTRY is set
 
 env:
   EXEC_MODE: ${{ inputs.exec_mode }}
@@ -51,6 +58,9 @@ env:
   SECONDS_PUSH: ${{ inputs.seconds_push }}
   SECONDS_SCHEDULE: ${{ inputs.seconds_schedule }}
   CODECOV_TOKEN: ${{ secrets.codecov_token }}
+  APP_BUILDER_REGISTRY: ${{ vars.APP_BUILDER_REGISTRY }}
+  PUBLIC_APP_BUILDER_REGISTRY: ghcr.io/ledgerhq/ledger-app-builder
+  APP_BUILDER_LITE: ledger-app-builder-lite:latest
 
 jobs:
   prepare_matrix:
@@ -79,41 +89,10 @@ jobs:
           echo "matrix=${MATRIX}" >> "${GITHUB_OUTPUT}"
           echo "fuzz_seconds=${FUZZ_SECONDS}" >> "${GITHUB_OUTPUT}"
 
-  pull_images:
-    name: Cache ClusterFuzzLite images
-    runs-on: ubuntu-24.04
-    outputs:
-      cache-key: ${{ steps.key.outputs.value }}
-
-    steps:
-      - name: Compute cache key
-        id: key
-        # Rotate weekly: images tagged :v1 may be re-pushed, a fresh pull every
-        # week keeps coverage current while avoiding a pull on every workflow run.
-        run: echo "value=cfl-images-$(date -u '+%Y-%U')" >> "${GITHUB_OUTPUT}"
-
-      - name: Restore cache
-        id: cache
-        uses: actions/cache@v6
-        with:
-          path: /tmp/cfl-images
-          key: ${{ steps.key.outputs.value }}
-
-      - name: Pull and save images
-        if: steps.cache.outputs.cache-hit != 'true'
-        run: |
-          mkdir -p /tmp/cfl-images
-          docker pull gcr.io/oss-fuzz-base/clusterfuzzlite-build-fuzzers:v1
-          docker pull gcr.io/oss-fuzz-base/clusterfuzzlite-run-fuzzers:v1
-          docker save \
-            gcr.io/oss-fuzz-base/clusterfuzzlite-build-fuzzers:v1 \
-            gcr.io/oss-fuzz-base/clusterfuzzlite-run-fuzzers:v1 \
-            | gzip > /tmp/cfl-images/images.tar.gz
-
   fuzzing:
     name: ${{ matrix.mode_cflite }} (${{ matrix.sanitizer }})
     runs-on: ubuntu-24.04
-    needs: [prepare_matrix, pull_images]
+    needs: [prepare_matrix]
     strategy:
       fail-fast: false
       matrix:
@@ -123,14 +102,33 @@ jobs:
       cancel-in-progress: true
 
     steps:
-      - name: Restore image cache
-        uses: actions/cache/restore@v6
-        with:
-          path: /tmp/cfl-images
-          key: ${{ needs.pull_images.outputs.cache-key }}
+      - name: Free disk space
+        run: |
+          # Several GB of images get pulled and built: drop runner toolchains this build never
+          # uses. It runs in the background during the next steps; the build waits for it.
+          nohup sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc /usr/local/.ghcup \
+            /opt/hostedtoolcache/CodeQL > /dev/null 2>&1 &
+          echo "$!" > "${RUNNER_TEMP}/free-disk-space.pid"
 
-      - name: Load Docker images
-        run: docker load < /tmp/cfl-images/images.tar.gz
+      - name: Use the private app-builder image
+        if: ${{ vars.APP_BUILDER_REGISTRY != '' }}
+        env:
+          GH_ACTOR: ${{ github.actor }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          echo "${GH_TOKEN}" | docker login ghcr.io -u "${GH_ACTOR}" --password-stdin
+          docker pull "${APP_BUILDER_REGISTRY}/${APP_BUILDER_LITE}"
+          docker tag "${APP_BUILDER_REGISTRY}/${APP_BUILDER_LITE}" \
+            "${PUBLIC_APP_BUILDER_REGISTRY}/${APP_BUILDER_LITE}"
+
+      - name: Wait for the disk cleanup
+        run: |
+          pid="$(cat "${RUNNER_TEMP}/free-disk-space.pid")"
+          # The cleanup runs as root, so poll /proc rather than signal it
+          while [[ -e "/proc/${pid}" ]]; do
+            sleep 2
+          done
+          df -h /
 
       # Every mode seeds itself from the newest `cifuzz-corpus-<target>` artifact, so a
       # batch run continues from the corpus the last campaign published.
@@ -160,7 +158,7 @@ jobs:
   prune:
     name: prune (address)
     runs-on: ubuntu-24.04
-    needs: [fuzzing, pull_images]
+    needs: [fuzzing]
     # `!cancelled()` and not the default `success()`: a batch job that finds a crash
     # fails by design, and that must not stop the corpus being maintained.
     if: ${{ !cancelled() && inputs.exec_mode != 'pull_request' }}
@@ -169,14 +167,33 @@ jobs:
       cancel-in-progress: true
 
     steps:
-      - name: Restore image cache
-        uses: actions/cache/restore@v6
-        with:
-          path: /tmp/cfl-images
-          key: ${{ needs.pull_images.outputs.cache-key }}
+      - name: Free disk space
+        run: |
+          # Several GB of images get pulled and built: drop runner toolchains this build never
+          # uses. It runs in the background during the next steps; the build waits for it.
+          nohup sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc /usr/local/.ghcup \
+            /opt/hostedtoolcache/CodeQL > /dev/null 2>&1 &
+          echo "$!" > "${RUNNER_TEMP}/free-disk-space.pid"
 
-      - name: Load Docker images
-        run: docker load < /tmp/cfl-images/images.tar.gz
+      - name: Use the private app-builder image
+        if: ${{ vars.APP_BUILDER_REGISTRY != '' }}
+        env:
+          GH_ACTOR: ${{ github.actor }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          echo "${GH_TOKEN}" | docker login ghcr.io -u "${GH_ACTOR}" --password-stdin
+          docker pull "${APP_BUILDER_REGISTRY}/${APP_BUILDER_LITE}"
+          docker tag "${APP_BUILDER_REGISTRY}/${APP_BUILDER_LITE}" \
+            "${PUBLIC_APP_BUILDER_REGISTRY}/${APP_BUILDER_LITE}"
+
+      - name: Wait for the disk cleanup
+        run: |
+          pid="$(cat "${RUNNER_TEMP}/free-disk-space.pid")"
+          # The cleanup runs as root, so poll /proc rather than signal it
+          while [[ -e "/proc/${pid}" ]]; do
+            sleep 2
+          done
+          df -h /
 
       - name: Build Fuzzers (prune/address)
         uses: google/clusterfuzzlite/actions/build_fuzzers@v1
@@ -205,11 +222,12 @@ jobs:
     # this is about reporting a current number, not about contention.
     # !cancelled(): prune is skipped on pull requests, and fuzzing fails when it
     # finds a crash -- neither should suppress the coverage report.
-    needs: [fuzzing, prune, pull_images]
+    needs: [fuzzing, prune]
     if: ${{ !cancelled() }}
     permissions:
       contents: read
       actions: read  # For the corpus download
+      packages: read  # Private app-builder image, when APP_BUILDER_REGISTRY is set
     env:
       IMAGE: gcr.io/oss-fuzz-base/clusterfuzzlite-run-fuzzers:v1
 
@@ -219,14 +237,33 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Restore image cache
-        uses: actions/cache/restore@v6
-        with:
-          path: /tmp/cfl-images
-          key: ${{ needs.pull_images.outputs.cache-key }}
+      - name: Free disk space
+        run: |
+          # Several GB of images get pulled and built: drop runner toolchains this build never
+          # uses. It runs in the background during the next steps; the build waits for it.
+          nohup sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc /usr/local/.ghcup \
+            /opt/hostedtoolcache/CodeQL > /dev/null 2>&1 &
+          echo "$!" > "${RUNNER_TEMP}/free-disk-space.pid"
 
-      - name: Load Docker images
-        run: docker load < /tmp/cfl-images/images.tar.gz
+      - name: Use the private app-builder image
+        if: ${{ vars.APP_BUILDER_REGISTRY != '' }}
+        env:
+          GH_ACTOR: ${{ github.actor }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          echo "${GH_TOKEN}" | docker login ghcr.io -u "${GH_ACTOR}" --password-stdin
+          docker pull "${APP_BUILDER_REGISTRY}/${APP_BUILDER_LITE}"
+          docker tag "${APP_BUILDER_REGISTRY}/${APP_BUILDER_LITE}" \
+            "${PUBLIC_APP_BUILDER_REGISTRY}/${APP_BUILDER_LITE}"
+
+      - name: Wait for the disk cleanup
+        run: |
+          pid="$(cat "${RUNNER_TEMP}/free-disk-space.pid")"
+          # The cleanup runs as root, so poll /proc rather than signal it
+          while [[ -e "/proc/${pid}" ]]; do
+            sleep 2
+          done
+          df -h /
 
       - name: Build Fuzzers (coverage)
         uses: google/clusterfuzzlite/actions/build_fuzzers@v1
