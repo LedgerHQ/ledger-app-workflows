@@ -1,0 +1,3 @@
+# Applied to the Python type-checking job through PIP_CONSTRAINT.
+# PyQt6 6.12.0 ships .pyi stubs that are not valid Python syntax, which mypy rejects.
+PyQt6!=6.12.0
