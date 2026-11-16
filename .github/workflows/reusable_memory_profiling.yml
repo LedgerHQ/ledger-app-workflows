@@ -61,6 +61,12 @@ on:
         required: false
         default: ''
         type: string
+      test_splits:
+        description: "Number of groups the test suite is split into on each device, each group running
+                     in its own job (see `reusable_ragger_tests.yml`). Defaults to 1 (no split)."
+        required: false
+        default: 1
+        type: number
 
 jobs:
   build_mem_app:
@@ -90,6 +96,7 @@ jobs:
       test_filter: ${{ inputs.test_filter }}
       test_options: ${{ inputs.test_options }}
       capture_file: 'pytest-logs-combined'
+      test_splits: ${{ inputs.test_splits }}
     secrets:
       secret_test_options: ${{ secrets.secret_test_options }}
 
