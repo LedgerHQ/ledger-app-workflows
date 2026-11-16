@@ -215,7 +215,7 @@ jobs:
   compute_test_matrix:
     name: Compute test matrix
     needs: call_get_app_metadata
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     steps:
       # The group dimension only exists when the suite is split, so that unsplit job names stay "(<device>)"
       - name: Compute test matrix
@@ -246,7 +246,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix: ${{ fromJSON(needs.compute_test_matrix.outputs.matrix) }}
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     container: ${{ inputs.container_image != '' && inputs.container_image || null }}
     env:
       # Appended to the per-job artifact names, empty when the suite is not split
@@ -321,11 +321,25 @@ jobs:
           ref: ${{ fromJSON(toJSON(job)).workflow_sha }}
 
       - name: Install system dependencies
-        run: ./ledger-app-workflows/scripts/apt_install.sh qemu-user-static
+        run: |
+          ./ledger-app-workflows/scripts/apt_install.sh qemu-user
+          # Speculos runs qemu-arm-static
+          if ! command -v qemu-arm-static >/dev/null; then
+            SUDO=""
+            [ "$(id -u)" -ne 0 ] && SUDO="sudo"
+            ${SUDO} ln -s "$(command -v qemu-arm)" /usr/local/bin/qemu-arm-static
+          fi
+          qemu-arm-static --version
 
       - name: Install coverage system dependencies
         if: ${{ inputs.coverage }}
         run: ./ledger-app-workflows/scripts/apt_install.sh -n lcov gpg
+
+      - name: Set up Python
+        if: ${{ inputs.container_image == '' }}
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
 
       - name: Install tests dependencies
         run: |
@@ -560,7 +574,7 @@ jobs:
   merge_pytest_logs:
     name: Merge pytest logs
     needs: ragger_tests
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     if: ${{ inputs.capture_file != '' }}
     steps:
       # One directory per artifact: every artifact holds a file with the same name
@@ -590,7 +604,7 @@ jobs:
       fail-fast: false
       matrix:
         device: ${{ fromJSON(needs.compute_test_matrix.outputs.matrix).device }}
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     steps:
       - name: Checkout ledger-app-workflows
         uses: actions/checkout@v6
@@ -701,7 +715,7 @@ jobs:
     # Merge matrix output
     name: Merge snapshots artifacts
     needs: ragger_tests
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     steps:
       - name: Merge snapshots artifacts
         uses: actions/upload-artifact/merge@v6
@@ -736,7 +750,7 @@ jobs:
     name: Post stack consumption summary on PR
     needs: [ragger_tests, call_get_app_metadata, ragger_tests_summary]
     if: ${{ always() && inputs.post_stack_consumption && github.event_name == 'pull_request' }}
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
 
     steps:
       - name: Download all stack summary artifacts

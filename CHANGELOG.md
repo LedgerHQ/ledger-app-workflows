@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.121.1] - 2026-11-16
+
+### Changed
+
+- All workflows: pin the runner image to `ubuntu-26.04` instead of `ubuntu-24.04`, including the default `runs_on` input of `reusable_docker_deployment.yml`.
+- `reusable_ragger_tests.yml`: when no `container_image` is given, the tests run on Python 3.12 set up with `actions/setup-python`, instead of the runner's system Python. Python 3.14 of `ubuntu-26.04` lacks wheels for some test dependencies, such as `coincurve`.
+- `reusable_ragger_tests.yml`: install `qemu-user` instead of `qemu-user-static`, which is only a virtual package on `ubuntu-26.04`, and link `qemu-arm-static` to `qemu-arm` when the package does not provide it.
+
 ## [1.121.0] - 2026-11-16
 
 ### Added
