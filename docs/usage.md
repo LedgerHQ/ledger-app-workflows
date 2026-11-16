@@ -83,6 +83,7 @@ In order to test an App, this workflow can use the following input parameters:
 | post_stack_consumption               | ❌       | `false`                  | Post a stack consumption summary on PRs. Requires `reusable_build` with `enable_stack_consumption` and `build_comparison` enabled |
 | artifact_retention_days              | ❌       |                          | Retention period (days) for the artifacts uploaded by this workflow. Empty uses the repo/org default                              |
 | delete_input_artifacts_after_test    | ❌       | `false`                  | Delete the downloaded app binary artifacts once tests are done (skip retention)                                                   |
+| test_splits                          | ❌       | `1`                      | Split the tests of each device into N jobs (`pytest-split`), balanced with `<test_dir>/.test_durations` if present                |
 
 In addition, the following secrets can be used:
 
@@ -90,6 +91,15 @@ In addition, the following secrets can be used:
 | ------------------- | -------- | -------------- | -------------------------------------------------------------------------------------- |
 | token               | ❌       | `github.token` | A token passed from the caller workflow; needed for private repositories or submodules |
 | secret_test_options | ❌       |                | A string of secret options to be given to `pytest`                                     |
+
+With `test_splits` greater than 1, each device runs N jobs, named `(<device>, <group>)`. A summary job
+per device, named `(<device>)` as an unsplit job, fails if any of its groups failed or has no result,
+so required status checks keep the same names. It also merges the results of the groups: the stack
+consumption summary (artifact, job summary and PR comment) lists all the tests with the overall worst
+case, and the coverage reports are merged into the `coverage-<device>` lcov file (without HTML
+report). The captured pytest logs are concatenated. To balance the groups by duration rather than by
+test count, commit a `<test_dir>/.test_durations` file generated with
+`pytest --store-durations --durations-path=<test_dir>/.test_durations` (requires `pytest-split`).
 
 ## Reusable Ragger tests coverage
 
@@ -109,6 +119,7 @@ It can use the following input parameters:
 | test_options     | ❌       |                           | Specify optional parameters to be passed to the running test                      |
 | coverage_exclude | ❌       |                           | Comma-separated source paths to exclude from coverage (e.g. a vendored submodule) |
 | container_image  | ❌       |                           | Optional container image to run the ragger tests                                  |
+| test_splits      | ❌       | `1`                       | Split the tests of each device into N jobs                                        |
 
 In addition, the following secrets can be used:
 
@@ -144,6 +155,7 @@ It can use the following input parameters:
 | sdk_reference   | ❌       |                              | A SDK reference to checkout before building the app                        |
 | test_filter     | ❌       |                              | Specify an expression which implements a substring match on the test names |
 | test_options    | ❌       |                              | Specify optional parameters to be passed to the running test               |
+| test_splits     | ❌       | `1`                          | Split the tests of each device into N jobs                                 |
 
 In addition, the following secrets can be used:
 

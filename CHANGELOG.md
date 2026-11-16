@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.121.0] - 2026-11-16
+
+### Added
+
+- `reusable_ragger_tests.yml`, `reusable_ragger_coverage.yml`, `reusable_memory_profiling.yml`: `test_splits` input, splitting the tests of each device into several jobs with `pytest-split`. Defaults to 1, which keeps the current jobs and artifact names.
+
+### Fixed
+
+- `reusable_ragger_tests.yml`: captured pytest logs of several devices no longer overwrite each other when merged.
+
 ## [1.120.1] - 2026-10-28
 
 ### Fixed

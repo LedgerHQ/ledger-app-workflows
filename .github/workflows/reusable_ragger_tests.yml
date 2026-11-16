@@ -138,6 +138,14 @@ on:
         required: false
         default: false
         type: boolean
+      test_splits:
+        description: "Number of groups the test suite is split into on each device, each group running
+                     in its own job (`pytest-split`). Defaults to 1 (no split). The groups are balanced
+                     with the test durations stored in `<test_dir>/.test_durations` when this file exists
+                     (generated with `pytest --store-durations`), and by test count otherwise."
+        required: false
+        default: 1
+        type: number
     secrets:
       token:
         description: 'A token passed from the caller workflow'
@@ -177,6 +185,7 @@ env:
   COVERAGE_EXCLUDE: ${{ inputs.coverage_exclude }}
   ARTIFACT_RETENTION_DAYS: ${{ inputs.artifact_retention_days }}
   DELETE_INPUT_ARTIFACTS_AFTER_TEST: ${{ inputs.delete_input_artifacts_after_test }}
+  TEST_SPLITS: ${{ inputs.test_splits }}
   CODECOV_TOKEN: ${{ secrets.codecov_token }}
 
 jobs:
@@ -203,15 +212,45 @@ jobs:
     secrets:
       token: ${{ secrets.token }}
 
+  compute_test_matrix:
+    name: Compute test matrix
+    needs: call_get_app_metadata
+    runs-on: ubuntu-24.04
+    steps:
+      # The group dimension only exists when the suite is split, so that unsplit job names stay "(<device>)"
+      - name: Compute test matrix
+        id: matrix
+        env:
+          DEVICES: ${{ needs.call_get_app_metadata.outputs.compatible_devices }}
+        run: |
+          if ! [[ "${TEST_SPLITS}" =~ ^[1-9][0-9]*$ ]]; then
+            echo "ERROR: 'test_splits' must be a positive integer, got '${TEST_SPLITS}'"
+            exit 1
+          fi
+          if [ "${TEST_SPLITS}" -eq 1 ]; then
+            matrix=$(jq -cn --argjson d "${DEVICES}" '{device: $d}')
+          else
+            matrix=$(jq -cn --argjson d "${DEVICES}" --argjson n "${TEST_SPLITS}" '{device: $d, group: [range(1; $n + 1)]}')
+          fi
+          echo "matrix=${matrix}"
+          echo "matrix=${matrix}" >> "${GITHUB_OUTPUT}"
+          # Unique to this workflow call: an app may call this workflow several times in a same run
+          echo "run_key=$(od -An -N4 -tx1 /dev/urandom | tr -d ' \n')" >> "${GITHUB_OUTPUT}"
+    outputs:
+      matrix: ${{ steps.matrix.outputs.matrix }}
+      run_key: ${{ steps.matrix.outputs.run_key }}
+
   ragger_tests:
     name: Functional tests with Ragger
-    needs: [call_get_app_metadata, call_get_test_metadata]
+    needs: [call_get_app_metadata, call_get_test_metadata, compute_test_matrix]
     strategy:
       fail-fast: false
-      matrix:
-        device: ${{ fromJSON(needs.call_get_app_metadata.outputs.compatible_devices) }}
+      matrix: ${{ fromJSON(needs.compute_test_matrix.outputs.matrix) }}
     runs-on: ubuntu-24.04
     container: ${{ inputs.container_image != '' && inputs.container_image || null }}
+    env:
+      # Appended to the per-job artifact names, empty when the suite is not split
+      GROUP_SUFFIX: ${{ inputs.test_splits > 1 && format('-{0}', matrix.group) || '' }}
 
     steps:
       - name: Check metadata
@@ -296,6 +335,10 @@ jobs:
             ./${{ needs.call_get_test_metadata.outputs.pytest_directory }}/setup_script.sh
           fi
 
+      - name: Install test splitting dependency
+        if: ${{ inputs.test_splits > 1 }}
+        run: pip install pytest-split
+
       - name: Run test
         env:
           CTEST_OUTPUT_ON_FAILURE: 1
@@ -333,6 +376,16 @@ jobs:
 
           if [ "${REGENERATE_SNAPSHOTS}" = "true" ]; then
             PYTEST_ARGS+=(--golden_run)
+          fi
+
+          if [ "${TEST_SPLITS}" -gt 1 ]; then
+            PYTEST_ARGS+=("--splits=${TEST_SPLITS}" "--group=${{ matrix.group }}")
+            DURATIONS_FILE="${{ needs.call_get_test_metadata.outputs.pytest_directory }}/.test_durations"
+            if [ -f "${DURATIONS_FILE}" ]; then
+              PYTEST_ARGS+=("--durations-path=${DURATIONS_FILE}")
+            else
+              echo "::notice::No ${DURATIONS_FILE} file: test groups are balanced by test count, not by duration"
+            fi
           fi
 
           if [ -n "${TEST_OPTIONS}" ]; then
@@ -382,26 +435,19 @@ jobs:
             rm -f stack_summary_${{ matrix.device }}.txt
           else
             cat stack_summary_${{ matrix.device }}.txt
-
-            # print worst case line, then the per-test detail in a collapsible block
-            tail -n1 stack_summary_${{ matrix.device }}.txt >> ${GITHUB_STEP_SUMMARY}
-            echo "" >> ${GITHUB_STEP_SUMMARY}
-            echo "<details>" >> ${GITHUB_STEP_SUMMARY}
-            echo "<summary>Stack consumption per test (${{ matrix.device }})</summary>" >> ${GITHUB_STEP_SUMMARY}
-            echo "" >> ${GITHUB_STEP_SUMMARY}
-            echo "| Test | Stack |" >> ${GITHUB_STEP_SUMMARY}
-            echo "|------|--------------:|" >> ${GITHUB_STEP_SUMMARY}
-            tail -n +2 stack_summary_${{ matrix.device }}.txt | head -n -1 |
-              sed -r -e 's/^/| /' -e 's/$/ |/' -e 's/([[:digit:]]+ bytes)\s+(\S+)/\2 | \1 |/' >> ${GITHUB_STEP_SUMMARY}
-            echo "" >> ${GITHUB_STEP_SUMMARY}
-            echo "</details>" >> ${GITHUB_STEP_SUMMARY}
+            # A split suite gets its step summary once the summaries of all its groups are merged
+            if [ "${TEST_SPLITS}" -eq 1 ]; then
+              ./ledger-app-workflows/scripts/stack_consumption_summary.sh step-summary \
+                stack_summary_${{ matrix.device }}.txt "${{ matrix.device }}"
+            fi
           fi
 
+      # A split suite uploads per-group parts, merged by the ragger_tests_summary job
       - name: Upload stack consumption summary
         if: ${{ always() && hashFiles(format('stack_summary_{0}.txt', matrix.device)) != '' }}
         uses: actions/upload-artifact@v6
         with:
-          name: ${{ inputs.stack_consumption_section_id }}-${{ matrix.device }}
+          name: ${{ inputs.test_splits > 1 && 'parts-' || '' }}${{ inputs.stack_consumption_section_id }}-${{ matrix.device }}${{ env.GROUP_SUFFIX }}
           path: stack_summary_${{ matrix.device }}.txt
           retention-days: ${{ inputs.artifact_retention_days }}
 
@@ -409,7 +455,7 @@ jobs:
         if: ${{ inputs.capture_file != '' }}
         uses: actions/upload-artifact@v6
         with:
-          name: pytest-logs-${{ matrix.device }}
+          name: pytest-logs-${{ matrix.device }}${{ env.GROUP_SUFFIX }}
           path: pytest_output.log
           retention-days: ${{ inputs.artifact_retention_days }}
 
@@ -417,12 +463,13 @@ jobs:
         if: ${{ inputs.coverage && hashFiles(format('coverage-{0}.info', matrix.device)) != '' }}
         uses: actions/upload-artifact@v6
         with:
-          name: coverage-${{ matrix.device }}
+          name: coverage-${{ matrix.device }}${{ env.GROUP_SUFFIX }}
           path: |
             coverage-${{ matrix.device }}.info
             coverage-${{ matrix.device }}_html
           retention-days: ${{ inputs.artifact_retention_days }}
 
+      # Codecov merges the uploads of a same commit, so each test group uploads its own part
       - name: Upload coverage to codecov.io
         if: ${{ inputs.coverage && env.CODECOV_TOKEN != '' && hashFiles(format('coverage-{0}.info', matrix.device)) != '' }}
         uses: codecov/codecov-action@v6
@@ -430,7 +477,7 @@ jobs:
           token: ${{ secrets.codecov_token }}
           files: coverage-${{ matrix.device }}.info
           flags: functionaltests
-          name: ragger-coverage-${{ matrix.device }}
+          name: ragger-coverage-${{ matrix.device }}${{ env.GROUP_SUFFIX }}
           fail_ci_if_error: false
           verbose: true
 
@@ -477,8 +524,22 @@ jobs:
         with:
           # Make the artifact name unique to allow running this job in parallel
           # Append a ~ at the end to prevent one job's pattern from prefixing another one
-          name: ${{ steps.compute_name.outputs.artifact_basename }}~${{ matrix.device }}
+          name: ${{ steps.compute_name.outputs.artifact_basename }}~${{ matrix.device }}${{ env.GROUP_SUFFIX }}
           path: ${{ needs.call_get_test_metadata.outputs.pytest_directory }}/snapshots-tmp
+          retention-days: ${{ inputs.artifact_retention_days }}
+
+      # Read by the per-device ragger_tests_summary job when the suite is split
+      - name: Record test group result
+        if: ${{ always() && inputs.test_splits > 1 }}
+        run: echo "${{ job.status }}" > group_result.txt
+
+      - name: Upload test group result
+        if: ${{ always() && inputs.test_splits > 1 }}
+        uses: actions/upload-artifact@v6
+        with:
+          name: ragger-result-${{ needs.compute_test_matrix.outputs.run_key }}-${{ matrix.device }}-${{ matrix.group }}
+          path: group_result.txt
+          overwrite: true
           retention-days: ${{ inputs.artifact_retention_days }}
 
     outputs:
@@ -502,16 +563,16 @@ jobs:
     runs-on: ubuntu-24.04
     if: ${{ inputs.capture_file != '' }}
     steps:
+      # One directory per artifact: every artifact holds a file with the same name
       - name: Download pytest logs
         uses: actions/download-artifact@v7
         with:
           pattern: pytest-logs-*
           path: logs
-          merge-multiple: true
 
       - name: Combine logs
         run: |
-          find logs -name "pytest_output.log" -exec cat {} \; > "${CAPTURE_FILE}.log"
+          find logs -name "pytest_output.log" | sort | xargs -r cat > "${CAPTURE_FILE}.log"
 
       - name: Upload combined logs
         uses: actions/upload-artifact@v6
@@ -519,6 +580,122 @@ jobs:
           name: "${{ inputs.capture_file }}"
           path: "${{ inputs.capture_file }}.log"
           retention-days: ${{ inputs.artifact_retention_days }}
+
+  ragger_tests_summary:
+    # One check per device, named like an unsplit job, gathering the results of the device test groups
+    name: Functional tests with Ragger
+    needs: [ragger_tests, call_get_app_metadata, compute_test_matrix]
+    if: ${{ always() && inputs.test_splits > 1 }}
+    strategy:
+      fail-fast: false
+      matrix:
+        device: ${{ fromJSON(needs.compute_test_matrix.outputs.matrix).device }}
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout ledger-app-workflows
+        uses: actions/checkout@v6
+        with:
+          repository: LedgerHQ/ledger-app-workflows
+          path: ./ledger-app-workflows
+          ref: ${{ fromJSON(toJSON(job)).workflow_sha }}
+
+      - name: Download stack consumption summaries of each test group
+        if: ${{ inputs.post_stack_consumption }}
+        uses: actions/download-artifact@v7
+        with:
+          pattern: parts-${{ inputs.stack_consumption_section_id }}-${{ matrix.device }}-*
+          path: stack_parts
+
+      - name: Merge stack consumption summaries
+        if: ${{ inputs.post_stack_consumption }}
+        shell: bash
+        run: |
+          mapfile -t parts < <(find stack_parts -name "stack_summary_${{ matrix.device }}.txt" 2>/dev/null | sort)
+          if [ "${#parts[@]}" -eq 0 ]; then
+            echo "No stack consumption data found for ${{ matrix.device }}."
+            exit 0
+          fi
+          SCRIPT=./ledger-app-workflows/scripts/stack_consumption_summary.sh
+          "${SCRIPT}" merge "stack_summary_${{ matrix.device }}.txt" "${parts[@]}"
+          if [ -f "stack_summary_${{ matrix.device }}.txt" ]; then
+            cat "stack_summary_${{ matrix.device }}.txt"
+            "${SCRIPT}" step-summary "stack_summary_${{ matrix.device }}.txt" "${{ matrix.device }}"
+          fi
+
+      - name: Upload merged stack consumption summary
+        if: ${{ inputs.post_stack_consumption && hashFiles(format('stack_summary_{0}.txt', matrix.device)) != '' }}
+        uses: actions/upload-artifact@v6
+        with:
+          name: ${{ inputs.stack_consumption_section_id }}-${{ matrix.device }}
+          path: stack_summary_${{ matrix.device }}.txt
+          overwrite: true
+          retention-days: ${{ inputs.artifact_retention_days }}
+
+      - name: Install lcov
+        if: ${{ inputs.coverage }}
+        run: ./ledger-app-workflows/scripts/apt_install.sh -n lcov
+
+      - name: Download coverage reports of each test group
+        if: ${{ inputs.coverage }}
+        uses: actions/download-artifact@v7
+        with:
+          pattern: coverage-${{ matrix.device }}-*
+          path: coverage_parts
+
+      - name: Merge coverage reports
+        id: merge_coverage
+        if: ${{ inputs.coverage }}
+        shell: bash
+        run: |
+          mapfile -t parts < <(find coverage_parts -name "coverage-${{ matrix.device }}.info" 2>/dev/null | sort)
+          if [ "${#parts[@]}" -eq 0 ]; then
+            echo "No coverage report found for ${{ matrix.device }}."
+            exit 0
+          fi
+          LCOV_ARGS=()
+          for part in "${parts[@]}"; do
+            LCOV_ARGS+=(-a "${part}")
+          done
+          lcov "${LCOV_ARGS[@]}" -o "coverage-${{ matrix.device }}.info"
+          echo "merged=true" >> "${GITHUB_OUTPUT}"
+
+      - name: Upload merged coverage report
+        if: ${{ steps.merge_coverage.outputs.merged == 'true' }}
+        uses: actions/upload-artifact@v6
+        with:
+          name: coverage-${{ matrix.device }}
+          path: coverage-${{ matrix.device }}.info
+          overwrite: true
+          retention-days: ${{ inputs.artifact_retention_days }}
+
+      - name: Download test group results
+        uses: actions/download-artifact@v7
+        with:
+          pattern: ragger-result-${{ needs.compute_test_matrix.outputs.run_key }}-${{ matrix.device }}-*
+          path: results
+
+      # A missing result (cancelled job, crashed runner) counts as a failure
+      - name: Check test group results
+        shell: bash
+        env:
+          RESULT_PREFIX: results/ragger-result-${{ needs.compute_test_matrix.outputs.run_key }}-${{ matrix.device }}
+        run: |
+          failed=0
+          for group in $(seq 1 "${TEST_SPLITS}"); do
+            result_file="${RESULT_PREFIX}-${group}/group_result.txt"
+            if [ ! -f "${result_file}" ]; then
+              echo "::error::${{ matrix.device }} group ${group}/${TEST_SPLITS}: no result found"
+              failed=1
+              continue
+            fi
+            result=$(cat "${result_file}")
+            echo "${{ matrix.device }} group ${group}/${TEST_SPLITS}: ${result}"
+            if [ "${result}" != "success" ]; then
+              echo "::error::${{ matrix.device }} group ${group}/${TEST_SPLITS}: ${result}"
+              failed=1
+            fi
+          done
+          exit "${failed}"
 
   merge_artifacts_if_needed:
     # Merge matrix output
@@ -557,7 +734,7 @@ jobs:
 
   post_stack_consumption:
     name: Post stack consumption summary on PR
-    needs: [ragger_tests, call_get_app_metadata]
+    needs: [ragger_tests, call_get_app_metadata, ragger_tests_summary]
     if: ${{ always() && inputs.post_stack_consumption && github.event_name == 'pull_request' }}
     runs-on: ubuntu-24.04
 
