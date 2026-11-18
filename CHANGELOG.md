@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.121.2] - 2026-11-18
+
+### Fixed
+
+- `check_icons.sh`: a 1-bit, 2-color PNG stored with the grayscale color type is accepted as monochrome. ImageMagick 7, shipped on `ubuntu-26.04`, reports it as `Grayscale` instead of `Bilevel`, so the check rejected it on Nano and Apex devices.
+
 ## [1.121.1] - 2026-11-16
 
 ### Changed

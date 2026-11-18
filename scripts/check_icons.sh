@@ -111,8 +111,11 @@ check_glyph() (
             ;;
     esac
 
-    # Monochrome picture
-    if echo "${content}" | grep -q "Type: Bilevel"; then
+    # Monochrome picture: ImageMagick 7 reports a 1-bit 2-color gray PNG as "Grayscale", not "Bilevel"
+    if echo "${content}" | grep -q "Type: Bilevel" || \
+       { echo "${content}" | grep -q "Type: Grayscale" && \
+         echo "${content}" | grep -q "Depth: \(8/\)\?1.bit" && \
+         echo "${content}" | grep -q "Colors: 2$"; }; then
         log_info "Monochrome image type"
         if ! echo "${content}" | grep -q "Colors: 2"; then
             log_error "Glyph should have only 2 colors"
