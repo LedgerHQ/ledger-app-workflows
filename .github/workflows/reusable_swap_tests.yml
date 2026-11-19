@@ -39,7 +39,8 @@ on:
       exchange_binaries_artifact:
         description: |
           The name of the artifact containing pre-built Exchange app binaries.
-          If not provided, the workflow will build Exchange from exchange_repository@develop.
+          If not provided, the workflow will build Exchange from exchange_repository
+          (on the 'develop' branch for a '-dev' repository, else on the 'master' branch).
         required: false
         default: ''
         type: string
@@ -53,7 +54,8 @@ on:
       ethereum_binaries_artifact:
         description: |
           The name of the artifact containing pre-built Ethereum app binaries.
-          If not provided, the workflow will build Ethereum from ethereum_repository@develop.
+          If not provided, the workflow will build Ethereum from ethereum_repository
+          (on the 'develop' branch for a '-dev' repository, else on the 'master' branch).
         required: false
         default: ''
         type: string
@@ -93,6 +95,8 @@ jobs:
       ethereum_binaries_artifact: ${{ steps.compute_names.outputs.ethereum_artifact_name }}
       exchange_repository: ${{ steps.compute_repositories.outputs.exchange_repository }}
       ethereum_repository: ${{ steps.compute_repositories.outputs.ethereum_repository }}
+      exchange_branch: ${{ steps.compute_repositories.outputs.exchange_branch }}
+      ethereum_branch: ${{ steps.compute_repositories.outputs.ethereum_branch }}
     steps:
       - name: Compute Exchange and Ethereum repositories
         id: compute_repositories
@@ -105,15 +109,27 @@ jobs:
           fi
           exchange_repository="${EXCHANGE_REPOSITORY:-LedgerHQ/app-exchange${suffix}}"
           ethereum_repository="${ETHEREUM_REPOSITORY:-LedgerHQ/app-ethereum${suffix}}"
+
+          # A '-dev' repository is built from 'develop', a public one from 'master'
+          branch_for() {
+            if [[ "$1" == *-dev ]]; then echo "develop"; else echo "master"; fi
+          }
+          exchange_branch="$(branch_for "${exchange_repository}")"
+          ethereum_branch="$(branch_for "${ethereum_repository}")"
           {
             echo "exchange_repository=${exchange_repository}"
             echo "ethereum_repository=${ethereum_repository}"
+            echo "exchange_branch=${exchange_branch}"
+            echo "ethereum_branch=${ethereum_branch}"
           } >> "${GITHUB_OUTPUT}"
-          echo "Exchange repository: ${exchange_repository}"
-          echo "Ethereum repository: ${ethereum_repository}"
+          echo "Exchange repository: ${exchange_repository}@${exchange_branch}"
+          echo "Ethereum repository: ${ethereum_repository}@${ethereum_branch}"
 
       - name: Compute artifact names
         id: compute_names
+        env:
+          EXCHANGE_BRANCH: ${{ steps.compute_repositories.outputs.exchange_branch }}
+          ETHEREUM_BRANCH: ${{ steps.compute_repositories.outputs.ethereum_branch }}
         run: |
           # Compute app artifact name (matrix-safe)
           repo_safe="$(echo "${APP_REPOSITORY}" | tr '/' '-')"
@@ -127,7 +143,7 @@ jobs:
             exchange_artifact_name="${EXCHANGE_BINARIES_ARTIFACT}"
             echo "Using provided Exchange artifact: ${exchange_artifact_name}"
           else
-            exchange_artifact_name="app_exchange_binaries-develop-${repo_safe}-${branch_safe}"
+            exchange_artifact_name="app_exchange_binaries-${EXCHANGE_BRANCH}-${repo_safe}-${branch_safe}"
             echo "Will build Exchange with artifact name: ${exchange_artifact_name}"
           fi
           echo "exchange_artifact_name=${exchange_artifact_name}" >> "${GITHUB_OUTPUT}"
@@ -136,7 +152,7 @@ jobs:
             ethereum_artifact_name="${ETHEREUM_BINARIES_ARTIFACT}"
             echo "Using provided Ethereum artifact: ${ethereum_artifact_name}"
           else
-            ethereum_artifact_name="app_ethereum_binaries-develop-${repo_safe}-${branch_safe}"
+            ethereum_artifact_name="app_ethereum_binaries-${ETHEREUM_BRANCH}-${repo_safe}-${branch_safe}"
             echo "Will build Ethereum with artifact name: ${ethereum_artifact_name}"
           fi
           echo "ethereum_artifact_name=${ethereum_artifact_name}" >> "${GITHUB_OUTPUT}"
@@ -163,7 +179,7 @@ jobs:
     uses: ./.github/workflows/reusable_build.yml
     with:
       app_repository: ${{ needs.compute_artifact_names.outputs.exchange_repository }}
-      app_branch_name: 'develop'
+      app_branch_name: ${{ needs.compute_artifact_names.outputs.exchange_branch }}
       upload_app_binaries_artifact: ${{ needs.compute_artifact_names.outputs.exchange_binaries_artifact }}
       use_case: 'use_test_keys'
       build_comparison: false
@@ -177,7 +193,7 @@ jobs:
     uses: ./.github/workflows/reusable_build.yml
     with:
       app_repository: ${{ needs.compute_artifact_names.outputs.ethereum_repository }}
-      app_branch_name: 'develop'
+      app_branch_name: ${{ needs.compute_artifact_names.outputs.ethereum_branch }}
       upload_app_binaries_artifact: ${{ needs.compute_artifact_names.outputs.ethereum_binaries_artifact }}
       use_case: 'use_test_keys'
       build_comparison: false

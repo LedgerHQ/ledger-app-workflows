@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.122.0] - 2026-11-19
+
+### Changed
+
+- `reusable_swap_tests.yml`: when built from source, Exchange and Ethereum come from the `master` branch of a public repository and from the `develop` branch of a `-dev` repository, instead of always from `develop`. The default artifact names carry that branch.
+
 ## [1.121.2] - 2026-11-18
 
 ### Fixed
