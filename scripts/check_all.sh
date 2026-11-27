@@ -192,6 +192,25 @@ scan_command() {
 
 #===============================================================================
 #
+#     Rust helpers
+#
+#===============================================================================
+
+# Lint a Rust app with the target and flags of `cargo ledger build`: the
+# custom target spec of the device, or its built-in Rust triple when the app
+# sets `builtin_target` (cargo-ledger 1.17.0 or later). Older cargo-ledger
+# versions have no `clippy` subcommand: lint on the custom target spec.
+clippy_command() {
+    local device="${1/nanosp/nanosplus}"
+    if cargo ledger clippy --help > /dev/null 2>&1; then
+        echo "(cd ${APP_DIR}/${BUILD_DIR} && cargo ledger clippy ${device} -- -- -Dwarnings)"
+    else
+        echo "(cd ${APP_DIR}/${BUILD_DIR} && cargo clippy --target ${device} -- -Dwarnings)"
+    fi
+}
+
+#===============================================================================
+#
 #     step function
 #
 #===============================================================================
@@ -269,7 +288,7 @@ call_step() {
                 log_bold "********* Processing target: ${TARGET}"
                 eval BOLOS_SDK="$(echo "\$${TARGET}" | sed 's/[2+]/p/' | tr '[:lower:]' '[:upper:]')_SDK"
                 if [[ "${IS_RUST}" == true ]]; then
-                    COMMAND="(cd ${APP_DIR}/${BUILD_DIR} && cargo clippy --target ${TARGET/nanosp/nanosplus} -- -Dwarnings)"
+                    COMMAND="$(clippy_command "${TARGET}")"
                 else
                     COMMAND="$(scan_command "${TARGET}")"
                 fi
@@ -282,7 +301,7 @@ call_step() {
                     log_bold "********* Processing target: ${tgt}"
                     eval BOLOS_SDK="$(echo "\$${tgt}" | tr '[:lower:]' '[:upper:]')_SDK"
                     if [[ "${IS_RUST}" == true ]]; then
-                        COMMAND="(cd ${APP_DIR}/${BUILD_DIR} && cargo clippy --target ${tgt/nanosp/nanosplus} -- -Dwarnings)"
+                        COMMAND="$(clippy_command "${tgt}")"
                     else
                         COMMAND="$(scan_command "${tgt}")"
                     fi
