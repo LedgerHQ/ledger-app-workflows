@@ -97,11 +97,21 @@ jobs:
 
           # 'ledger_app.toml' exists
           echo "Manifest detected."
+          build_directory="$(ledger-manifest --output-build-directory "$APP_MANIFEST")"
+
           # checking the manifest with the repo
-          ledger-manifest --check . "$APP_MANIFEST"
+          # 'ledger-manifest --check' only accepts a Makefile
+          if [ "$(ledger-manifest --output-sdk "$APP_MANIFEST")" != "rust" ] \
+             && [ ! -f "${build_directory}/Makefile" ] \
+             && [ -f "${build_directory}/CMakeLists.txt" ];
+          then
+              echo "CMake application: found ${build_directory}/CMakeLists.txt in the build directory."
+          else
+              ledger-manifest --check . "$APP_MANIFEST"
+          fi
 
           # build directory
-          echo "build_directory=$(ledger-manifest --output-build-directory "$APP_MANIFEST")" >> "${GITHUB_OUTPUT}"
+          echo "build_directory=${build_directory}" >> "${GITHUB_OUTPUT}"
 
           # get device list as a single line json formatted value
           compatible_devices="$(ledger-manifest --output-devices "$APP_MANIFEST" -j | jq -rc '.devices')"
