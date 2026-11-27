@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.123.0] - 2026-11-27
+
+### Changed
+
+- `check_all.sh` (`scan` step of Rust apps, run by the Clang Static Analyzer job): lint with `cargo ledger clippy <device> -- -- -Dwarnings` instead of `cargo clippy --target <device> -- -Dwarnings`, when the cargo-ledger of the image has that subcommand (1.17.0 or later). Apps building with the built-in Rust triples (`builtin_target = true`) are then linted on the target and flags they are built with, and need no `[target.<device>]` section passing the `ledger_device` cfg. Other apps are linted on the custom target spec, as before.
+
 ## [1.122.0] - 2026-11-19
 
 ### Changed
